@@ -13,7 +13,7 @@ contract DBlog {
     Frontend[] public frontends;
     Frontend public frontend;
 
-    constructor(string memory title, string memory description) {
+    function initialize(string memory title, string memory description) public {
         data = new DBlogData(title, description);
     }
 

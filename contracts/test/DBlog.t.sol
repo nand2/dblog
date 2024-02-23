@@ -8,7 +8,7 @@ contract DBlogTest is Test {
     DBlog public dBlog;
 
     function setUp() public {
-        dBlog = new DBlog("title", "description");
+        dBlog = new DBlog();
     }
 
     // function test_AddPost() public {
