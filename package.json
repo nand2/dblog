@@ -4,9 +4,12 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev-factory": "vite frontend-factory",
+    "dev-blog": "vite frontend-blog",
+    "build-factory": "vite build frontend-factory",
+    "build-blog": "vite build frontend-blog",
+    "preview-factory": "vite preview frontend-factory",
+    "preview-blog": "vite preview frontend-blog"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.5.1",
