@@ -5,6 +5,7 @@ import "./DBlogData.sol";
 
 contract DBlog {
     DBlogData public data;
+    string public subdomain;
 
     struct Frontend {
         string title;

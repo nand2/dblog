@@ -42,6 +42,13 @@ h1 {
   text-align: center;
 }
 
+@media (max-width: 768px) {
+  #app {
+    padding-top: 4rem;
+  }
+}
+
+
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -55,8 +62,39 @@ h1 {
   filter: drop-shadow(0 0 2em #f7df1eaa);
 }
 
-.card {
+#blogs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2em;
+  margin: 2em 0;
   padding: 2em;
+  border-radius: 8px;
+  background-color: #1a1a1a;
+  box-shadow: 0 0 1em #00000033;
+  transition: transform 0.25s;
+}
+
+.blog {
+  padding: 1.5em;
+  border-radius: 8px;
+  background-color: #242424;
+  box-shadow: 0 0 1em #00000033;
+  transition: transform 0.25s;
+}
+
+.blog .title {
+  margin-top: 0em;
+  margin-bottom: 0.5em;
+}
+.blog .title a {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.blog .description {
+  color: #888;
 }
 
 .read-the-docs {
@@ -81,6 +119,89 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
+
+button#create-your-own {
+  position: absolute;
+  top: 1em;
+  right: 1em;
+}
+
+#create-popup-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  place-items: center;
+  background-color: #000000aa;
+  z-index: 100;
+}
+
+#create-popup {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 2em;
+  border-radius: 8px;
+  background-color: #242424;
+  box-shadow: 0 0 1em #00000033;
+}
+
+#create-popup h2 {
+  margin-top: 0em;
+  margin-bottom: 1em;
+}
+
+#create-popup .form-row {
+  display: flex;
+  gap: 1em;
+  margin-bottom: 1em;
+}
+
+#create-popup label {
+  flex: 0 0 100px;
+  text-align: right;
+  margin-top: 0.25em;
+}
+
+#create-popup input, #create-popup textarea {
+  flex: 1;
+  padding: 0.5em;
+  border-radius: 8px;
+  border: 1px solid #00000033;
+  background-color: #1a1a1a;
+  color: #fff;
+  transition: border-color 0.25s;
+}
+
+#create-popup input:focus, #create-popup textarea:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+#create-popup #subdomain-input {
+  display: flex;
+}
+
+#create-popup #subdomain {
+  border-radius: 8px 0 0 8px;
+}
+
+#create-popup #subdomain-input-help, #create-popup #subdomain-check {
+  text-align: left;
+  font-size: 80%;
+  margin-top: 0.4em;
+}
+
+#create-popup .domain-suffix {
+  padding: 0.3em;
+  border-radius: 0 8px 8px 0;
+  border: 1px solid #00000033;
+  background-color: #1a1a1a;
+  color: #fff;
+}
+
+
 
 @media (prefers-color-scheme: light) {
   :root {
