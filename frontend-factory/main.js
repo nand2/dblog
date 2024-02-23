@@ -1,6 +1,7 @@
 import './style.css'
 import javascriptLogo from './javascript.svg'
-import { setupSubdomainCheck } from './subdomain.js'
+import { setupSubdomainCheck } from './subdomain-check.js'
+import { setupBlogCreation } from './blog-creation.js'
 
 const blogFactoryAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
 
@@ -85,4 +86,4 @@ document.querySelector('#app').innerHTML = `
 
 setupSubdomainCheck(document.querySelector('#subdomain-input-area'), blogFactoryAddress)
 
-// setupCounter(document.querySelector('#counter'))
+setupBlogCreation(document.querySelector('#create-your-own'), blogFactoryAddress)
