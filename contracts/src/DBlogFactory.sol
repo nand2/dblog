@@ -31,7 +31,7 @@ contract DBlogFactory {
         blogImplementation = address(new DBlog());
     }
 
-    function addBlog(string memory title, string memory description, string memory subdomain) public {
+    function addBlog(string memory title, string memory description, string memory subdomain) public returns(address) {
         address clone = Clones.clone(blogImplementation);
         DBlog newBlog = DBlog(clone);
         newBlog.initialize(title, description);
@@ -51,6 +51,8 @@ contract DBlogFactory {
             // EIP-137 ENS resolver event
             emit AddrChanged(subdomainNameHash, address(newBlog));
         }
+
+        return address(newBlog);
     }
     
     function getBlogCount() public view returns (uint256) {

@@ -3,7 +3,8 @@ import javascriptLogo from './javascript.svg'
 import { setupSubdomainCheck } from './subdomain-check.js'
 import { setupBlogCreation } from './blog-creation.js'
 
-const blogFactoryAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+const blogFactoryAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const chainId = 31337;
 
 document.querySelector('#app').innerHTML = `
   <div>
@@ -84,6 +85,6 @@ document.querySelector('#app').innerHTML = `
   </div>
 `
 
-setupSubdomainCheck(document.querySelector('#subdomain-input-area'), blogFactoryAddress)
+setupSubdomainCheck(document.querySelector('#subdomain-input-area'), blogFactoryAddress, chainId)
 
-setupBlogCreation(document.querySelector('#create-your-own'), blogFactoryAddress)
+setupBlogCreation(document.querySelector('#create-popup'), blogFactoryAddress, chainId)

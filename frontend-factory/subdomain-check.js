@@ -1,4 +1,4 @@
-export function setupSubdomainCheck(element, blogFactoryAddress) {
+export function setupSubdomainCheck(element, blogFactoryAddress, chainId) {
   const subdomainInput = element.querySelector('#subdomain')
   const subdomainCheck = element.querySelector('#subdomain-check')
   let timeoutId
@@ -12,7 +12,7 @@ export function setupSubdomainCheck(element, blogFactoryAddress) {
       }
       subdomainCheck.style.color = '';
       subdomainCheck.innerHTML = 'checking...'
-      fetch(`web3://${blogFactoryAddress}/isSubdomainValidAndAvailable/string!${subdomain}?returns=(bool,string)`)
+      fetch(`web3://${blogFactoryAddress}:${chainId}/isSubdomainValidAndAvailable/string!${subdomain}?returns=(bool,string)`)
         .then(response => response.json())
         .then(data => {
           if (data[0] == true) {
