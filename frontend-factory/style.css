@@ -126,13 +126,17 @@ button#create-your-own {
   right: 1em;
 }
 
+.required {
+  color: #ff6464;
+}
+
 #create-popup-bg {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  display: flex;
+  display: none;
   place-items: center;
   background-color: #000000aa;
   z-index: 100;
@@ -201,9 +205,30 @@ button#create-your-own {
   color: #fff;
 }
 
+#create-popup #error-message {
+  display: none;
+  color: #ff6464;
+  margin-bottom: 1em;
+  font-size: 90%;
+}
+
+#create-popup #step-2 {
+  display: none;
+}
+
+#create-popup #created-blog-address {
+  font-size: 140%;
+  margin-bottom: 1em;
+}
+
+#create-popup #created-blog-infos {
+  font-size: 90%;
+  color: #888;
+  margin-bottom: 1.4em;
+}
 
 
-@media (prefers-color-scheme: light) {
+/* @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
@@ -214,4 +239,4 @@ button#create-your-own {
   button {
     background-color: #f9f9f9;
   }
-}
+} */

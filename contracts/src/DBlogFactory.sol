@@ -8,8 +8,9 @@ import "./DBlog.sol";
 
 contract DBlogFactory {
     address public immutable frontend;
-    address immutable blogImplementation;
+    address public immutable blogImplementation;
     DBlog[] public blogs;
+    event BlogCreated(uint indexed blogId, address blog);
 
     // EIP-137 ENS resolver events
     event AddrChanged(bytes32 indexed node, address a);
@@ -31,7 +32,9 @@ contract DBlogFactory {
         blogImplementation = address(new DBlog());
     }
 
-    function addBlog(string memory title, string memory description, string memory subdomain) public returns(address) {
+    function addBlog(string memory title, string memory description, string memory subdomain) public payable returns(address) {
+        require(bytes(title).length > 0, "Title cannot be empty");
+
         address clone = Clones.clone(blogImplementation);
         DBlog newBlog = DBlog(clone);
         newBlog.initialize(title, description);
@@ -39,8 +42,8 @@ contract DBlogFactory {
 
         // Subdomain requested?
         if(bytes(subdomain).length > 0) {
-            // Fee was sent?
-            // TODO
+            // Require fee of 0.01 ETH
+            require(msg.value == 0.01 ether, "Fee of 0.01 ETH required for subdomain");
 
             // Valid and available?
             (bool isValidAndAvailable, string memory reason) = isSubdomainValidAndAvailable(subdomain);
@@ -51,6 +54,8 @@ contract DBlogFactory {
             // EIP-137 ENS resolver event
             emit AddrChanged(subdomainNameHash, address(newBlog));
         }
+
+        emit BlogCreated(blogs.length - 1, address(newBlog));
 
         return address(newBlog);
     }
