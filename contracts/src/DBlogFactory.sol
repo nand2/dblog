@@ -23,12 +23,15 @@ contract DBlogFactory {
      * 
      * @param _topdomain eth
      * @param _domain dblog
+     * @param initialFrontendHtmlFile A pointer to a ethfs File structure stored with SSTORE2
+     * @param initialFrontendCssFile A pointer to a ethfs File structure stored with SSTORE2
+     * @param initialFrontendJsFile A pointer to a ethfs File structure stored with SSTORE2
      */
-    constructor(string memory _topdomain, string memory _domain) {
+    constructor(string memory _topdomain, string memory _domain, address initialFrontendHtmlFile, address initialFrontendCssFile, address initialFrontendJsFile) {
         topdomain = _topdomain;
         domain = _domain;
 
-        frontend = address(new DBlogFactoryFrontend(this));
+        frontend = address(new DBlogFactoryFrontend(this, initialFrontendHtmlFile, initialFrontendCssFile, initialFrontendJsFile));
         blogImplementation = address(new DBlog());
     }
 
@@ -58,6 +61,43 @@ contract DBlogFactory {
         emit BlogCreated(blogs.length - 1, address(newBlog));
 
         return address(newBlog);
+    }
+
+    struct BlogInfo {
+        uint256 id;
+        address blogAddress;
+        string title;
+        string description;
+        uint256 postCount;
+    }
+    function getBlogInfoList(uint startIndex, uint limit) public view returns (string memory _topdomain, string memory _domain, uint blogCount, BlogInfo[] memory blogInfos) {
+        uint256 count = blogs.length;
+        uint256 actualLimit = limit;
+        if(startIndex >= count) {
+            actualLimit = 0;
+        } else if(startIndex + limit > count) {
+            actualLimit = count - startIndex;
+        }
+
+        blogInfos = new BlogInfo[](actualLimit);
+        for(uint i = 0; i < actualLimit; i++) {
+            DBlog blog = blogs[startIndex + i];
+            blogInfos[i] = BlogInfo({
+                id: startIndex + i,
+                blogAddress: address(blog),
+                title: blog.title(),
+                description: blog.description(),
+                postCount: blog.getPostCount()
+            });
+        }
+
+        return (topdomain, domain, count, blogInfos);
+    }
+
+    function getBlogAddress(uint256 index) public view returns (address) {
+        require(index < blogs.length, "Blog does not exist");
+
+        return address(blogs[index]);
     }
     
     function getBlogCount() public view returns (uint256) {

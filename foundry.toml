@@ -2,8 +2,12 @@
 src = "contracts/src"
 test = "contracts/test"
 out = "contracts/out"
+broadcast = "contracts/broadcast"
 libs = ["contracts/lib"]
 script = "contracts/script"
 cache_path = "contracts/cache"
+remappings = ["solady/=contracts/lib/ethfs/packages/contracts/lib/solady/src/", "ethfs/=contracts/lib/ethfs/packages/contracts/src/"]
+
+fs_permissions = [{ path = "dist/frontend-factory/", access = "read" }]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

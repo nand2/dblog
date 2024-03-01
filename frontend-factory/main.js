@@ -2,10 +2,22 @@ import './style.css'
 import javascriptLogo from './javascript.svg'
 import { setupBlogCreationPopup } from './blog-creation-popup.js'
 
-const blogFactoryAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-const chainId = 31337;
-const topDomain = "eth";
-const domain = "dblog";
+// Calling ourselves (so via a relative web3:// address) to fetch the address
+// of the blog factory smart contract
+// With some extra toolchain work, it could be included directly in the uploaded frontend...
+let blogFactoryAddress = null
+let chainId = null
+await fetch(`/blogFactoryAddress.json`)
+  .then(response => response.json())
+  .then(data => {
+    console.log("Fetched blog factory address : ", data.address, data.chainId)
+    blogFactoryAddress = data.address
+    chainId = data.chainId
+  })
+  .catch(error => {
+    console.error(error)
+  })
+
 
 document.querySelector('#app').innerHTML = `
   <div>
@@ -107,6 +119,53 @@ document.querySelector('#app').innerHTML = `
     </div>
   </div>
 `
+
+// Now making a call to the blog factory to fetch the list of blogs
+let topDomain = null
+let domain = null
+let blogs = []
+let blogCount = 0
+await fetch(`web3://${blogFactoryAddress}:${chainId}/getBlogInfoList/0/100?returns=(string,string,uint,(uint,address,string,string,uint)[])`)
+  .then(response => response.json())
+  .then(data => {
+    console.log("Fetched blogs : ", data)
+    topDomain = data[0]
+    domain = data[1]
+    blogCount = data[2]
+    // The blogs are returned as a an array of array, we convert that into an array of objects
+    blogs = data[3].map(blog => {
+      return {
+        id: blog[0],
+        address: blog[1],
+        title: blog[2],
+        description: blog[3],
+        postCount: blog[4]
+      }
+    })
+  })
+  .catch(error => {
+    console.error(error)
+  })
+
+// Insert the blogs
+let blogsElement = document.querySelector('#blogs')
+blogs.forEach(blog => {
+  let blogElement = document.createElement('div')
+  blogElement.className = 'blog'
+
+  // Strip HTML
+  const strippedTitle = document.createElement('div');
+  strippedTitle.innerHTML = blog.title;
+  const strippedDescription = document.createElement('div');
+  strippedDescription.innerHTML = blog.description;
+
+  blogElement.innerHTML = `
+    <h3 class="title"><a href="web3://${blog.address}">${strippedTitle.innerText}</a></h3>
+    <div class="description">${strippedDescription.innerText}</div>
+  `;
+  blogsElement.appendChild(blogElement)
+})
+
 
 setupBlogCreationPopup(document.querySelector('#create-popup-bg'), blogFactoryAddress, chainId, topDomain, domain)
 

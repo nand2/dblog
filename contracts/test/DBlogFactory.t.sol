@@ -8,7 +8,7 @@ contract DBlogTest is Test {
     DBlogFactory public blogFactory;
 
     function setUp() public {
-        blogFactory = new DBlogFactory("eth", "dblog");
+        blogFactory = new DBlogFactory("eth", "dblog", address(0), address(0), address(0));
     }
 
     // Namehash working?
