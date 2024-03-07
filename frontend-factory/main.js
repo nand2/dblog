@@ -1,5 +1,5 @@
 import './style.css'
-import javascriptLogo from './javascript.svg'
+import logo from './dblog.svg'
 import { setupBlogCreationPopup } from './blog-creation-popup.js'
 
 // Calling ourselves (so via a relative web3:// address) to fetch the address
@@ -21,13 +21,13 @@ await fetch(`/blogFactoryAddress.json`)
 
 document.querySelector('#app').innerHTML = `
   <div>
-    <img src="${javascriptLogo}" class="logo vanilla" alt="JavaScript logo" />
+    <img src="${logo}" class="logo vanilla" alt="JavaScript logo" />
     <h1>DBlog.eth</h1>
-    <h2>Decentralized <a href="web3://w3url.eth/" target="_blank">web3://</a> blogs</h2>
+    <!--<h2>Decentralized <a href="web3://w3url.eth/" target="_blank">web3://</a> blogs</h2>-->
     <button id="create-your-own">Create your DBlog</button>
 
     <p class="read-the-docs">
-      All website contents are stored in blockchains, and are accessible through the <a href="web3://w3url.eth/" target="_blank">web3://</a> protocol.
+      Decentralized <a href="web3://w3url.eth/" target="_blank">web3://</a> blogs
     </p>
     
     <div id="blogs">

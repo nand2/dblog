@@ -30,11 +30,6 @@ body {
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
 #app {
   max-width: 1280px;
   width: 100%;
@@ -56,11 +51,20 @@ h1 {
   will-change: filter;
   transition: filter 300ms;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
 .logo.vanilla:hover {
-  filter: drop-shadow(0 0 2em #f7df1eaa);
+  filter: drop-shadow(0 0 2em #61c23eaa);
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+  margin-top: 0.2em;
+  margin-bottom: 0em;
+}
+
+.read-the-docs {
+  color: #888;
+  margin-bottom: 3em;
 }
 
 #blogs {
@@ -95,10 +99,6 @@ h1 {
 }
 
 .blog .description {
-  color: #888;
-}
-
-.read-the-docs {
   color: #888;
 }
 
