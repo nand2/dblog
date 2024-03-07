@@ -5,12 +5,19 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 
 import "./DBlogFactoryFrontend.sol";
 import "./DBlog.sol";
+import "./DBlogFrontend.sol";
+import "./DBlogFrontendLibrary.sol";
 
 contract DBlogFactory {
-    address public immutable frontend;
-    address public immutable blogImplementation;
+    DBlogFactoryFrontend public immutable factoryFrontend;
+
+    DBlog public immutable blogImplementation;
+    DBlogFrontend public immutable blogFrontendImplementation;
+
+    DBlogFrontendLibrary public immutable frontendLibrary;
+
     DBlog[] public blogs;
-    event BlogCreated(uint indexed blogId, address blog);
+    event BlogCreated(uint indexed blogId, address blog, address blogFrontend);
 
     // EIP-137 ENS resolver events
     event AddrChanged(bytes32 indexed node, address a);
@@ -31,23 +38,27 @@ contract DBlogFactory {
         topdomain = _topdomain;
         domain = _domain;
 
-        frontend = address(new DBlogFactoryFrontend(this, initialFrontendHtmlFile, initialFrontendCssFile, initialFrontendJsFile));
-        blogImplementation = address(new DBlog());
+        factoryFrontend = new DBlogFactoryFrontend(this, initialFrontendHtmlFile, initialFrontendCssFile, initialFrontendJsFile);
+        blogImplementation = new DBlog();
+        blogFrontendImplementation = new DBlogFrontend();
+
+        frontendLibrary = new DBlogFrontendLibrary();
     }
 
     /**
      * Get a batch of parameters in a single call
      */
     function getParameters() public view returns (string memory _topdomain, string memory _domain, address _frontend, address _blogImplementation) {
-        return (topdomain, domain, frontend, blogImplementation);
+        return (topdomain, domain, address(factoryFrontend), address(blogImplementation));
     }
 
     function addBlog(string memory title, string memory description, string memory subdomain) public payable returns(address) {
         require(bytes(title).length > 0, "Title cannot be empty");
 
-        address clone = Clones.clone(blogImplementation);
-        DBlog newBlog = DBlog(clone);
-        newBlog.initialize(title, description);
+        DBlog newBlog = DBlog(Clones.clone(address(blogImplementation)));
+        DBlogFrontend newBlogFrontend = DBlogFrontend(Clones.clone(address(blogFrontendImplementation)));
+
+        newBlog.initialize(this, newBlogFrontend, title, description);
         blogs.push(newBlog);
 
         // Subdomain requested?
@@ -65,7 +76,7 @@ contract DBlogFactory {
             emit AddrChanged(subdomainNameHash, address(newBlog));
         }
 
-        emit BlogCreated(blogs.length - 1, address(newBlog));
+        emit BlogCreated(blogs.length - 1, address(newBlog), address(newBlogFrontend));
 
         return address(newBlog);
     }
@@ -118,7 +129,7 @@ contract DBlogFactory {
 
     function addr(bytes32 nameHash) public view returns (address) {
         if(nameHash == computeSubdomainNameHash("")) {
-            return address(frontend);
+            return address(factoryFrontend);
         }
 
         return address(subDomainNameHashToBlog[nameHash]);

@@ -33,7 +33,7 @@ contract DBlogFactoryScript is Script {
         DBlogFactory factory = new DBlogFactory{salt: contractSalt}("eth", "dblog", factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer);
 
         // Printing the web3:// address of the factory frontend
-        string memory web3FactoryFrontendAddress = string.concat("web3://", vm.toString(factory.frontend()));
+        string memory web3FactoryFrontendAddress = string.concat("web3://", vm.toString(address(factory.factoryFrontend())));
         if(block.chainid > 1) {
             web3FactoryFrontendAddress = string.concat(web3FactoryFrontendAddress, ":", vm.toString(block.chainid));
         }

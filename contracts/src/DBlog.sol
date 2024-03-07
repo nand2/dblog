@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import "./DBlogFrontend.sol";
+import "./DBlogFactory.sol";
+
 contract DBlog {
+    DBlogFactory public factory;
+
+    DBlogFrontend public frontend;
     string public title;
     string public description;
 
@@ -12,7 +18,12 @@ contract DBlog {
     }
     BlogPost[] public posts;
 
-    function initialize(string memory _title, string memory _description) public {
+    function initialize(DBlogFactory _factory, DBlogFrontend _frontend,string memory _title, string memory _description) public {
+        factory = _factory;
+
+        frontend = _frontend;
+        frontend.initialize(this);
+        
         title = _title;
         description = _description;
     }

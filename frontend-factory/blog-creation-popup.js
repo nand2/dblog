@@ -214,13 +214,15 @@ console.log("txResult", txResult)
     const log = txResult.logs[txResult.logs.length - 1]
     // Get the blog address from the log
     const newBlogAddress = "0x" + log.data.substring(26, 66)
-    let newBlogWeb3Address = subdomain ? `web3://${subdomain}.${domain}.${topDomain}` : `web3://${newBlogAddress}`
-    newBlogWeb3Address += (chainId > 1 ? `:${chainId}` : '')
+    const newBlogFrontendAddress = "0x" + log.data.substring(90, 130)
+    let newBlogFrontendWeb3Address = subdomain ? `web3://${subdomain}.${domain}.${topDomain}` : `web3://${newBlogFrontendAddress}`
+    newBlogFrontendWeb3Address += (chainId > 1 ? `:${chainId}` : '')
 console.log("newBlogAddress", newBlogAddress)
-console.log("newBlogWeb3Address", newBlogWeb3Address)
+console.log("newBlogFrontendAddress", newBlogFrontendAddress)
+console.log("newBlogFrontendWeb3Address", newBlogFrontendWeb3Address)
     // Inject it in the UI
-    element.querySelector('#created-blog-address a').href = newBlogWeb3Address
-    element.querySelector('#created-blog-address a').textContent = newBlogWeb3Address
+    element.querySelector('#created-blog-address a').href = newBlogFrontendWeb3Address
+    element.querySelector('#created-blog-address a').textContent = newBlogFrontendWeb3Address
     element.querySelector('#new-blog-address').textContent = newBlogAddress
 
     // Hide step 1 and show step 2
