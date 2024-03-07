@@ -27,38 +27,10 @@ document.querySelector('#app').innerHTML = `
     <button id="create-your-own">Create your DBlog</button>
 
     <p class="read-the-docs">
-      Click on the Vite logo to learn more
+      All website contents are stored in blockchains, and are accessible through the <a href="web3://w3url.eth/" target="_blank">web3://</a> protocol.
     </p>
     
     <div id="blogs">
-      <div class="blog">
-        <h3 class="title"><a href="web3://xoxo.dblog.eth">DBlog 1</a></h3>
-        <div class="description">Content of the first DBlog</div>
-      </div>
-      <div class="blog">
-        <h3 class="title"><a href="web3://xoxo.dblog.eth">DBlog 1</a></h3>
-        <div class="description">Content of the first DBlog</div>
-      </div>
-      <div class="blog">
-        <h3 class="title"><a href="web3://xoxo.dblog.eth">DBlog 1</a></h3>
-        <div class="description">Content of the first DBlog</div>
-      </div>
-      <div class="blog">
-        <h3 class="title"><a href="web3://xoxo.dblog.eth">DBlog 1</a></h3>
-        <div class="description">Content of the first DBlog</div>
-      </div>
-      <div class="blog">
-        <h3 class="title"><a href="web3://xoxo.dblog.eth">DBlog 1</a></h3>
-        <div class="description">Content of the first DBlog fdsd fs f fs fsd fs fsd f sfirst DBlog fdsd fs f fs fsd fs fsd f sfirst DBlog fdsd fs f fs fsd fs fsd f sfirst DBlog fdsd fs f fs fsd fs fsd f sfirst DBlog fdsd fs f fs fsd fs fsd f s</div>
-      </div>
-      <div class="blog">
-        <h3 class="title"><a href="web3://xoxo.dblog.eth">DBlog 1 sdf sdfs dfsdf sd fsd fsd fsd fsd fsd fsd fsd fsd fs d fsd ff sdf sd  d dsf sdf sd fsdf sd fdsf sd fdsf  fsdf s df</a></h3>
-        <div class="description">Content of the first DBlog</div>
-      </div>
-      <div class="blog">
-        <h3 class="title"><a href="web3://xoxo.dblog.eth">DBlog 1</a></h3>
-        <div class="description">Content of the first DBlog</div>
-      </div>
     </div>
 
     <div id="create-popup-bg">
@@ -107,9 +79,9 @@ document.querySelector('#app').innerHTML = `
             <p>
               ➔ You can use your own .eth domain by pointing it to the address of the smart contract
             </p>
-            <p>
+            <!--<p>
               ➔ Your DBlog smart contract is a immutable proxy to the reference DBlog smart contract located on Ethereum at address <span id="blog-implementation-address"></span>
-            </p>
+            </p>-->
           </div>
           <div>
             <button id="copy-link">Copy link</button>
@@ -120,56 +92,87 @@ document.querySelector('#app').innerHTML = `
   </div>
 `
 
-// Now making a call to the blog factory to fetch the list of blogs
+// Now make a call to the blog factory to fetch the parameters
 let topDomain = null
 let domain = null
-let blogs = []
-let blogCount = 0
-await fetch(`web3://${blogFactoryAddress}:${chainId}/getBlogInfoList/0/100?returns=(string,string,uint,(uint,address,string,string,uint)[])`)
+let blogImplementationAddress = null
+await fetch(`web3://${blogFactoryAddress}:${chainId}/getParameters?returns=(string,string,address,address)`)
   .then(response => response.json())
   .then(data => {
-    console.log("Fetched blogs : ", data)
+console.log("Fetched parameters : ", data)
     topDomain = data[0]
     domain = data[1]
-    blogCount = data[2]
-    // The blogs are returned as a an array of array, we convert that into an array of objects
-    blogs = data[3].map(blog => {
-      return {
-        id: blog[0],
-        address: blog[1],
-        title: blog[2],
-        description: blog[3],
-        postCount: blog[4]
-      }
-    })
+    blogImplementationAddress = data[3]
   })
   .catch(error => {
     console.error(error)
   })
 
-// Insert the blogs
-let blogsElement = document.querySelector('#blogs')
-blogs.forEach(blog => {
-  let blogElement = document.createElement('div')
-  blogElement.className = 'blog'
 
-  // Strip HTML
-  const strippedTitle = document.createElement('div');
-  strippedTitle.innerHTML = blog.title;
-  const strippedDescription = document.createElement('div');
-  strippedDescription.innerHTML = blog.description;
+// Fetch and display the blogs
+let blogs = []
+let blogCount = 0
+const fetchAndDisplayBlogs = async () => {
+  // Now making a call to the blog factory to fetch the list of blog
+  await fetch(`web3://${blogFactoryAddress}:${chainId}/getBlogInfoList/0/100?returns=((uint,address,string,string,uint)[])`)
+    .then(response => response.json())
+    .then(data => {
+      console.log("Fetched blogs : ", data)
+      // The blogs are returned as a an array of array, we convert that into an array of objects
+      blogs = data[0].map(blog => {
+        return {
+          id: blog[0],
+          address: blog[1],
+          title: blog[2],
+          description: blog[3],
+          postCount: blog[4]
+        }
+      })
+    })
+    .catch(error => {
+      console.error(error)
+    })
 
-  blogElement.innerHTML = `
-    <h3 class="title"><a href="web3://${blog.address}">${strippedTitle.innerText}</a></h3>
-    <div class="description">${strippedDescription.innerText}</div>
-  `;
-  blogsElement.appendChild(blogElement)
-})
+  // Insert the blogs
+  let blogsElement = document.querySelector('#blogs')
+  blogsElement.innerHTML = ''
+  if(blogs.length === 0) {
+    blogsElement.innerHTML = `
+      <div class="blog">
+        <h3 class="title">No blog yet</h3>
+        <div class="description">Be the first to create a DBlog!</div>
+      </div>
+    `;
+  }
+  blogs.forEach(blog => {
+    let blogElement = document.createElement('div')
+    blogElement.className = 'blog'
+
+    // Strip HTML
+    const strippedTitle = document.createElement('div');
+    strippedTitle.innerHTML = blog.title;
+    const strippedDescription = document.createElement('div');
+    strippedDescription.innerHTML = blog.description;
+
+    blogElement.innerHTML = `
+      <h3 class="title"><a href="web3://${blog.address}">${strippedTitle.innerText}</a></h3>
+      <div class="description">${strippedDescription.innerText}</div>
+    `;
+    blogsElement.appendChild(blogElement)
+  })
+}
+fetchAndDisplayBlogs()
 
 
-setupBlogCreationPopup(document.querySelector('#create-popup-bg'), blogFactoryAddress, chainId, topDomain, domain)
+
+
+setupBlogCreationPopup(document.querySelector('#create-popup-bg'), blogFactoryAddress, blogImplementationAddress, chainId, topDomain, domain, fetchAndDisplayBlogs)
 
 // Show the create blog popup
 document.querySelector('#create-your-own').addEventListener('click', () => {
-  document.querySelector('#create-popup-bg').style.display = 'flex'
+  const popupBg = document.querySelector('#create-popup-bg')
+  popupBg.style.display = 'flex'
+  popupBg.querySelector('#title').value = "";
+  popupBg.querySelector('#description').value = "";
+  popupBg.querySelector('#subdomain').value = "";
 })

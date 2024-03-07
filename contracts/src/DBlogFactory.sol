@@ -35,6 +35,13 @@ contract DBlogFactory {
         blogImplementation = address(new DBlog());
     }
 
+    /**
+     * Get a batch of parameters in a single call
+     */
+    function getParameters() public view returns (string memory _topdomain, string memory _domain, address _frontend, address _blogImplementation) {
+        return (topdomain, domain, frontend, blogImplementation);
+    }
+
     function addBlog(string memory title, string memory description, string memory subdomain) public payable returns(address) {
         require(bytes(title).length > 0, "Title cannot be empty");
 
@@ -70,7 +77,7 @@ contract DBlogFactory {
         string description;
         uint256 postCount;
     }
-    function getBlogInfoList(uint startIndex, uint limit) public view returns (string memory _topdomain, string memory _domain, uint blogCount, BlogInfo[] memory blogInfos) {
+    function getBlogInfoList(uint startIndex, uint limit) public view returns (BlogInfo[] memory blogInfos) {
         uint256 count = blogs.length;
         uint256 actualLimit = limit;
         if(startIndex >= count) {
@@ -91,7 +98,7 @@ contract DBlogFactory {
             });
         }
 
-        return (topdomain, domain, count, blogInfos);
+        return blogInfos;
     }
 
     function getBlogAddress(uint256 index) public view returns (address) {

@@ -1,6 +1,6 @@
 import { encodeFunctionData } from 'viem'
 
-export function setupBlogCreationPopup(element, blogFactoryAddress, chainId, topDomain, domain) {
+export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplementationAddress, chainId, topDomain, domain, createdBlogCallback) {
   // Cancel button behavior
   element.querySelector('#cancel').addEventListener('click', () => {
     element.style.display = 'none'
@@ -10,17 +10,13 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, chainId, top
     element.style.display = 'none'
     element.querySelector('#step-1').style.display = 'block'
     element.querySelector('#step-2').style.display = 'none'
+    if(createdBlogCallback) {
+      createdBlogCallback()
+    }
   })
 
-  // Load the blog implementation address
-  fetch(`web3://${blogFactoryAddress}:${chainId}/blogImplementation?returns=(address)`)
-    .then(response => response.json())
-    .then(data => {
-      element.querySelector('#blog-implementation-address').textContent = data[0]
-    })
-    .catch(error => {
-      console.error(error)
-    })
+  // Set the blog implementation address
+  // element.querySelector('#blog-implementation-address').textContent = blogImplementationAddress
 
   // Copy link button behavior
   element.querySelector('#copy-link').addEventListener('click', () => {
