@@ -3,16 +3,14 @@ pragma solidity ^0.8.13;
 
 import "./DBlog.sol";
 import "./interfaces/IDecentralizedApp.sol";
+import "./DBlogFrontendLibrary.sol";
+import "./DBlogFactory.sol";
+import { File } from "ethfs/FileStore.sol";
+import { SSTORE2 } from "solady/utils/SSTORE2.sol";
+import { Strings } from "./library/Strings.sol";
 
 contract DBlogFrontend is IDecentralizedApp {
     DBlog public blog;
-
-    struct Frontend {
-        string title;
-        mapping(string => string) files;
-    }
-    Frontend[] public frontends;
-    Frontend public frontend;
 
     function initialize(DBlog _blog) public {
         blog = _blog;
@@ -24,22 +22,22 @@ contract DBlogFrontend is IDecentralizedApp {
 
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
-        // FrontendVersion memory frontend = frontendVersions[defaultFrontendIndex];
+        BlogFrontendVersion memory frontend = blog.factory().frontendLibrary().getDefaultFrontend();
 
         statusCode = 200;
         body = "Hello, world!";
 
-        // // Frontpage
-        // if(resource.length == 0) {
-        //     File memory file = abi.decode(SSTORE2.read(frontend.htmlFile), (File));
-        //     body = file.read();
-        //     statusCode = 200;
-        //     headers = new KeyValue[](2);
-        //     headers[0].key = "Content-type";
-        //     headers[0].value = "text/html";
-        //     headers[1].key = "Content-Encoding";
-        //     headers[1].value = "gzip";
-        // }
+        // Frontpage
+        if(resource.length == 0) {
+            File memory file = abi.decode(SSTORE2.read(frontend.htmlFile), (File));
+            body = file.read();
+            statusCode = 200;
+            headers = new KeyValue[](2);
+            headers[0].key = "Content-type";
+            headers[0].value = "text/html";
+            headers[1].key = "Content-Encoding";
+            headers[1].value = "gzip";
+        }
         // // blogFactoryAddress.json : it exposes the addess of the blog factory
         // else if(resource.length == 1 && Strings.compare(resource[0], "blogFactoryAddress.json")) {
         //     // Manual JSON serialization, safe with the vars we encode
@@ -49,41 +47,41 @@ contract DBlogFrontend is IDecentralizedApp {
         //     headers[0].key = "Content-type";
         //     headers[0].value = "application/json";
         // }
-        // // /assets/[assetName]
-        // else if(resource.length == 2 && Strings.compare(resource[0], "assets")) {
-        //     string memory assetName = resource[1];
-        //     uint256 assetNameLen = Strings.strlen(assetName);
+        // /assets/[assetName]
+        else if(resource.length == 2 && Strings.compare(resource[0], "assets")) {
+            string memory assetName = resource[1];
+            uint256 assetNameLen = Strings.strlen(assetName);
 
-        //     // If the last 4 characters are ".css"
-        //     if(Strings.strlen(assetName) > 4 && 
-        //         Strings.compare(Strings.substring(assetName, assetNameLen - 4, assetNameLen), ".css")) {
-        //         File memory file = abi.decode(SSTORE2.read(frontend.cssFile), (File));
-        //         body = file.read();
-        //         statusCode = 200;
-        //         headers = new KeyValue[](2);
-        //         headers[0].key = "Content-type";
-        //         headers[0].value = "text/css";
-        //         headers[1].key = "Content-Encoding";
-        //         headers[1].value = "gzip";
-        //     }
-        //     else if(Strings.strlen(assetName) > 3 && 
-        //         Strings.compare(Strings.substring(assetName, assetNameLen - 3, assetNameLen), ".js")) {
-        //         File memory file = abi.decode(SSTORE2.read(frontend.jsFile), (File));
-        //         body = file.read();
-        //         statusCode = 200;
-        //         headers = new KeyValue[](2);
-        //         headers[0].key = "Content-type";
-        //         headers[0].value = "text/javascript";
-        //         headers[1].key = "Content-Encoding";
-        //         headers[1].value = "gzip";
-        //     }
-        //     else {
-        //         statusCode = 404;
-        //     }
-        // }
-        // else {
-        //     statusCode = 404;
-        // }
+            // If the last 4 characters are ".css"
+            if(Strings.strlen(assetName) > 4 && 
+                Strings.compare(Strings.substring(assetName, assetNameLen - 4, assetNameLen), ".css")) {
+                File memory file = abi.decode(SSTORE2.read(frontend.cssFile), (File));
+                body = file.read();
+                statusCode = 200;
+                headers = new KeyValue[](2);
+                headers[0].key = "Content-type";
+                headers[0].value = "text/css";
+                headers[1].key = "Content-Encoding";
+                headers[1].value = "gzip";
+            }
+            else if(Strings.strlen(assetName) > 3 && 
+                Strings.compare(Strings.substring(assetName, assetNameLen - 3, assetNameLen), ".js")) {
+                File memory file = abi.decode(SSTORE2.read(frontend.jsFile), (File));
+                body = file.read();
+                statusCode = 200;
+                headers = new KeyValue[](2);
+                headers[0].key = "Content-type";
+                headers[0].value = "text/javascript";
+                headers[1].key = "Content-Encoding";
+                headers[1].value = "gzip";
+            }
+            else {
+                statusCode = 404;
+            }
+        }
+        else {
+            statusCode = 404;
+        }
 
 
         // // /index/[uint]

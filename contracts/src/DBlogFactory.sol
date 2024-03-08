@@ -30,19 +30,23 @@ contract DBlogFactory {
      * 
      * @param _topdomain eth
      * @param _domain dblog
-     * @param initialFrontendHtmlFile A pointer to a ethfs File structure stored with SSTORE2
-     * @param initialFrontendCssFile A pointer to a ethfs File structure stored with SSTORE2
-     * @param initialFrontendJsFile A pointer to a ethfs File structure stored with SSTORE2
+     * @param initialFactoryFrontendHtmlFile A pointer to a ethfs File structure stored with SSTORE2
+     * @param initialFactoryFrontendCssFile A pointer to a ethfs File structure stored with SSTORE2
+     * @param initialFactoryFrontendJsFile A pointer to a ethfs File structure stored with SSTORE2
+     * @param initialBlogFrontendHtmlFile A pointer to a ethfs File structure stored with SSTORE2
+     * @param initialBlogFrontendCssFile A pointer to a ethfs File structure stored with SSTORE2
+     * @param initialBlogFrontendJsFile A pointer to a ethfs File structure stored with SSTORE2
      */
-    constructor(string memory _topdomain, string memory _domain, address initialFrontendHtmlFile, address initialFrontendCssFile, address initialFrontendJsFile) {
+    constructor(string memory _topdomain, string memory _domain, address initialFactoryFrontendHtmlFile, address initialFactoryFrontendCssFile, address initialFactoryFrontendJsFile, address initialBlogFrontendHtmlFile, address initialBlogFrontendCssFile, address initialBlogFrontendJsFile) {
         topdomain = _topdomain;
         domain = _domain;
 
-        factoryFrontend = new DBlogFactoryFrontend(this, initialFrontendHtmlFile, initialFrontendCssFile, initialFrontendJsFile);
+        factoryFrontend = new DBlogFactoryFrontend(this, initialFactoryFrontendHtmlFile, initialFactoryFrontendCssFile, initialFactoryFrontendJsFile);
         blogImplementation = new DBlog();
         blogFrontendImplementation = new DBlogFrontend();
 
         frontendLibrary = new DBlogFrontendLibrary();
+        frontendLibrary.addFrontendVersion(initialBlogFrontendHtmlFile, initialBlogFrontendCssFile, initialBlogFrontendJsFile, "Initial version");
     }
 
     /**
@@ -73,7 +77,7 @@ contract DBlogFactory {
             bytes32 subdomainNameHash = computeSubdomainNameHash(subdomain);
             subDomainNameHashToBlog[subdomainNameHash] = newBlog;
             // EIP-137 ENS resolver event
-            emit AddrChanged(subdomainNameHash, address(newBlog));
+            emit AddrChanged(subdomainNameHash, address(newBlogFrontend));
         }
 
         emit BlogCreated(blogs.length - 1, address(newBlog), address(newBlogFrontend));
@@ -131,8 +135,10 @@ contract DBlogFactory {
         if(nameHash == computeSubdomainNameHash("")) {
             return address(factoryFrontend);
         }
-
-        return address(subDomainNameHashToBlog[nameHash]);
+        if(address(subDomainNameHashToBlog[nameHash]) == address(0)) {
+            return address(0);
+        }
+        return address(subDomainNameHashToBlog[nameHash].frontend());
     }
 
     function supportsInterface(bytes4 interfaceID) public pure returns (bool) {

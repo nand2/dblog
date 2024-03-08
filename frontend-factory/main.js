@@ -84,7 +84,7 @@ document.querySelector('#app').innerHTML = `
             </p>-->
           </div>
           <div>
-            <button id="copy-link">Copy link</button>
+            <!--<button id="copy-link">Copy link</button>-->
             <button id="success-close-popup">Close</button>
           </div>
       </div>

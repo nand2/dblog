@@ -6,13 +6,16 @@ import "./DBlogFactory.sol";
 
 contract DBlog {
     DBlogFactory public factory;
-
     DBlogFrontend public frontend;
     string public title;
     string public description;
 
+    event PostCreated(uint indexed postId);
+    event PostEdited(uint indexed postId);
+
     struct BlogPost {
         string title;
+        uint256 timestamp;
         string content;
         // string contentKey;
     }
@@ -23,20 +26,35 @@ contract DBlog {
 
         frontend = _frontend;
         frontend.initialize(this);
-        
+
         title = _title;
         description = _description;
     }
 
     function addPost(string memory postTitle, string memory postContent) public {
-        posts.push(BlogPost(postTitle, postContent));
+        posts.push(BlogPost(postTitle, block.timestamp, postContent));
+
+        emit PostCreated(posts.length - 1);
     }
 
-    function getPost(uint256 index) public view returns (string memory postTitle, string memory postContent) {
-        return (posts[index].title, posts[index].content);
+    function getPost(uint256 index) public view returns (string memory postTitle, uint256 timestamp, string memory postContent) {
+        return (posts[index].title, posts[index].timestamp, posts[index].content);
+    }
+
+    function editPost(uint256 index, string memory postTitle, string memory postContent) public {
+        require(index < posts.length, "Index out of bounds");
+
+        posts[index].title = postTitle;
+        posts[index].content = postContent;
+
+        emit PostEdited(index);
     }
 
     function getPostCount() public view returns (uint256) {
         return posts.length;
+    }
+
+    function getPosts() public view returns (BlogPost[] memory) {
+        return posts;
     }
 }

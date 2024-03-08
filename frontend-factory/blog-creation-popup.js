@@ -19,10 +19,10 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
   // element.querySelector('#blog-implementation-address').textContent = blogImplementationAddress
 
   // Copy link button behavior
-  element.querySelector('#copy-link').addEventListener('click', () => {
-    const link = element.querySelector('#created-blog-address a').href
-    navigator.clipboard.writeText(link)
-  })
+  // element.querySelector('#copy-link').addEventListener('click', () => {
+  //   const link = element.querySelector('#created-blog-address a').href
+  //   navigator.clipboard.writeText(link)
+  // })
 
 
   //
@@ -223,7 +223,7 @@ console.log("newBlogFrontendWeb3Address", newBlogFrontendWeb3Address)
     // Inject it in the UI
     element.querySelector('#created-blog-address a').href = newBlogFrontendWeb3Address
     element.querySelector('#created-blog-address a').textContent = newBlogFrontendWeb3Address
-    element.querySelector('#new-blog-address').textContent = newBlogAddress
+    element.querySelector('#new-blog-address').textContent = newBlogFrontendAddress
 
     // Hide step 1 and show step 2
     submitButton.disabled = false

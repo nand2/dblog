@@ -28,7 +28,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         blogFactory = _blogFactory;
 
         // Setup the initial frontend
-        addFrontendVersion(_initialHtmlFile, _initialCssFile, _initialJsFile, "Initial frontend");
+        addFrontendVersion(_initialHtmlFile, _initialCssFile, _initialJsFile, "Initial version");
     }
 
     function addFrontendVersion(address _htmlFile, address _cssFile, address _jsFile, string memory _infos) public {

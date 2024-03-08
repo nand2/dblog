@@ -29,8 +29,19 @@ contract DBlogFactoryScript is Script {
         fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")));
         (address factoryJsFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_JS_FILE"), string(fileContents));
 
+        // Storing files of the blog frontend
+        // HTML
+        fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/", vm.envString("BLOG_FRONTEND_HTML_FILE")));
+        (address blogHtmlFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_HTML_FILE"), string(fileContents));
+        // CSS
+        fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_CSS_FILE")));
+        (address blogCssFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_CSS_FILE"), string(fileContents));
+        // JS
+        fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_JS_FILE")));
+        (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_JS_FILE"), string(fileContents));
+
         // Deploying the blog factory
-        DBlogFactory factory = new DBlogFactory{salt: contractSalt}("eth", "dblog", factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer);
+        DBlogFactory factory = new DBlogFactory{salt: contractSalt}("eth", "dblog", factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer);
 
         // Printing the web3:// address of the factory frontend
         string memory web3FactoryFrontendAddress = string.concat("web3://", vm.toString(address(factory.factoryFrontend())));
@@ -45,6 +56,20 @@ contract DBlogFactoryScript is Script {
             web3FactoryAddress = string.concat(web3FactoryAddress, ":", vm.toString(block.chainid));
         }
         console.log("web3:// factory: ", web3FactoryAddress);
+
+        // Adding the main blog
+        factory.addBlog{value: 0.01 ether}("DBlog", "A decentralized blog", "dblog");
+        string memory web3BlogFrontendAddress = string.concat("web3://", vm.toString(address(factory.blogs(0).frontend())));
+        if(block.chainid > 1) {
+            web3BlogFrontendAddress = string.concat(web3BlogFrontendAddress, ":", vm.toString(block.chainid));
+        }
+        console.log("web3://dblog.dblog.eth frontend: ", web3BlogFrontendAddress);
+
+        string memory web3BlogAddress = string.concat("web3://", vm.toString(address(factory.blogs(0))));
+        if(block.chainid > 1) {
+            web3BlogAddress = string.concat(web3BlogAddress, ":", vm.toString(block.chainid));
+        }
+        console.log("web3://dblog.dblog.eth: ", web3BlogAddress);
 
         vm.stopBroadcast();
     }
