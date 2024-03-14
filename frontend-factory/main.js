@@ -114,7 +114,7 @@ let blogs = []
 let blogCount = 0
 const fetchAndDisplayBlogs = async () => {
   // Now making a call to the blog factory to fetch the list of blog
-  await fetch(`web3://${blogFactoryAddress}:${chainId}/getBlogInfoList/0/100?returns=((uint,address,address,string,string,uint)[])`)
+  await fetch(`web3://${blogFactoryAddress}:${chainId}/getBlogInfoList/0/100?returns=((uint,address,address,string,string,string,uint)[])`)
     .then(response => response.json())
     .then(data => {
       console.log("Fetched blogs : ", data)
@@ -124,9 +124,10 @@ const fetchAndDisplayBlogs = async () => {
           id: blog[0],
           address: blog[1],
           frontendAddress: blog[2],
-          title: blog[3],
-          description: blog[4],
-          postCount: blog[5]
+          subdomain: blog[3],
+          title: blog[4],
+          description: blog[5],
+          postCount: blog[6]
         }
       })
     })
@@ -150,6 +151,9 @@ const fetchAndDisplayBlogs = async () => {
     blogElement.className = 'blog'
 
     let blogAddress = "web3://" + blog.frontendAddress + (chainId > 1 ? ":" + chainId : "") + "/"
+    if(blog.subdomain) {
+      blogAddress = "web3://" + blog.subdomain + "." + domain + "." + topDomain + (chainId > 1 ? ":" + chainId : "") + "/"
+    }
 
     blogElement.innerHTML = `
       <h3 class="title"><a href="${blogAddress}">${strip_tags(blog.title)}</a></h3>

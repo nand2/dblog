@@ -24,7 +24,7 @@ contract DBlogFactory {
 
     string public topdomain;
     string public domain;
-    mapping(bytes32 => DBlog) subDomainNameHashToBlog;
+    mapping(bytes32 => DBlog) subdomainNameHashToBlog;
 
     /**
      * 
@@ -62,7 +62,7 @@ contract DBlogFactory {
         DBlog newBlog = DBlog(Clones.clone(address(blogImplementation)));
         DBlogFrontend newBlogFrontend = DBlogFrontend(Clones.clone(address(blogFrontendImplementation)));
 
-        newBlog.initialize(this, newBlogFrontend, title, description);
+        newBlog.initialize(this, newBlogFrontend, subdomain, title, description);
         blogs.push(newBlog);
 
         // Subdomain requested?
@@ -75,7 +75,7 @@ contract DBlogFactory {
             require(isValidAndAvailable, reason);
 
             bytes32 subdomainNameHash = computeSubdomainNameHash(subdomain);
-            subDomainNameHashToBlog[subdomainNameHash] = newBlog;
+            subdomainNameHashToBlog[subdomainNameHash] = newBlog;
             // EIP-137 ENS resolver event
             emit AddrChanged(subdomainNameHash, address(newBlogFrontend));
         }
@@ -89,6 +89,7 @@ contract DBlogFactory {
         uint256 id;
         address blogAddress;
         address blogFrontendAddress;
+        string subdomain;
         string title;
         string description;
         uint256 postCount;
@@ -109,6 +110,7 @@ contract DBlogFactory {
                 id: startIndex + i,
                 blogAddress: address(blog),
                 blogFrontendAddress: address(blog.frontend()),
+                subdomain: blog.subdomain(),
                 title: blog.title(),
                 description: blog.description(),
                 postCount: blog.getPostCount()
@@ -137,10 +139,10 @@ contract DBlogFactory {
         if(nameHash == computeSubdomainNameHash("")) {
             return address(factoryFrontend);
         }
-        if(address(subDomainNameHashToBlog[nameHash]) == address(0)) {
+        if(address(subdomainNameHashToBlog[nameHash]) == address(0)) {
             return address(0);
         }
-        return address(subDomainNameHashToBlog[nameHash].frontend());
+        return address(subdomainNameHashToBlog[nameHash].frontend());
     }
 
     function supportsInterface(bytes4 interfaceID) public pure returns (bool) {
