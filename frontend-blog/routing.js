@@ -34,7 +34,7 @@ export function setupRouting(blogAddress, chainId) {
     },
   ];
   
-  // Handl the routing
+  // Handle the routing
   document.addEventListener("click", (e) => {
     const { target } = e;
     

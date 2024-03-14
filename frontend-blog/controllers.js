@@ -1,4 +1,4 @@
-import { encodeFunctionData } from 'viem'
+// import { encodeFunctionData } from 'viem'
 import { markdown } from './drawdown.js'
 import { strip_tags, uint8ArrayToHexString } from './utils.js'
 import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
@@ -127,7 +127,7 @@ export async function adminController(blogAddress, chainId) {
     const formattedDate = new Date(post.date * 1000).toISOString().split('T')[0];
     blogEntry.innerHTML = `
       <span class="date">${formattedDate}</span>
-      <a href="/entry/${post.id}/edit">${strip_tags(post.title)}</a> - <a href="/entry/${post.id}/edit">edit</a>
+      <a href="/entry/${post.id}">${strip_tags(post.title)}</a> - <a href="/entry/${post.id}/edit">edit</a>
     `;
     blogEntries.appendChild(blogEntry)
   })

@@ -1,4 +1,6 @@
 import { encodeFunctionData } from 'viem'
+import { strip_tags, uint8ArrayToHexString } from './utils.js'
+import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
 
 export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplementationAddress, chainId, topDomain, domain, createdBlogCallback) {
   // Cancel button behavior
@@ -123,15 +125,21 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
     
 
     // Prepare the calldata
-    const calldata = encodeFunctionData({
-      abi: [{
-        inputs: [{ name: 'title', type: 'string' }, { name: 'description', type: 'string' }, { name: 'subdomain', type: 'string' }],
-        name: 'addBlog',
-        outputs: [{ name: 'blog', type: 'address' }],
-        type: 'function',
-      }],
-      args: [title, description, subdomain]
-    })
+    // Viem's encodeFunctionData function cost 20kB, 7kB gziped
+    // let calldata = encodeFunctionData({
+    //   abi: [{
+    //     inputs: [{ name: 'title', type: 'string' }, { name: 'description', type: 'string' }, { name: 'subdomain', type: 'string' }],
+    //     name: 'addBlog',
+    //     outputs: [{ name: 'blog', type: 'address' }],
+    //     type: 'function',
+    //   }],
+    //   args: [title, description, subdomain]
+    // })
+
+    // encodeParameters function cost 6kB, 1.5kB gziped
+    // addBlog(string title, string description, string subdomain)
+    calldata = "0x4639107c" + uint8ArrayToHexString(encodeParameters([{ name: 'title', type: 'string' }, { name: 'description', type: 'string' }, { name: 'subdomain', type: 'string' }], [title, description, subdomain]))
+
     // Prepare the value to send: 0.01eth if subdomain
     let value = '0x0'
     if(subdomain.length > 0) {
