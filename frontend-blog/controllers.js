@@ -177,6 +177,36 @@ export async function entryEditController(blogAddress, chainId) {
     page.querySelector('#content').value = post.content
   }
 
+
+  // Markdown/preview switch
+  let isPreviewShown = false
+  let showMarkdownButton = page.querySelector('#button-markdown')
+  let showPreviewButton = page.querySelector('#button-preview')
+  const applyPreviewShownState = () => {
+    page.querySelector('#content-textarea').style.display = isPreviewShown ? 'none' : 'flex'
+    page.querySelector('#content-preview').style.display = isPreviewShown ? 'block' : 'none'
+    showMarkdownButton.classList.toggle('active', !isPreviewShown)
+    showPreviewButton.classList.toggle('active', isPreviewShown)
+    if(isPreviewShown) {
+      page.querySelector('#content-preview').innerHTML = markdown(strip_tags(page.querySelector('#content').value))
+    }
+  }
+  const handleMarkdownButton = async (event) => {
+    event.preventDefault()
+    isPreviewShown = false
+    applyPreviewShownState()
+  }
+  const handlePreviewButton = async (event) => {
+    event.preventDefault()
+    isPreviewShown = true
+    applyPreviewShownState()
+  }
+  showMarkdownButton.removeEventListener('click', handleMarkdownButton)
+  showMarkdownButton.addEventListener('click', handleMarkdownButton)
+  showPreviewButton.removeEventListener('click', handlePreviewButton)
+  showPreviewButton.addEventListener('click', handlePreviewButton)
+
+
   // On submit, create a new blog by calling the createBlog method of the BlogFactory contract
   const form = page.querySelector('form');
   const submitButton = form.querySelector('button[type="submit"]');

@@ -71,8 +71,18 @@ document.querySelector('#app').innerHTML = `
           <input type="text" id="title" name="title">
         </div>
         <div class="form-row">
-          <label for="content">Content (markdown)</label>
-          <textarea id="content" name="content"></textarea>
+          <label for="content">Content</label>
+          <div style="flex: 1;">
+            <div class="preview-buttons">
+              <button type="input" id="button-markdown" class="active">Markdown</button>
+              <button type="input" id="button-preview">Preview</button>
+            </div>
+            <div id="content-textarea">
+              <textarea id="content" name="content"></textarea>
+            </div>
+            <div id="content-preview">
+            </div>
+          </div>
         </div>
         <div class="error-message">
           Error message

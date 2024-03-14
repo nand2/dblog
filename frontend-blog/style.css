@@ -190,6 +190,32 @@ a#admin-link {
   line-height: 1.4em;
 }
 
+#page-entry-edit form button {
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5em 1em;
+}
+
+#page-entry-edit form .preview-buttons {
+  display: flex; 
+  gap: 0.5em;
+  margin-bottom: 0.8em;
+}
+
+#page-entry-edit form .preview-buttons button.active {
+  background-color: #1a1a1a;
+  cursor: default;
+}
+
+#page-entry-edit form #content-textarea {
+  display: flex;
+}
+
+#page-entry-edit form #content-preview {
+  display: none;
+}
+
 #page-entry-edit .error-message {
   display: none;
   margin-left: 120px;
@@ -202,11 +228,4 @@ a#admin-link {
   display: flex;
   justify-content: flex-end;
   gap: 1em;
-}
-
-#page-entry-edit form button[type="submit"] {
-  border: none;
-  border-radius: 8px;
-  padding: 0.5em 1em;
-  cursor: pointer;
 }
