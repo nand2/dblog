@@ -44,6 +44,8 @@ body {
   }
 }
 
+/** Blog header */
+
 #blog-title {
   margin-bottom: 0em;
 }
@@ -67,6 +69,15 @@ hr#main-separator {
   border-top: 4px solid #888;
 }
 
+a#admin-link {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  font-size: 0.8em;
+}
+
+/** Home */
+
 #page-home #blog-entries {
   display: flex;
   
@@ -82,8 +93,10 @@ hr#main-separator {
 
 #page-home .blog-entry h2 {
   margin-top: 0;
-  margin-bottom: 0.5em;
+  margin-bottom: 0;
 }
+
+/** Blog entry */
 
 #page-entry {
   text-align: left;
@@ -109,6 +122,8 @@ hr#main-separator {
   color: #888;
 }
 
+/** Admin page */
+
 #page-admin {
   text-align: left;
 }
@@ -126,6 +141,8 @@ hr#main-separator {
   font-size: 80%;
   font-weight: normal;
 }
+
+/** Blog entry edit */
 
 #page-entry-edit {
   text-align: left;

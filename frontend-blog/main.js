@@ -31,17 +31,15 @@ document.querySelector('#app').innerHTML = `
     </p>
 
     <hr id="main-separator" />
+
+    <a id="admin-link" href="/admin">[ Admin ]</a>
     
     <div id="page-home">
       <div id="blog-entries">
-        <div class="blog-entry">
+        <!--<div class="blog-entry">
           <div class="date">09 Feb 2023</div>
           <h2 class="title"><a href="/entry/xx">My first blog entry</a></h2>
-        </div>
-        <div class="blog-entry">
-          <div class="date">09 Feb 2023</div>
-          <h2 class="title"><a href="/entry/yy">My first blog entry</a></h2>
-        </div>
+        </div>-->
       </div>
     </div>
     <div id="page-entry">
@@ -59,12 +57,9 @@ document.querySelector('#app').innerHTML = `
       <h2>Admin</h2>
       <h3>Blog entries <a href="/add">Add new</a></h3>
       <div id="admin-blog-entries">
-        <div class="blog-entry">
+        <!--<div class="blog-entry">
           2023-02-01 <a href="/entry/xx">My first blog entry</a> - <a href="/entry/xx/edit">Edit</a>
-        </div>
-        <div class="blog-entry">
-          2023-02-01 <a href="/entry/xx">My first blog entry</a> - <a href="/entry/xx/edit">Edit</a>
-        </div>
+        </div>-->
       </div>
     </div>
     <div id="page-entry-edit">

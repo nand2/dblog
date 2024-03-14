@@ -1,4 +1,7 @@
 import { encodeFunctionData } from 'viem'
+import { markdown } from './drawdown.js'
+import { strip_tags, uint8ArrayToHexString } from './utils.js'
+import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
 
 /**
  * Home controller
@@ -43,7 +46,7 @@ export async function homeController(blogAddress, chainId) {
       const formattedDate = new Date(post.date * 1000).toLocaleDateString(undefined, options);
       blogEntry.innerHTML = `
         <div class="date">${formattedDate}</div>
-        <h2 class="title"><a href="/entry/${post.id}">${post.title}</a></h2>
+        <h2 class="title"><a href="/entry/${post.id}">${strip_tags(post.title)}</a></h2>
       `;
       blogEntries.appendChild(blogEntry)
     })
@@ -81,11 +84,11 @@ export async function blogEntryController(blogAddress, chainId) {
     })
 
   // Insert the post
-  page.querySelector('h2').innerHTML = post.title
+  page.querySelector('h2').innerHTML = strip_tags(post.title)
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
   const formattedDate = new Date(post.date * 1000).toLocaleDateString(undefined, options);
   page.querySelector('.date').innerHTML = formattedDate
-  page.querySelector('.content').innerHTML = post.content
+  page.querySelector('.content').innerHTML = markdown(strip_tags(post.content))
 }
 
 
@@ -124,7 +127,7 @@ export async function adminController(blogAddress, chainId) {
     const formattedDate = new Date(post.date * 1000).toISOString().split('T')[0];
     blogEntry.innerHTML = `
       <span class="date">${formattedDate}</span>
-      <a href="/entry/${post.id}/edit">${post.title}</a> - <a href="/entry/${post.id}/edit">edit</a>
+      <a href="/entry/${post.id}/edit">${strip_tags(post.title)}</a> - <a href="/entry/${post.id}/edit">edit</a>
     `;
     blogEntries.appendChild(blogEntry)
   })
@@ -183,7 +186,7 @@ export async function entryEditController(blogAddress, chainId) {
     submitButton.disabled = false
     submitButton.innerHTML = 'Save'
   }
-
+ 
   const handleSubmit = async (event) => {
     event.preventDefault();
     submitButton.disabled = true;
@@ -238,26 +241,34 @@ export async function entryEditController(blogAddress, chainId) {
     let calldata = null;
     let value = '0x0';
     if (newPost) {
-      calldata = encodeFunctionData({
-        abi: [{
-          inputs: [{ name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
-          name: 'addPost',
-          outputs: [],
-          type: 'function',
-        }],
-        args: [title, content]
-      })
+      // Viem's encodeFunctionData function cost 20kB, 7kB gziped
+      // calldata = encodeFunctionData({
+      //   abi: [{
+      //     inputs: [{ name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
+      //     name: 'addPost',
+      //     outputs: [],
+      //     type: 'function',
+      //   }],
+      //   args: [title, content]
+      // })
+
+      // encodeParameters function cost 6kB, 1.5kB gziped
+      // addPost(string title, string content)
+      calldata = "0xb02c6516" + uint8ArrayToHexString(encodeParameters([{ name: 'title', type: 'string' }, { name: 'content', type: 'string' }], [title, content]))
     }
     else {
-      calldata = encodeFunctionData({
-        abi: [{
-          inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
-          name: 'editPost',
-          outputs: [],
-          type: 'function',
-        }],
-        args: [postNumber, title, content]
-      })
+      // calldata = encodeFunctionData({
+      //   abi: [{
+      //     inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
+      //     name: 'editPost',
+      //     outputs: [],
+      //     type: 'function',
+      //   }],
+      //   args: [postNumber, title, content]
+      // })
+
+      // editPost(uint256 id, string title, string content)
+      calldata = "0xbf0ac63c" + uint8ArrayToHexString(encodeParameters([{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'content', type: 'string' }], [BigInt(postNumber), title, content]))
     }
 
 console.log("About to send with args:", title, content)

@@ -53,7 +53,7 @@ export function setupRouting(blogAddress, chainId) {
   };
   
   const locationHandler = async () => {
-    const location = window.location.pathname;
+    let location = window.location.pathname;
     if (location.length == 0) {
         location = "/";
     }
