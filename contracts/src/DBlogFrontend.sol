@@ -24,8 +24,10 @@ contract DBlogFrontend is IDecentralizedApp {
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
         BlogFrontendVersion memory frontend = blog.factory().frontendLibrary().getDefaultFrontend();
 
-        // Frontpage
-        if(resource.length == 0) {
+        // Frontpage or single-page javascript app pages (#/page/1, #/page/2, etc.)
+        // At the moment, proper SPA routing in JS with history.pushState() is broken (due 
+        // to bad web3:// URL parsing in the browser)
+        if(resource.length == 0 || Strings.compare(resource[0], "#")) {
             File memory file = abi.decode(SSTORE2.read(frontend.htmlFile), (File));
             body = file.read();
             statusCode = 200;

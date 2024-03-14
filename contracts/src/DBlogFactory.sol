@@ -88,6 +88,7 @@ contract DBlogFactory {
     struct BlogInfo {
         uint256 id;
         address blogAddress;
+        address blogFrontendAddress;
         string title;
         string description;
         uint256 postCount;
@@ -107,6 +108,7 @@ contract DBlogFactory {
             blogInfos[i] = BlogInfo({
                 id: startIndex + i,
                 blogAddress: address(blog),
+                blogFrontendAddress: address(blog.frontend()),
                 title: blog.title(),
                 description: blog.description(),
                 postCount: blog.getPostCount()

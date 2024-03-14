@@ -1,6 +1,7 @@
 import './style.css'
 import logo from './dblog.svg'
 import { setupBlogCreationPopup } from './blog-creation-popup.js'
+import { strip_tags } from './utils.js'
 
 // Calling ourselves (so via a relative web3:// address) to fetch the address
 // of the blog factory smart contract
@@ -113,7 +114,7 @@ let blogs = []
 let blogCount = 0
 const fetchAndDisplayBlogs = async () => {
   // Now making a call to the blog factory to fetch the list of blog
-  await fetch(`web3://${blogFactoryAddress}:${chainId}/getBlogInfoList/0/100?returns=((uint,address,string,string,uint)[])`)
+  await fetch(`web3://${blogFactoryAddress}:${chainId}/getBlogInfoList/0/100?returns=((uint,address,address,string,string,uint)[])`)
     .then(response => response.json())
     .then(data => {
       console.log("Fetched blogs : ", data)
@@ -122,9 +123,10 @@ const fetchAndDisplayBlogs = async () => {
         return {
           id: blog[0],
           address: blog[1],
-          title: blog[2],
-          description: blog[3],
-          postCount: blog[4]
+          frontendAddress: blog[2],
+          title: blog[3],
+          description: blog[4],
+          postCount: blog[5]
         }
       })
     })
@@ -147,15 +149,11 @@ const fetchAndDisplayBlogs = async () => {
     let blogElement = document.createElement('div')
     blogElement.className = 'blog'
 
-    // Strip HTML
-    const strippedTitle = document.createElement('div');
-    strippedTitle.innerHTML = blog.title;
-    const strippedDescription = document.createElement('div');
-    strippedDescription.innerHTML = blog.description;
+    let blogAddress = "web3://" + blog.frontendAddress + (chainId > 1 ? ":" + chainId : "") + "/"
 
     blogElement.innerHTML = `
-      <h3 class="title"><a href="web3://${blog.address}">${strippedTitle.innerText}</a></h3>
-      <div class="description">${strippedDescription.innerText}</div>
+      <h3 class="title"><a href="${blogAddress}">${strip_tags(blog.title)}</a></h3>
+      <div class="description">${strip_tags(blog.description)}</div>
     `;
     blogsElement.appendChild(blogElement)
   })

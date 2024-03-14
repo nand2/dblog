@@ -51,13 +51,22 @@ export function setupRouting(blogAddress, chainId) {
   const route = (event) => {
     event = event || window.event; // get window.event if event argument not provided
     event.preventDefault();
-    window.history.pushState({}, "", event.target.href);
-    locationHandler();
+    
+    // This is broken, due to the browser not parsing correctly the web3:// URL
+    // So we use a old-school /#/<url> SPA routing
+    // window.history.pushState({}, "", event.target.href);
+    // locationHandler();
+    window.location.href = event.target.href;
   };
   
   const locationHandler = async () => {
+    // Old-school /#/<url> SPA routing
     let parsedUrl = parseWeb3Url(window.location.href)
-    let location = parsedUrl.path || "/";
+    let location = parsedUrl.path || "/#/";
+    if(location.startsWith("/#/") === false) {
+      location = "/#/";
+    }
+    location = location.substring(2);
     
     const route = routes.find((route) => {
         return new RegExp(route.path).test(location);

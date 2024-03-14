@@ -1,5 +1,6 @@
 import './style.css'
 import { setupRouting } from './routing.js'
+import { strip_tags } from './utils.js'
 
 
 // Calling ourselves (so via a relative web3:// address) to fetch the address
@@ -21,24 +22,24 @@ await fetch(`/blogAddress.json`)
 document.querySelector('#app').innerHTML = `
   <div>
     <h1 id="blog-title">
-      <a href="/">
-        My blog title
+      <a href="/#/">
+        <!--My blog title-->
       </a>
     </h1>
 
     <p id="blog-subtitle">
-      My blog description
+      <!--My blog description-->
     </p>
 
     <hr id="main-separator" />
 
-    <a id="admin-link" href="/admin">[ Admin ]</a>
+    <a id="admin-link" href="/#/admin">[ Admin ]</a>
     
     <div id="page-home">
       <div id="blog-entries">
         <!--<div class="blog-entry">
           <div class="date">09 Feb 2023</div>
-          <h2 class="title"><a href="/entry/xx">My first blog entry</a></h2>
+          <h2 class="title"><a href="/#/entry/xx">My first blog entry</a></h2>
         </div>-->
       </div>
     </div>
@@ -47,7 +48,7 @@ document.querySelector('#app').innerHTML = `
       <hr />
       <div class="sub-hr">
         <div class="date">09 Feb 2023</div>
-        <a href="/">See all posts</a>
+        <a href="/#/">See all posts</a>
       </div>
       <div class="content">
         Some content here
@@ -55,10 +56,10 @@ document.querySelector('#app').innerHTML = `
     </div>
     <div id="page-admin">
       <h2>Admin</h2>
-      <h3>Blog entries <a href="/add">Add new</a></h3>
+      <h3>Blog entries <a href="/#/add">Add new</a></h3>
       <div id="admin-blog-entries">
         <!--<div class="blog-entry">
-          2023-02-01 <a href="/entry/xx">My first blog entry</a> - <a href="/entry/xx/edit">Edit</a>
+          2023-02-01 <a href="/#/entry/xx">My first blog entry</a> - <a href="/#/entry/xx/edit">Edit</a>
         </div>-->
       </div>
     </div>
@@ -87,4 +88,25 @@ document.querySelector('#app').innerHTML = `
   </div>
 `
 
+// Setup the routing
 setupRouting(blogAddress, chainId)
+
+
+// Fetch the blog title and description
+fetch(`web3://${blogAddress}:${chainId}/title`)
+  .then(response => response.text())
+  .then(data => {
+    document.querySelector('#blog-title a').innerHTML = strip_tags(data)
+  })
+  .catch(error => {
+    console.error(error)
+  })
+
+fetch(`web3://${blogAddress}:${chainId}/description`)
+  .then(response => response.text())
+  .then(data => {
+    document.querySelector('#blog-subtitle').innerHTML = strip_tags(data)
+  })
+  .catch(error => {
+    console.error(error)
+  })

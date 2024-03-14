@@ -1,6 +1,6 @@
 // import { encodeFunctionData } from 'viem'
 import { markdown } from './drawdown.js'
-import { strip_tags, uint8ArrayToHexString } from './utils.js'
+import { strip_tags, uint8ArrayToHexString, parseWeb3Url } from './utils.js'
 import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
 
 /**
@@ -35,7 +35,7 @@ export async function homeController(blogAddress, chainId) {
     if(posts.length == 0) {
       blogEntries.innerHTML = `
         <div class="blog-entry">
-          <h2 class="title"><a href="/add">Add your first post</a></h2>
+          <h2 class="title"><a href="/#/add">Add your first post</a></h2>
         </div>
       `;
     }
@@ -46,7 +46,7 @@ export async function homeController(blogAddress, chainId) {
       const formattedDate = new Date(post.date * 1000).toLocaleDateString(undefined, options);
       blogEntry.innerHTML = `
         <div class="date">${formattedDate}</div>
-        <h2 class="title"><a href="/entry/${post.id}">${strip_tags(post.title)}</a></h2>
+        <h2 class="title"><a href="/#/entry/${post.id}">${strip_tags(post.title)}</a></h2>
       `;
       blogEntries.appendChild(blogEntry)
     })
@@ -65,7 +65,8 @@ export async function blogEntryController(blogAddress, chainId) {
   page.querySelector('.content').innerHTML = ''
 
   // Extract the post number from the URL
-  const postNumber = parseInt(window.location.pathname.split('/').pop())
+  let parsedUrl = parseWeb3Url(window.location.href)
+  const postNumber = parseInt(parsedUrl.path.split('/').pop())
 
   // Call the blog to fetch the post
   let post = null
@@ -127,7 +128,7 @@ export async function adminController(blogAddress, chainId) {
     const formattedDate = new Date(post.date * 1000).toISOString().split('T')[0];
     blogEntry.innerHTML = `
       <span class="date">${formattedDate}</span>
-      <a href="/entry/${post.id}">${strip_tags(post.title)}</a> - <a href="/entry/${post.id}/edit">edit</a>
+      <a href="/#/entry/${post.id}">${strip_tags(post.title)}</a> - <a href="/#/entry/${post.id}/edit">edit</a>
     `;
     blogEntries.appendChild(blogEntry)
   })
@@ -145,9 +146,10 @@ export async function entryEditController(blogAddress, chainId) {
   page.querySelector('#content').value = ''
 
   // Determine if we are adding or editing by checking if the URL start with /add
-  const newPost = window.location.pathname.startsWith('/add')
+  let parsedUrl = parseWeb3Url(window.location.href)
+  const newPost = parsedUrl.path.startsWith('/#/add')
   // If not a new post, fetch the post number from the URL
-  const postNumber = newPost ? null : parseInt(window.location.pathname.split('/')[2])
+  const postNumber = newPost ? null : parseInt(parsedUrl.path.split('/')[3])
 
   // Whether new blog post or editing an existing, change the page title
   page.querySelector('h2').innerHTML = newPost ? 'Add a new post' : 'Edit post'
@@ -181,7 +183,7 @@ export async function entryEditController(blogAddress, chainId) {
   const errorMessageDiv = form.querySelector('.error-message');
 
   const stopWithError = (message) => {
-    errorMessageDiv.innerHTML = message
+    errorMessageDiv.innerHTML = strip_tags(message)
     errorMessageDiv.style.display = 'block'
     submitButton.disabled = false
     submitButton.innerHTML = 'Save'
@@ -349,7 +351,7 @@ console.log("txResult", txResult)
     const savedPostNumber = parseInt(log.topics[1], 16)
 console.log("savedPostNumber", savedPostNumber)
     // Go to the post
-    window.location.href = `/entry/${savedPostNumber}`
+    window.location.href = `/#/entry/${savedPostNumber}`
 
     submitButton.disabled = false;
     submitButton.innerHTML = 'Save';
