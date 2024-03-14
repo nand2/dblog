@@ -138,7 +138,7 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
 
     // encodeParameters function cost 6kB, 1.5kB gziped
     // addBlog(string title, string description, string subdomain)
-    calldata = "0x4639107c" + uint8ArrayToHexString(encodeParameters([{ name: 'title', type: 'string' }, { name: 'description', type: 'string' }, { name: 'subdomain', type: 'string' }], [title, description, subdomain]))
+    let calldata = "0x4639107c" + uint8ArrayToHexString(encodeParameters([{ name: 'title', type: 'string' }, { name: 'description', type: 'string' }, { name: 'subdomain', type: 'string' }], [title, description, subdomain]))
 
     // Prepare the value to send: 0.01eth if subdomain
     let value = '0x0'
@@ -229,7 +229,7 @@ console.log("newBlogAddress", newBlogAddress)
 console.log("newBlogFrontendAddress", newBlogFrontendAddress)
 console.log("newBlogFrontendWeb3Address", newBlogFrontendWeb3Address)
     // Inject it in the UI
-    element.querySelector('#created-blog-address a').href = newBlogFrontendWeb3Address
+    element.querySelector('#created-blog-address a').href = newBlogFrontendWeb3Address + "/"
     element.querySelector('#created-blog-address a').textContent = newBlogFrontendWeb3Address
     element.querySelector('#new-blog-address').textContent = newBlogFrontendAddress
 

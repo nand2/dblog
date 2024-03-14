@@ -1,4 +1,5 @@
 import { homeController, blogEntryController, adminController, entryEditController } from "./controllers.js";
+import { parseWeb3Url } from "./utils.js";
 
 export function setupRouting(blogAddress, chainId) {
   const routes = [
@@ -35,11 +36,13 @@ export function setupRouting(blogAddress, chainId) {
   ];
   
   // Handle the routing
+  const parsedUrl = parseWeb3Url(window.location.href)
+  const baseUrl = parsedUrl.protocol + "://" + parsedUrl.hostname + (parsedUrl.chainId ? ":" + parsedUrl.chainId : "")
   document.addEventListener("click", (e) => {
     const { target } = e;
     
     // If the link is relative, we handle the routing
-    if (target.tagName === "A" && target.href.startsWith(window.location.origin)) {
+    if (target.tagName === "A" && target.href.startsWith(baseUrl)) {
       e.preventDefault();
       route(e);
     }
@@ -53,10 +56,8 @@ export function setupRouting(blogAddress, chainId) {
   };
   
   const locationHandler = async () => {
-    let location = window.location.pathname;
-    if (location.length == 0) {
-        location = "/";
-    }
+    let parsedUrl = parseWeb3Url(window.location.href)
+    let location = parsedUrl.path || "/";
     
     const route = routes.find((route) => {
         return new RegExp(route.path).test(location);

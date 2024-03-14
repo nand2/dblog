@@ -24,9 +24,6 @@ contract DBlogFrontend is IDecentralizedApp {
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
         BlogFrontendVersion memory frontend = blog.factory().frontendLibrary().getDefaultFrontend();
 
-        statusCode = 200;
-        body = "Hello, world!";
-
         // Frontpage
         if(resource.length == 0) {
             File memory file = abi.decode(SSTORE2.read(frontend.htmlFile), (File));
@@ -38,15 +35,15 @@ contract DBlogFrontend is IDecentralizedApp {
             headers[1].key = "Content-Encoding";
             headers[1].value = "gzip";
         }
-        // // blogFactoryAddress.json : it exposes the addess of the blog factory
-        // else if(resource.length == 1 && Strings.compare(resource[0], "blogFactoryAddress.json")) {
-        //     // Manual JSON serialization, safe with the vars we encode
-        //     body = string.concat("{\"address\":\"", Strings.toHexString(address(blogFactory)), "\", \"chainId\":", Strings.toString(block.chainid), "}");
-        //     statusCode = 200;
-        //     headers = new KeyValue[](1);
-        //     headers[0].key = "Content-type";
-        //     headers[0].value = "application/json";
-        // }
+        // blogAddress.json : it exposes the addess of the blog
+        else if(resource.length == 1 && Strings.compare(resource[0], "blogAddress.json")) {
+            // Manual JSON serialization, safe with the vars we encode
+            body = string.concat("{\"address\":\"", Strings.toHexString(address(blog)), "\", \"chainId\":", Strings.toString(block.chainid), "}");
+            statusCode = 200;
+            headers = new KeyValue[](1);
+            headers[0].key = "Content-type";
+            headers[0].value = "application/json";
+        }
         // /assets/[assetName]
         else if(resource.length == 2 && Strings.compare(resource[0], "assets")) {
             string memory assetName = resource[1];

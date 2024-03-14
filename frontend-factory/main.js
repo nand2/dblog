@@ -69,7 +69,7 @@ document.querySelector('#app').innerHTML = `
         <div id="step-2">
           <h2>🎉 Your DBlog is now ready!</h2>
           <div id="created-blog-address">
-            <a href="" target="_blank">web3://</a> 
+            <a href="">web3://</a> 
           </div>
           <div id="created-blog-infos">
             <p>
