@@ -11,6 +11,11 @@ import {BaseRegistrarImplementation} from "ens-contracts/ethregistrar/BaseRegist
 import {DummyOracle} from "ens-contracts/ethregistrar/DummyOracle.sol";
 import {ExponentialPremiumPriceOracle} from "ens-contracts/ethregistrar/ExponentialPremiumPriceOracle.sol";
 import {AggregatorInterface} from "ens-contracts/ethregistrar/StablePriceOracle.sol";
+import {StaticMetadataService} from "ens-contracts/wrapper/StaticMetadataService.sol";
+import {NameWrapper} from "ens-contracts/wrapper/NameWrapper.sol";
+import {IMetadataService} from "ens-contracts/wrapper/IMetadataService.sol";
+import {ETHRegistrarController} from "ens-contracts/ethregistrar/ETHRegistrarController.sol";
+// import {OwnedResolver} from "ens-contracts/resolvers/OwnedResolver.sol";
 
 contract DBlogFactoryScript is Script {
     function setUp() public {}
@@ -21,7 +26,11 @@ contract DBlogFactoryScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         ENSRegistry registry;
+        ETHRegistrarController registrarController;
         {
+            bytes32 emptyNamehash = 0x00;
+            bytes32 topdomainNamehash = keccak256(abi.encodePacked(emptyNamehash, keccak256(abi.encodePacked("eth"))));
+
             // ENS registry
             registry = new ENSRegistry();
             console.log("ENS registry: ", vm.toString(address(registry)));
@@ -33,30 +42,57 @@ contract DBlogFactoryScript is Script {
             registry.setOwner(0x0, address(root));
             root.setController(msg.sender, true);
             
-            // // ENS reverse registrar
-            // ReverseRegistrar reverseRegistrar = new ReverseRegistrar{salt: contractSalt}(registry);
-            // console.log("Reverse registrar: ", vm.toString(address(reverseRegistrar)));
+            // ENS reverse registrar
+            ReverseRegistrar reverseRegistrar = new ReverseRegistrar(registry);
+            console.log("Reverse registrar: ", vm.toString(address(reverseRegistrar)));
+            root.setSubnodeOwner(keccak256(abi.encodePacked("reverse")), msg.sender);
+            registry.setSubnodeOwner(keccak256(abi.encodePacked(emptyNamehash, keccak256(abi.encodePacked("reverse")))), keccak256(abi.encodePacked("addr")), address(reverseRegistrar));
             
             // Base registrar implementation
-            bytes32 emptyNamehash = 0x00;
-            bytes32 topdomainNamehash = keccak256(abi.encodePacked(emptyNamehash, keccak256(abi.encodePacked("eth"))));
             BaseRegistrarImplementation registrar = new BaseRegistrarImplementation(registry, topdomainNamehash);
             root.setSubnodeOwner(keccak256(abi.encodePacked("eth")), address(registrar));
             console.log("Base registrar: ", vm.toString(address(registrar)));
             
-            // Dummy price oracle
-            DummyOracle oracle = new DummyOracle(160000000000);
-            console.log("Dummy oracle: ", vm.toString(address(oracle)));
+            ExponentialPremiumPriceOracle priceOracle;
+            {
+                // Dummy price oracle
+                DummyOracle oracle = new DummyOracle(160000000000);
+                console.log("Dummy oracle: ", vm.toString(address(oracle)));
 
-            // Exponential price oracle
-            uint256[] memory rentPrices = new uint256[](5);
-            rentPrices[0] = 0;
-            rentPrices[1] = 0;
-            rentPrices[2] = 20294266869609;
-            rentPrices[3] = 5073566717402;
-            rentPrices[4] = 158548959919;
-            ExponentialPremiumPriceOracle priceOracle = new ExponentialPremiumPriceOracle(AggregatorInterface(address(oracle)), rentPrices, 100000000000000000000000000, 21);
-            console.log("Exponential price oracle: ", vm.toString(address(priceOracle)));
+                // Exponential price oracle
+                uint256[] memory rentPrices = new uint256[](5);
+                rentPrices[0] = 0;
+                rentPrices[1] = 0;
+                rentPrices[2] = 20294266869609;
+                rentPrices[3] = 5073566717402;
+                rentPrices[4] = 158548959919;
+                priceOracle = new ExponentialPremiumPriceOracle(AggregatorInterface(address(oracle)), rentPrices, 100000000000000000000000000, 21);
+                console.log("Exponential price oracle: ", vm.toString(address(priceOracle)));
+            }
+
+            NameWrapper nameWrapper;
+            {
+                // Static metadata service
+                StaticMetadataService metadata = new StaticMetadataService("http://localhost:8080/name/0x{id}");
+                console.log("Static metadata service: ", vm.toString(address(metadata)));
+
+                // Name wrapper
+                nameWrapper = new NameWrapper(registry, registrar, IMetadataService(address(metadata)));
+                console.log("Name wrapper: ", vm.toString(address(nameWrapper)));
+            }
+
+            {
+                // OwnedResolver ethOwnedResolver = new OwnedResolver();
+                // console.log("Eth resolver: ", vm.toString(address(ethOwnedResolver)));
+            }
+
+            // Eth Registrar controller
+            registrarController = new ETHRegistrarController(registrar, priceOracle, 60, 86400, reverseRegistrar, nameWrapper, registry);
+            console.log("ETH registrar controller: ", vm.toString(address(registrarController)));
+            nameWrapper.setController(address(registrarController), true);
+            reverseRegistrar.setController(address(registrarController), true);
+            console.log("Eth resolver: ", vm.toString(registry.resolver(topdomainNamehash)));
+            // TODO: call ethResolver.setInterface()
         }
 
 
