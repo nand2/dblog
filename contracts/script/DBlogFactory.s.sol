@@ -5,6 +5,8 @@ import {Script, console} from "forge-std/Script.sol";
 import {Script, console} from "forge-std/Script.sol";
 import {DBlogFactory} from "../src/DBlogFactory.sol";
 import {FileStore, File} from "ethfs/FileStore.sol";
+import {ENSRegistry} from "ens-contracts/registry/ENSRegistry.sol";
+import {ReverseRegistrar} from "ens-contracts/reverseRegistrar/ReverseRegistrar.sol";
 
 contract DBlogFactoryScript is Script {
     function setUp() public {}
@@ -13,6 +15,12 @@ contract DBlogFactoryScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         bytes32 contractSalt = vm.envBytes32("CONTRACT_SALT");
         vm.startBroadcast(deployerPrivateKey);
+
+        // ENS
+        ENSRegistry ensRegistry = new ENSRegistry{salt: contractSalt}();
+        console.log("ENS registry: ", vm.toString(address(ensRegistry)));
+        ReverseRegistrar reverseRegistrar = new ReverseRegistrar{salt: contractSalt}(ensRegistry);
+        console.log("Reverse registrar: ", vm.toString(address(reverseRegistrar)));
 
         // ETHFS filestore
         FileStore store = new FileStore{salt: contractSalt}(address(0x4e59b44847b379578588920cA78FbF26c0B4956C));
@@ -39,6 +47,7 @@ contract DBlogFactoryScript is Script {
         // JS
         fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_JS_FILE")));
         (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_JS_FILE"), string(fileContents));
+
 
         // Deploying the blog factory
         DBlogFactory factory = new DBlogFactory{salt: contractSalt}("eth", "dblog", factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer);
