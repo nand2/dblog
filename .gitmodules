@@ -7,3 +7,6 @@
 [submodule "contracts/lib/ethfs"]
 	path = contracts/lib/ethfs
 	url = https://github.com/holic/ethfs
+[submodule "contracts/lib/ens-contracts"]
+	path = contracts/lib/ens-contracts
+	url = https://github.com/ensdomains/ens-contracts
