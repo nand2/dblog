@@ -27,15 +27,16 @@ contract DBlogFactoryScript is Script {
         bytes32 contractSalt = vm.envBytes32("CONTRACT_SALT");
         vm.startBroadcast(deployerPrivateKey);
 
-        
+
+        ENSRegistry registry;
         ETHRegistrarController registrarController;
         PublicResolver publicResolver;
+        NameWrapper nameWrapper;
         {
-            bytes32 emptyNamehash = 0x00;
-            bytes32 topdomainNamehash = keccak256(abi.encodePacked(emptyNamehash, keccak256(abi.encodePacked("eth"))));
+            bytes32 topdomainNamehash = keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("eth"))));
 
             // ENS registry
-            ENSRegistry registry = new ENSRegistry();
+            registry = new ENSRegistry();
             console.log("ENS registry: ", vm.toString(address(registry)));
             console.log("ENS registry owner: ", vm.toString(registry.owner(0x0)));
         
@@ -49,7 +50,7 @@ contract DBlogFactoryScript is Script {
             ReverseRegistrar reverseRegistrar = new ReverseRegistrar(registry);
             console.log("Reverse registrar: ", vm.toString(address(reverseRegistrar)));
             root.setSubnodeOwner(keccak256(abi.encodePacked("reverse")), msg.sender);
-            registry.setSubnodeOwner(keccak256(abi.encodePacked(emptyNamehash, keccak256(abi.encodePacked("reverse")))), keccak256(abi.encodePacked("addr")), address(reverseRegistrar));
+            registry.setSubnodeOwner(keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("reverse")))), keccak256(abi.encodePacked("addr")), address(reverseRegistrar));
             
             // Base registrar implementation
             BaseRegistrarImplementation registrar = new BaseRegistrarImplementation(registry, topdomainNamehash);
@@ -73,7 +74,6 @@ contract DBlogFactoryScript is Script {
                 console.log("Exponential price oracle: ", vm.toString(address(priceOracle)));
             }
 
-            NameWrapper nameWrapper;
             {
                 // Static metadata service
                 StaticMetadataService metadata = new StaticMetadataService("http://localhost:8080/name/0x{id}");
@@ -182,6 +182,24 @@ contract DBlogFactoryScript is Script {
             web3BlogAddress = string.concat(web3BlogAddress, ":", vm.toString(block.chainid));
         }
         console.log("web3://dblog.dblog.eth: ", web3BlogAddress);
+
+        // Set the ENS resolver of dblog.eth to the contract
+        {
+            bytes32 topdomainNamehash = keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("eth"))));
+            bytes32 dblogDomainNamehash = keccak256(abi.encodePacked(topdomainNamehash, keccak256(abi.encodePacked("dblog"))));
+            nameWrapper.setResolver(dblogDomainNamehash, address(factory));
+
+            // Resolve a few domains
+            // Get resolver of dblog.eth
+            address dblogEthResolver = registry.resolver(dblogDomainNamehash);
+            console.log("Resolver of dblog.eth: ", vm.toString(dblogEthResolver));
+            // Resolve dblog.eth
+            address dblogEthAddress = PublicResolver(dblogEthResolver).addr(dblogDomainNamehash);
+            console.log("Address of dblog.eth: ", vm.toString(dblogEthAddress));
+            // Resolve dblog.dblog.eth
+            address dblogDblogEthAddress = PublicResolver(dblogEthResolver).addr(keccak256(abi.encodePacked(dblogDomainNamehash, keccak256(abi.encodePacked("dblog")))));
+            console.log("Address of dblog.dblog.eth: ", vm.toString(dblogDblogEthAddress));
+        }
 
         vm.stopBroadcast();
     }
