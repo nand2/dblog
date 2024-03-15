@@ -199,6 +199,9 @@ contract DBlogFactoryScript is Script {
             // Resolve dblog.dblog.eth
             address dblogDblogEthAddress = PublicResolver(dblogEthResolver).addr(keccak256(abi.encodePacked(dblogDomainNamehash, keccak256(abi.encodePacked("dblog")))));
             console.log("Address of dblog.dblog.eth: ", vm.toString(dblogDblogEthAddress));
+            // Resolve random.dblog.eth
+            address randomDblogEthAddress = PublicResolver(dblogEthResolver).addr(keccak256(abi.encodePacked(dblogDomainNamehash, keccak256(abi.encodePacked("random")))));
+            console.log("Address of random.dblog.eth: ", vm.toString(randomDblogEthAddress));
         }
 
         vm.stopBroadcast();

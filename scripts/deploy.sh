@@ -89,6 +89,8 @@ OUTPUT="$(FACTORY_FRONTEND_HTML_FILE=$FACTORY_FRONTEND_COMPRESSED_HTML_FILE \
 
 # Write again at the end the web3:// address
 echo ""
+echo "ENS:"
+echo "$OUTPUT" | grep "ENS registry:"
+echo ""
 echo "Web3 addresses:"
 echo "$OUTPUT" | grep "web3://"
-echo "boo"
