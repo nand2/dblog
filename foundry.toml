@@ -6,7 +6,7 @@ broadcast = "contracts/broadcast"
 libs = ["contracts/lib"]
 script = "contracts/script"
 cache_path = "contracts/cache"
-remappings = ["solady/=contracts/lib/ethfs/packages/contracts/lib/solady/src/", "ethfs/=contracts/lib/ethfs/packages/contracts/src/", "ens-contracts/=contracts/lib/ens-contracts/contracts/"]
+remappings = ["solady/=contracts/lib/ethfs/packages/contracts/lib/solady/src/", "ethfs/=contracts/lib/ethfs/packages/contracts/src/", "ens-contracts/=contracts/lib/ens-contracts/contracts/", "@openzeppelin/contracts/=contracts/lib/openzeppelin-contracts/contracts/"]
 
 fs_permissions = [{ path = "dist/frontend-factory/", access = "read" }, { path = "dist/frontend-blog/", access = "read" }]
 

@@ -2,11 +2,15 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
-import {Script, console} from "forge-std/Script.sol";
 import {DBlogFactory} from "../src/DBlogFactory.sol";
 import {FileStore, File} from "ethfs/FileStore.sol";
-import {ENSRegistry} from "ens-contracts/registry/ENSRegistry.sol";
-import {ReverseRegistrar} from "ens-contracts/reverseRegistrar/ReverseRegistrar.sol";
+// import {ENSRegistry} from "ens-contracts/registry/ENSRegistry.sol";
+// import {ReverseRegistrar} from "ens-contracts/reverseRegistrar/ReverseRegistrar.sol";
+// import {Root} from "ens-contracts/root/Root.sol";
+// import {BaseRegistrarImplementation} from "ens-contracts/ethregistrar/BaseRegistrarImplementation.sol";
+// import {DummyOracle} from "ens-contracts/ethregistrar/DummyOracle.sol";
+// import {ExponentialPremiumPriceOracle} from "ens-contracts/ethregistrar/ExponentialPremiumPriceOracle.sol";
+// import {AggregatorInterface} from "ens-contracts/ethregistrar/StablePriceOracle.sol";
 
 contract DBlogFactoryScript is Script {
     function setUp() public {}
@@ -16,11 +20,45 @@ contract DBlogFactoryScript is Script {
         bytes32 contractSalt = vm.envBytes32("CONTRACT_SALT");
         vm.startBroadcast(deployerPrivateKey);
 
-        // ENS
-        ENSRegistry ensRegistry = new ENSRegistry{salt: contractSalt}();
-        console.log("ENS registry: ", vm.toString(address(ensRegistry)));
-        ReverseRegistrar reverseRegistrar = new ReverseRegistrar{salt: contractSalt}(ensRegistry);
-        console.log("Reverse registrar: ", vm.toString(address(reverseRegistrar)));
+        // ENSRegistry registry;
+        // {
+        //     // ENS registry
+        //     registry = new ENSRegistry();
+        //     console.log("ENS registry: ", vm.toString(address(registry)));
+        //     console.log("ENS registry owner: ", vm.toString(registry.owner(0x0)));
+        
+        //     // Root
+        //     Root root = new Root(registry);
+        //     console.log("Root: ", vm.toString(address(root)));
+        //     registry.setOwner(0x0, address(root));
+        //     root.setController(msg.sender, true);
+            
+        //     // // ENS reverse registrar
+        //     // ReverseRegistrar reverseRegistrar = new ReverseRegistrar{salt: contractSalt}(registry);
+        //     // console.log("Reverse registrar: ", vm.toString(address(reverseRegistrar)));
+            
+        //     // Base registrar implementation
+        //     bytes32 emptyNamehash = 0x00;
+        //     bytes32 topdomainNamehash = keccak256(abi.encodePacked(emptyNamehash, keccak256(abi.encodePacked("eth"))));
+        //     BaseRegistrarImplementation registrar = new BaseRegistrarImplementation(registry, topdomainNamehash);
+        //     root.setSubnodeOwner(keccak256(abi.encodePacked("eth")), address(registrar));
+        //     console.log("Base registrar: ", vm.toString(address(registrar)));
+            
+        //     // Dummy price oracle
+        //     DummyOracle oracle = new DummyOracle(160000000000);
+        //     console.log("Dummy oracle: ", vm.toString(address(oracle)));
+
+        //     // Exponential price oracle
+        //     uint256[] memory rentPrices = new uint256[](5);
+        //     rentPrices[0] = 0;
+        //     rentPrices[1] = 0;
+        //     rentPrices[2] = 20294266869609;
+        //     rentPrices[3] = 5073566717402;
+        //     rentPrices[4] = 158548959919;
+        //     ExponentialPremiumPriceOracle priceOracle = new ExponentialPremiumPriceOracle(AggregatorInterface(address(oracle)), rentPrices, 100000000000000000000000000, 21);
+        //     console.log("Exponential price oracle: ", vm.toString(address(priceOracle)));
+        // }
+
 
         // ETHFS filestore
         FileStore store = new FileStore{salt: contractSalt}(address(0x4e59b44847b379578588920cA78FbF26c0B4956C));
