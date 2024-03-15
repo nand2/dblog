@@ -15,7 +15,9 @@ import {StaticMetadataService} from "ens-contracts/wrapper/StaticMetadataService
 import {NameWrapper} from "ens-contracts/wrapper/NameWrapper.sol";
 import {IMetadataService} from "ens-contracts/wrapper/IMetadataService.sol";
 import {ETHRegistrarController} from "ens-contracts/ethregistrar/ETHRegistrarController.sol";
-// import {OwnedResolver} from "ens-contracts/resolvers/OwnedResolver.sol";
+import {OwnedResolver} from "ens-contracts/resolvers/OwnedResolver.sol";
+import {ExtendedDNSResolver} from "ens-contracts/resolvers/profiles/ExtendedDNSResolver.sol";
+import {PublicResolver} from "ens-contracts/resolvers/PublicResolver.sol";
 
 contract DBlogFactoryScript is Script {
     function setUp() public {}
@@ -25,14 +27,15 @@ contract DBlogFactoryScript is Script {
         bytes32 contractSalt = vm.envBytes32("CONTRACT_SALT");
         vm.startBroadcast(deployerPrivateKey);
 
-        ENSRegistry registry;
+        
         ETHRegistrarController registrarController;
+        PublicResolver publicResolver;
         {
             bytes32 emptyNamehash = 0x00;
             bytes32 topdomainNamehash = keccak256(abi.encodePacked(emptyNamehash, keccak256(abi.encodePacked("eth"))));
 
             // ENS registry
-            registry = new ENSRegistry();
+            ENSRegistry registry = new ENSRegistry();
             console.log("ENS registry: ", vm.toString(address(registry)));
             console.log("ENS registry owner: ", vm.toString(registry.owner(0x0)));
         
@@ -79,20 +82,43 @@ contract DBlogFactoryScript is Script {
                 // Name wrapper
                 nameWrapper = new NameWrapper(registry, registrar, IMetadataService(address(metadata)));
                 console.log("Name wrapper: ", vm.toString(address(nameWrapper)));
-            }
-
-            {
-                // OwnedResolver ethOwnedResolver = new OwnedResolver();
-                // console.log("Eth resolver: ", vm.toString(address(ethOwnedResolver)));
+                registrar.addController(address(nameWrapper));
             }
 
             // Eth Registrar controller
-            registrarController = new ETHRegistrarController(registrar, priceOracle, 60, 86400, reverseRegistrar, nameWrapper, registry);
+            registrarController = new ETHRegistrarController(registrar, priceOracle, 0 /** min commitment age normally to 60, put it to 0 for fast registration testing */, 86400, reverseRegistrar, nameWrapper, registry);
             console.log("ETH registrar controller: ", vm.toString(address(registrarController)));
             nameWrapper.setController(address(registrarController), true);
             reverseRegistrar.setController(address(registrarController), true);
             console.log("Eth resolver: ", vm.toString(registry.resolver(topdomainNamehash)));
-            // TODO: call ethResolver.setInterface()
+
+            {
+                // Eth owned resolver
+                OwnedResolver ethOwnedResolver = new OwnedResolver();
+                console.log("Eth resolver: ", vm.toString(address(ethOwnedResolver)));
+                registrar.setResolver(address(ethOwnedResolver));
+                console.log("Registry: Eth resolver: ", vm.toString(registry.resolver(topdomainNamehash)));
+
+                // Extended resolver
+                ExtendedDNSResolver extendedResolver = new ExtendedDNSResolver();
+                console.log("Extended resolver: ", vm.toString(address(extendedResolver)));
+
+                // Public resolver
+                publicResolver = new PublicResolver(registry, nameWrapper, address(registrarController), address(reverseRegistrar));
+                console.log("Public resolver: ", vm.toString(address(publicResolver)));
+                reverseRegistrar.setDefaultResolver(address(publicResolver));
+            }
+
+            // TODO: call ethOwnedResolver.setInterface()
+        }
+
+
+        // Register dblog.eth
+        {
+            bytes[] memory data = new bytes[](0);
+            bytes32 commitment = registrarController.makeCommitment("dblog", msg.sender, 31536000, 0x00, address(0x0), data, false, 0);
+            registrarController.commit(commitment);
+            registrarController.register{value: 0.1 ether}("dblog", msg.sender, 31536000, 0x00, address(0x0), data, false, 0);
         }
 
 
@@ -100,45 +126,48 @@ contract DBlogFactoryScript is Script {
         FileStore store = new FileStore{salt: contractSalt}(address(0x4e59b44847b379578588920cA78FbF26c0B4956C));
         console.log("FileStore: ", vm.toString(address(store)));
 
-        // Storing files of the factory frontend
-        // HTML
-        bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/", vm.envString("FACTORY_FRONTEND_HTML_FILE")));
-        (address factoryHtmlFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_HTML_FILE"), string(fileContents));
-        // CSS
-        fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_CSS_FILE")));
-        (address factoryCssFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_CSS_FILE"), string(fileContents));
-        // JS
-        fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")));
-        (address factoryJsFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_JS_FILE"), string(fileContents));
+        DBlogFactory factory;
+        {
+            // Storing files of the factory frontend
+            // HTML
+            bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/", vm.envString("FACTORY_FRONTEND_HTML_FILE")));
+            (address factoryHtmlFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_HTML_FILE"), string(fileContents));
+            // CSS
+            fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_CSS_FILE")));
+            (address factoryCssFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_CSS_FILE"), string(fileContents));
+            // JS
+            fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")));
+            (address factoryJsFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_JS_FILE"), string(fileContents));
 
-        // Storing files of the blog frontend
-        // HTML
-        fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/", vm.envString("BLOG_FRONTEND_HTML_FILE")));
-        (address blogHtmlFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_HTML_FILE"), string(fileContents));
-        // CSS
-        fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_CSS_FILE")));
-        (address blogCssFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_CSS_FILE"), string(fileContents));
-        // JS
-        fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_JS_FILE")));
-        (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_JS_FILE"), string(fileContents));
+            // Storing files of the blog frontend
+            // HTML
+            fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/", vm.envString("BLOG_FRONTEND_HTML_FILE")));
+            (address blogHtmlFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_HTML_FILE"), string(fileContents));
+            // CSS
+            fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_CSS_FILE")));
+            (address blogCssFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_CSS_FILE"), string(fileContents));
+            // JS
+            fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_JS_FILE")));
+            (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_JS_FILE"), string(fileContents));
 
 
-        // Deploying the blog factory
-        DBlogFactory factory = new DBlogFactory{salt: contractSalt}("eth", "dblog", factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer);
+            // Deploying the blog factory
+            factory = new DBlogFactory{salt: contractSalt}("eth", "dblog", factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer);
 
-        // Printing the web3:// address of the factory frontend
-        string memory web3FactoryFrontendAddress = string.concat("web3://", vm.toString(address(factory.factoryFrontend())));
-        if(block.chainid > 1) {
-            web3FactoryFrontendAddress = string.concat(web3FactoryFrontendAddress, ":", vm.toString(block.chainid));
+            // Printing the web3:// address of the factory frontend
+            string memory web3FactoryFrontendAddress = string.concat("web3://", vm.toString(address(factory.factoryFrontend())));
+            if(block.chainid > 1) {
+                web3FactoryFrontendAddress = string.concat(web3FactoryFrontendAddress, ":", vm.toString(block.chainid));
+            }
+            console.log("web3:// factory frontend: ", web3FactoryFrontendAddress);
+
+            // Printing the web3:// address of the factory contract
+            string memory web3FactoryAddress = string.concat("web3://", vm.toString(address(factory)));
+            if(block.chainid > 1) {
+                web3FactoryAddress = string.concat(web3FactoryAddress, ":", vm.toString(block.chainid));
+            }
+            console.log("web3:// factory: ", web3FactoryAddress);
         }
-        console.log("web3:// factory frontend: ", web3FactoryFrontendAddress);
-
-        // Printing the web3:// address of the factory contract
-        string memory web3FactoryAddress = string.concat("web3://", vm.toString(address(factory)));
-        if(block.chainid > 1) {
-            web3FactoryAddress = string.concat(web3FactoryAddress, ":", vm.toString(block.chainid));
-        }
-        console.log("web3:// factory: ", web3FactoryAddress);
 
         // Adding the main blog
         factory.addBlog{value: 0.01 ether}("DBlog", "A decentralized blog", "dblog");
