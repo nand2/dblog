@@ -26,6 +26,13 @@ contract DBlogFactory {
     string public domain;
     mapping(bytes32 => DBlog) subdomainNameHashToBlog;
 
+    // The owner of the whole Dblog factory will only be able to : 
+    // - Update the factory (web3://dblog.eth) frontend
+    // - Add a new blog frontend version to the blog frontend library
+    // - Set a new blog frontend version as default (but each individual blog can override this)
+    address public owner;
+
+
     /**
      * 
      * @param _topdomain eth
@@ -38,6 +45,8 @@ contract DBlogFactory {
      * @param initialBlogFrontendJsFile A pointer to a ethfs File structure stored with SSTORE2
      */
     constructor(string memory _topdomain, string memory _domain, address initialFactoryFrontendHtmlFile, address initialFactoryFrontendCssFile, address initialFactoryFrontendJsFile, address initialBlogFrontendHtmlFile, address initialBlogFrontendCssFile, address initialBlogFrontendJsFile) {
+        owner = msg.sender;
+
         topdomain = _topdomain;
         domain = _domain;
 
@@ -45,7 +54,7 @@ contract DBlogFactory {
         blogImplementation = new DBlog();
         blogFrontendImplementation = new DBlogFrontend();
 
-        frontendLibrary = new DBlogFrontendLibrary();
+        frontendLibrary = new DBlogFrontendLibrary(this);
         frontendLibrary.addFrontendVersion(initialBlogFrontendHtmlFile, initialBlogFrontendCssFile, initialBlogFrontendJsFile, "Initial version");
     }
 
@@ -61,7 +70,7 @@ contract DBlogFactory {
         DBlog newBlog = DBlog(Clones.clone(address(blogImplementation)));
         DBlogFrontend newBlogFrontend = DBlogFrontend(Clones.clone(address(blogFrontendImplementation)));
 
-        newBlog.initialize(this, newBlogFrontend, subdomain, title, description);
+        newBlog.initialize(this, msg.sender, newBlogFrontend, subdomain, title, description);
         blogs.push(newBlog);
 
         // Subdomain requested?

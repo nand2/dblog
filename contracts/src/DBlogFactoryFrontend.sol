@@ -24,6 +24,12 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
     FrontendVersion[] public frontendVersions;
     uint256 public defaultFrontendIndex;
 
+
+    modifier onlyFactoryOrFactoryOwner() {
+        require(msg.sender == address(blogFactory) || msg.sender == blogFactory.owner(), "Not owner");
+        _;
+    }
+
     constructor(DBlogFactory _blogFactory, address _initialHtmlFile, address _initialCssFile, address _initialJsFile) {
         blogFactory = _blogFactory;
 
@@ -31,12 +37,12 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         addFrontendVersion(_initialHtmlFile, _initialCssFile, _initialJsFile, "Initial version");
     }
 
-    function addFrontendVersion(address _htmlFile, address _cssFile, address _jsFile, string memory _infos) public {
+    function addFrontendVersion(address _htmlFile, address _cssFile, address _jsFile, string memory _infos) public onlyFactoryOrFactoryOwner {
         FrontendVersion memory newFrontend = FrontendVersion(_htmlFile, _cssFile, _jsFile, _infos);
         frontendVersions.push(newFrontend);
     }
 
-    function setDefaultFrontend(uint256 _index) public {
+    function setDefaultFrontend(uint256 _index) public onlyFactoryOrFactoryOwner {
         require(_index < frontendVersions.length, "Index out of bounds");
         defaultFrontendIndex = _index;
     }
@@ -106,25 +112,6 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         else {
             statusCode = 404;
         }
-
-
-        // // /index/[uint]
-        // else if(resource.length >= 1 && resource.length <= 2 && Strings.compare(resource[0], "index")) {
-        //     uint page = 1;
-        //     if(resource.length == 2) {
-        //         page = ToString.stringToUint(resource[1]);
-        //     }
-        //     if(page == 0) {
-        //         statusCode = 404;
-        //     }
-        //     else {
-        //         body = indexHTML(page);
-        //         statusCode = 200;
-        //         headers = new KeyValue[](1);
-        //         headers[0].key = "Content-type";
-        //         headers[0].value = "text/html";
-        //     }
-        // }
     }
 
 }
