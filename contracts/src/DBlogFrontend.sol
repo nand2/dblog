@@ -10,12 +10,39 @@ import { SSTORE2 } from "solady/utils/SSTORE2.sol";
 import { Strings } from "./library/Strings.sol";
 
 contract DBlogFrontend is IDecentralizedApp {
+    // The data of this blog frontend
     DBlog public blog;
 
+    // Blog frontend versions are stored in DBlogFrontendLibrary
+    // By default the frontend version used is chosen by the DblogFactory owner
+    // But you can choose to override it and use a specific version
+    // Useful if you don't want the new default frontend update to be applied to your blog
+    bool useNonDefaultFrontend;
+    uint overridenFrontendIndex;
+
+
+    modifier onlyBlogOwner() {
+        require(msg.sender == blog.owner(), "Not blog owner");
+        _;
+    }
+
     function initialize(DBlog _blog) public {
+        require(address(blog) == address(0), "Already initialized");
+
         blog = _blog;
     }
 
+    function useSpecificBlogFrontend(uint _index) public onlyBlogOwner {
+        require(_index < blog.factory().frontendLibrary().getFrontendVersionCount(), "Index out of bounds");
+        useNonDefaultFrontend = true;
+        overridenFrontendIndex = _index;
+    }
+
+    function useDefaultBlogFrontend() public onlyBlogOwner {
+        useNonDefaultFrontend = false;
+    }
+
+    // Web3:// mode selection
     function resolveMode() external pure returns (bytes32) {
         return "5219";
     }
@@ -23,6 +50,9 @@ contract DBlogFrontend is IDecentralizedApp {
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
         BlogFrontendVersion memory frontend = blog.factory().frontendLibrary().getDefaultFrontend();
+        if(useNonDefaultFrontend) {
+            frontend = blog.factory().frontendLibrary().getFrontendVersion(overridenFrontendIndex);
+        }
 
         // Frontpage or single-page javascript app pages (#/page/1, #/page/2, etc.)
         // At the moment, proper SPA routing in JS with history.pushState() is broken (due 
@@ -81,25 +111,6 @@ contract DBlogFrontend is IDecentralizedApp {
         else {
             statusCode = 404;
         }
-
-
-        // // /index/[uint]
-        // else if(resource.length >= 1 && resource.length <= 2 && Strings.compare(resource[0], "index")) {
-        //     uint page = 1;
-        //     if(resource.length == 2) {
-        //         page = ToString.stringToUint(resource[1]);
-        //     }
-        //     if(page == 0) {
-        //         statusCode = 404;
-        //     }
-        //     else {
-        //         body = indexHTML(page);
-        //         statusCode = 200;
-        //         headers = new KeyValue[](1);
-        //         headers[0].key = "Content-type";
-        //         headers[0].value = "text/html";
-        //     }
-        // }
     }
 
 }

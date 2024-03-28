@@ -23,6 +23,11 @@ contract DBlogFrontendLibrary {
         frontendVersions.push(newFrontend);
     }
 
+    function getFrontendVersion(uint256 _index) public view returns (BlogFrontendVersion memory) {
+        require(_index < frontendVersions.length, "Index out of bounds");
+        return frontendVersions[_index];
+    }
+
     function setDefaultFrontend(uint256 _index) public {
         require(_index < frontendVersions.length, "Index out of bounds");
         defaultFrontendIndex = _index;
@@ -30,5 +35,9 @@ contract DBlogFrontendLibrary {
 
     function getDefaultFrontend() public view returns (BlogFrontendVersion memory) {
         return frontendVersions[defaultFrontendIndex];
+    }
+
+    function getFrontendVersionCount() public view returns (uint256) {
+        return frontendVersions.length;
     }
 }
