@@ -33,6 +33,11 @@ document.querySelector('#app').innerHTML = `
     <div id="blogs">
     </div>
 
+    <div id="blogs-pagination">
+      <button id="previous-page" disabled="disabled">Previous</button>
+      <button id="next-page" disabled="disabled">Next</button>
+    </div>
+
     <div id="create-popup-bg">
       <div id="create-popup">
         <div id="step-1">
@@ -111,10 +116,14 @@ console.log("Fetched parameters : ", data)
 
 // Fetch and display the blogs
 let blogs = []
+let page = 0;
+const blogsPerPage = 9;
 let blogCount = 0
+const previousPageButton = document.querySelector('#previous-page')
+const nextPageButton = document.querySelector('#next-page')
 const fetchAndDisplayBlogs = async () => {
   // Now making a call to the blog factory to fetch the list of blog
-  await fetch(`web3://${blogFactoryAddress}:${chainId}/getBlogInfoList/0/100?returns=((uint,address,address,string,string,string,uint)[])`)
+  await fetch(`web3://${blogFactoryAddress}:${chainId}/getBlogInfoList/${page * blogsPerPage}/${blogsPerPage}?returns=((uint,address,address,string,string,string,uint)[],uint)`)
     .then(response => response.json())
     .then(data => {
       console.log("Fetched blogs : ", data)
@@ -130,6 +139,7 @@ const fetchAndDisplayBlogs = async () => {
           postCount: blog[6]
         }
       })
+      blogCount = parseInt(data[1], 16)
     })
     .catch(error => {
       console.error(error)
@@ -161,6 +171,18 @@ const fetchAndDisplayBlogs = async () => {
     `;
     blogsElement.appendChild(blogElement)
   })
+
+  // Update the navigation buttons
+  previousPageButton.disabled = page === 0
+  nextPageButton.disabled = page * blogsPerPage + blogsPerPage >= blogCount
+}
+previousPageButton.onclick = () => {
+  page--
+  fetchAndDisplayBlogs()
+}
+nextPageButton.onclick = () => {
+  page++
+  fetchAndDisplayBlogs()
 }
 fetchAndDisplayBlogs()
 

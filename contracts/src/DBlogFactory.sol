@@ -50,12 +50,11 @@ contract DBlogFactory {
     }
 
     /**
-     * Get a batch of parameters in a single call
+     * Add a new blog
+     * @param title Title of the blog
+     * @param description Optional
+     * @param subdomain Optional : xxx.blog.eth
      */
-    function getParameters() public view returns (string memory _topdomain, string memory _domain, address _frontend, address _blogImplementation) {
-        return (topdomain, domain, address(factoryFrontend), address(blogImplementation));
-    }
-
     function addBlog(string memory title, string memory description, string memory subdomain) public payable returns(address) {
         require(bytes(title).length > 0, "Title cannot be empty");
 
@@ -85,6 +84,16 @@ contract DBlogFactory {
         return address(newBlog);
     }
 
+    /**
+     * For frontend: Get a batch of parameters in a single call
+     */
+    function getParameters() public view returns (string memory _topdomain, string memory _domain, address _frontend, address _blogImplementation) {
+        return (topdomain, domain, address(factoryFrontend), address(blogImplementation));
+    }
+
+    /**
+     * For frontend: Get the list of blogs
+     */
     struct BlogInfo {
         uint256 id;
         address blogAddress;
@@ -94,13 +103,13 @@ contract DBlogFactory {
         string description;
         uint256 postCount;
     }
-    function getBlogInfoList(uint startIndex, uint limit) public view returns (BlogInfo[] memory blogInfos) {
-        uint256 count = blogs.length;
+    function getBlogInfoList(uint startIndex, uint limit) public view returns (BlogInfo[] memory blogInfos, uint256 blogCount) {
+        uint256 blogsCount = blogs.length;
         uint256 actualLimit = limit;
-        if(startIndex >= count) {
+        if(startIndex >= blogsCount) {
             actualLimit = 0;
-        } else if(startIndex + limit > count) {
-            actualLimit = count - startIndex;
+        } else if(startIndex + limit > blogsCount) {
+            actualLimit = blogsCount - startIndex;
         }
 
         blogInfos = new BlogInfo[](actualLimit);
@@ -117,7 +126,7 @@ contract DBlogFactory {
             });
         }
 
-        return blogInfos;
+        return (blogInfos, blogsCount);
     }
 
     function getBlogAddress(uint256 index) public view returns (address) {
@@ -155,7 +164,7 @@ contract DBlogFactory {
     }
 
     // Handle ENS text records
-    function text(bytes32 node, string memory key) public view returns (string memory) {
+    function text(bytes32 node, string memory key) public pure returns (string memory) {
         return "";
     }
 

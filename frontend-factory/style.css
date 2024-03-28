@@ -110,14 +110,16 @@ button {
   font-weight: 500;
   font-family: inherit;
   background-color: #1a1a1a;
-  cursor: pointer;
   transition: border-color 0.25s;
 }
-button:hover {
+button:not([disabled]) {
+  cursor: pointer;
+}
+button:not([disabled]):hover {
   border-color: #646cff;
 }
-button:focus,
-button:focus-visible {
+button:not([disabled]):focus,
+button:not([disabled]):focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
