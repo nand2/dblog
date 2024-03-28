@@ -154,6 +154,11 @@ contract DBlogFactory {
         revert();
     }
 
+    // Handle ENS text records
+    function text(bytes32 node, string memory key) public view returns (string memory) {
+        return "";
+    }
+
 
     //
     // Handle subdomains
