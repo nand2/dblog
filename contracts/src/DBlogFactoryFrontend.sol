@@ -8,7 +8,7 @@ import { SSTORE2 } from "solady/utils/SSTORE2.sol";
 import { Strings } from "./library/Strings.sol";
 
 contract DBlogFactoryFrontend is IDecentralizedApp {
-    DBlogFactory public immutable blogFactory;
+    DBlogFactory public blogFactory;
 
     // A version of a frontend, containing a single HTML, CSS and JS file.
     struct FrontendVersion {
@@ -30,11 +30,17 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         _;
     }
 
-    constructor(DBlogFactory _blogFactory, address _initialHtmlFile, address _initialCssFile, address _initialJsFile) {
-        blogFactory = _blogFactory;
+    constructor() {}
 
-        // Setup the initial frontend
-        addFrontendVersion(_initialHtmlFile, _initialCssFile, _initialJsFile, "Initial version");
+    // Due to difficulties with verifying source of contracts deployed by contracts, and 
+    // this contract and DBlogFactory pointing to each other, we add the pointer to the blog factory
+    // in this method, after this contract has been created.
+    // Security : This can be only called once. Both pointers are set on DBlogFactory constructor, 
+    // so this method can be open
+    function setBlogFactory(DBlogFactory _blogFactory) public {
+        // We can only set the blog factory once
+        require(address(blogFactory) == address(0), "Already set");
+        blogFactory = _blogFactory;
     }
 
     function addFrontendVersion(address _htmlFile, address _cssFile, address _jsFile, string memory _infos) public onlyFactoryOrFactoryOwner {

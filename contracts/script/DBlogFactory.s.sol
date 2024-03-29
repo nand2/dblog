@@ -3,6 +3,10 @@ pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
 import {DBlogFactory} from "../src/DBlogFactory.sol";
+import {DBlogFactoryFrontend} from "../src/DBlogFactoryFrontend.sol";
+import {DBlogFrontendLibrary} from "../src/DBlogFrontendLibrary.sol";
+import {DBlogFrontend} from "../src/DBlogFrontend.sol";
+import {DBlog} from "../src/DBlog.sol";
 import {FileStore, File} from "ethfs/FileStore.sol";
 import {ENSRegistry} from "ens-contracts/registry/ENSRegistry.sol";
 import {ReverseRegistrar} from "ens-contracts/reverseRegistrar/ReverseRegistrar.sol";
@@ -62,6 +66,7 @@ contract DBlogFactoryScript is Script {
             fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")));
             (address factoryJsFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_JS_FILE"), string(fileContents));
 
+
             // Storing files of the blog frontend
             // HTML
             fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/", vm.envString("BLOG_FRONTEND_HTML_FILE")));
@@ -74,8 +79,25 @@ contract DBlogFactoryScript is Script {
             (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_JS_FILE"), string(fileContents));
 
 
+            // Create the factory frontend
+            DBlogFactoryFrontend factoryFrontend = new DBlogFactoryFrontend();
+
+            // Create the dblog frontend library
+            DBlogFrontendLibrary blogFrontendLibrary = new DBlogFrontendLibrary();
+
+            // Create the blog and blogFrontend implementations
+            DBlog blogImplementation = new DBlog();
+            DBlogFrontend blogFrontendImplementation = new DBlogFrontend();
+
             // Deploying the blog factory
-            factory = new DBlogFactory("eth", domain, factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer);
+            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary);
+
+            // Add factory frontend initial version
+            factoryFrontend.addFrontendVersion(factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, "Initial version");
+
+            // Add frontend library initial version
+            blogFrontendLibrary.addFrontendVersion(blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer, "Initial version");
+
 
             // Printing the web3:// address of the factory frontend
             string memory web3FactoryFrontendAddress = string.concat("web3://", vm.toString(address(factory.factoryFrontend())));

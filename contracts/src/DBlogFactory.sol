@@ -14,7 +14,7 @@ contract DBlogFactory {
     DBlog public immutable blogImplementation;
     DBlogFrontend public immutable blogFrontendImplementation;
 
-    DBlogFrontendLibrary public immutable frontendLibrary;
+    DBlogFrontendLibrary public immutable blogFrontendLibrary;
 
     DBlog[] public blogs;
     event BlogCreated(uint indexed blogId, address blog, address blogFrontend);
@@ -37,25 +37,25 @@ contract DBlogFactory {
      * 
      * @param _topdomain eth
      * @param _domain dblog
-     * @param initialFactoryFrontendHtmlFile A pointer to a ethfs File structure stored with SSTORE2
-     * @param initialFactoryFrontendCssFile A pointer to a ethfs File structure stored with SSTORE2
-     * @param initialFactoryFrontendJsFile A pointer to a ethfs File structure stored with SSTORE2
-     * @param initialBlogFrontendHtmlFile A pointer to a ethfs File structure stored with SSTORE2
-     * @param initialBlogFrontendCssFile A pointer to a ethfs File structure stored with SSTORE2
-     * @param initialBlogFrontendJsFile A pointer to a ethfs File structure stored with SSTORE2
+     * @param _factoryFrontend The frontend of the factory, handling the web3://dblog.eth requests
+     * @param _blogImplementation The implementation of the blog contract, to be cloned
+     * @param _blogFrontendImplementation The implementation of the blog frontend contract, to be cloned
+     * @param _blogFrontendLibrary The library containing the blog frontend versions
      */
-    constructor(string memory _topdomain, string memory _domain, address initialFactoryFrontendHtmlFile, address initialFactoryFrontendCssFile, address initialFactoryFrontendJsFile, address initialBlogFrontendHtmlFile, address initialBlogFrontendCssFile, address initialBlogFrontendJsFile) {
+    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary) {
         owner = msg.sender;
 
         topdomain = _topdomain;
         domain = _domain;
 
-        factoryFrontend = new DBlogFactoryFrontend(this, initialFactoryFrontendHtmlFile, initialFactoryFrontendCssFile, initialFactoryFrontendJsFile);
-        blogImplementation = new DBlog();
-        blogFrontendImplementation = new DBlogFrontend();
+        factoryFrontend = _factoryFrontend;
+        blogImplementation = _blogImplementation;
+        blogFrontendImplementation = _blogFrontendImplementation;
+        blogFrontendLibrary = _blogFrontendLibrary;
 
-        frontendLibrary = new DBlogFrontendLibrary(this);
-        frontendLibrary.addFrontendVersion(initialBlogFrontendHtmlFile, initialBlogFrontendCssFile, initialBlogFrontendJsFile, "Initial version");
+        // Adding some backlinks
+        factoryFrontend.setBlogFactory(this);
+        blogFrontendLibrary.setBlogFactory(this);
     }
 
     /**

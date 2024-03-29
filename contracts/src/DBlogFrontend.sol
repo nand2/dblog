@@ -33,7 +33,7 @@ contract DBlogFrontend is IDecentralizedApp {
     }
 
     function useSpecificBlogFrontend(uint _index) public onlyBlogOwner {
-        require(_index < blog.factory().frontendLibrary().getFrontendVersionCount(), "Index out of bounds");
+        require(_index < blog.factory().blogFrontendLibrary().getFrontendVersionCount(), "Index out of bounds");
         useNonDefaultFrontend = true;
         overridenFrontendIndex = _index;
     }
@@ -49,9 +49,9 @@ contract DBlogFrontend is IDecentralizedApp {
 
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
-        BlogFrontendVersion memory frontend = blog.factory().frontendLibrary().getDefaultFrontend();
+        BlogFrontendVersion memory frontend = blog.factory().blogFrontendLibrary().getDefaultFrontend();
         if(useNonDefaultFrontend) {
-            frontend = blog.factory().frontendLibrary().getFrontendVersion(overridenFrontendIndex);
+            frontend = blog.factory().blogFrontendLibrary().getFrontendVersion(overridenFrontendIndex);
         }
 
         // Frontpage or single-page javascript app pages (#/page/1, #/page/2, etc.)

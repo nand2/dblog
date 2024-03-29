@@ -16,7 +16,7 @@ struct BlogFrontendVersion {
 }
 
 contract DBlogFrontendLibrary {
-    DBlogFactory public immutable blogFactory;
+    DBlogFactory public blogFactory;
 
     BlogFrontendVersion[] public frontendVersions;
     uint256 public defaultFrontendIndex;
@@ -27,7 +27,16 @@ contract DBlogFrontendLibrary {
         _;
     }
 
-    constructor(DBlogFactory _blogFactory) {
+    constructor() {}
+
+    // Due to difficulties with verifying source of contracts deployed by contracts, and 
+    // this contract and DBlogFactory pointing to each other, we add the pointer to the blog factory
+    // in this method, after this contract has been created.
+    // Security : This can be only called once. Both pointers are set on DBlogFactory constructor, 
+    // so this method can be open
+    function setBlogFactory(DBlogFactory _blogFactory) public {
+        // We can only set the blog factory once
+        require(address(blogFactory) == address(0), "Already set");
         blogFactory = _blogFactory;
     }
 
