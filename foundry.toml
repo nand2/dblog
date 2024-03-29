@@ -8,6 +8,8 @@ script = "contracts/script"
 cache_path = "contracts/cache"
 remappings = ["solady/=contracts/lib/ethfs/packages/contracts/lib/solady/src/", "ethfs/=contracts/lib/ethfs/packages/contracts/src/", "ens-contracts/=contracts/lib/ens-contracts/contracts/", "@openzeppelin/contracts/=contracts/lib/openzeppelin-contracts/contracts/", "@ensdomains/buffer/=contracts/lib/buffer/"]
 
+solc = "0.8.24"
+
 fs_permissions = [{ path = "dist/frontend-factory/", access = "read" }, { path = "dist/frontend-blog/", access = "read" }]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

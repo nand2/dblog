@@ -20,7 +20,7 @@ import {ExtendedDNSResolver} from "ens-contracts/resolvers/profiles/ExtendedDNSR
 import {PublicResolver} from "ens-contracts/resolvers/PublicResolver.sol";
 
 contract DBlogFactoryScript is Script {
-    enum TargetChain{ LOCAL, SEPOLIA, MAINNET }
+    enum TargetChain{ LOCAL, SEPOLIA, HOLESKY, MAINNET }
 
     function setUp() public {}
 
@@ -32,6 +32,8 @@ contract DBlogFactoryScript is Script {
             targetChain = TargetChain.LOCAL;
         } else if(keccak256(abi.encodePacked(targetChainString)) == keccak256(abi.encodePacked("sepolia"))) {
             targetChain = TargetChain.SEPOLIA;
+        } else if(keccak256(abi.encodePacked(targetChainString)) == keccak256(abi.encodePacked("holesky"))) {
+            targetChain = TargetChain.HOLESKY;
         } else if(keccak256(abi.encodePacked(targetChainString)) == keccak256(abi.encodePacked("mainnet"))) {
             targetChain = TargetChain.MAINNET;
         }
@@ -228,6 +230,11 @@ contract DBlogFactoryScript is Script {
             nameWrapper = NameWrapper(0x0635513f179D50A207757E05759CbD106d7dFcE8);
             registrarController = ETHRegistrarController(0xFED6a969AaA60E4961FCD3EBF1A2e8913ac65B72);
         }
+        // Sepolia: Get ENS holesky addresses
+        else if(targetChain == TargetChain.HOLESKY) {
+            nameWrapper = NameWrapper(0xab50971078225D365994dc1Edcb9b7FD72Bb4862);
+            registrarController = ETHRegistrarController(0x179Be112b24Ad4cFC392eF8924DfA08C20Ad8583);
+        }
         // Mainnet: Get ENS mainnet addresses
         else if(targetChain == TargetChain.MAINNET) {
             nameWrapper = NameWrapper(0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401);
@@ -262,6 +269,10 @@ contract DBlogFactoryScript is Script {
         }
         // Sepolia : Get existing value
         else if(targetChain == TargetChain.SEPOLIA) {
+            store = FileStore(0xFe1411d6864592549AdE050215482e4385dFa0FB);
+        }
+        // Holesky : Get existing value
+        else if(targetChain == TargetChain.HOLESKY) {
             store = FileStore(0xFe1411d6864592549AdE050215482e4385dFa0FB);
         }
         // Mainnet : Get existing value

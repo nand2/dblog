@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Target chain: If empty, default to "local"
-# Can be: local, sepolia, mainnet
+# Can be: local, sepolia, holesky, mainnet
 TARGET_CHAIN=${1:-local}
 # Domain name: If empty, default to "dblog"
 DOMAIN=${2:-dblog}
@@ -95,6 +95,9 @@ if [ "$TARGET_CHAIN" == "local" ]; then
 elif [ "$TARGET_CHAIN" == "sepolia" ]; then
   # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
   FORGE_SCRIPT_OPTIONS="--private-key ${PRIVATE_KEY_SEPOLIA} --rpc-url https://ethereum-sepolia-rpc.publicnode.com --broadcast"
+elif [ "$TARGET_CHAIN" == "holesky" ]; then
+  # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
+  FORGE_SCRIPT_OPTIONS="--private-key ${PRIVATE_KEY_HOLESKY} --rpc-url https://ethereum-holesky-rpc.publicnode.com --broadcast --verify"
 fi
 exec 5>&1
 OUTPUT="$(FACTORY_FRONTEND_HTML_FILE=$FACTORY_FRONTEND_COMPRESSED_HTML_FILE \
