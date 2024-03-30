@@ -47,7 +47,7 @@ contract DBlogFactoryScript is Script {
         vm.startBroadcast();
 
         // Get ENS nameWrapper (will deploy ENS and register domain name if necessary)
-        NameWrapper nameWrapper = registerDomainAndGetEnsNameWrapper(targetChain, domain);
+        (NameWrapper nameWrapper, BaseRegistrarImplementation baseRegistrar) = registerDomainAndGetEnsContracts(targetChain, domain);
 
         // Get ETHFS filestore
         FileStore store = getFileStore(targetChain);
@@ -55,30 +55,6 @@ contract DBlogFactoryScript is Script {
 
         DBlogFactory factory;
         {
-            // Storing files of the factory frontend
-            // HTML
-            bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/", vm.envString("FACTORY_FRONTEND_HTML_FILE")));
-            (address factoryHtmlFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_HTML_FILE"), string(fileContents));
-            // CSS
-            fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_CSS_FILE")));
-            (address factoryCssFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_CSS_FILE"), string(fileContents));
-            // JS
-            fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")));
-            (address factoryJsFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_JS_FILE"), string(fileContents));
-
-
-            // Storing files of the blog frontend
-            // HTML
-            fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/", vm.envString("BLOG_FRONTEND_HTML_FILE")));
-            (address blogHtmlFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_HTML_FILE"), string(fileContents));
-            // CSS
-            fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_CSS_FILE")));
-            (address blogCssFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_CSS_FILE"), string(fileContents));
-            // JS
-            fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_JS_FILE")));
-            (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_JS_FILE"), string(fileContents));
-
-
             // Create the factory frontend
             DBlogFactoryFrontend factoryFrontend = new DBlogFactoryFrontend();
 
@@ -90,14 +66,39 @@ contract DBlogFactoryScript is Script {
             DBlogFrontend blogFrontendImplementation = new DBlogFrontend();
 
             // Deploying the blog factory
-            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary);
+            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary, nameWrapper);
 
             // Add factory frontend initial version
-            factoryFrontend.addFrontendVersion(factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, "Initial version");
+            {
+                // Storing files of the factory frontend
+                // HTML
+                bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/", vm.envString("FACTORY_FRONTEND_HTML_FILE")));
+                (address factoryHtmlFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_HTML_FILE"), string(fileContents));
+                // CSS
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_CSS_FILE")));
+                (address factoryCssFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_CSS_FILE"), string(fileContents));
+                // JS
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")));
+                (address factoryJsFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_JS_FILE"), string(fileContents));
+
+                factoryFrontend.addFrontendVersion(factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, "Initial version");
+            }
 
             // Add frontend library initial version
-            blogFrontendLibrary.addFrontendVersion(blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer, "Initial version");
+            {
+                // Storing files of the blog frontend
+                // HTML
+                bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/", vm.envString("BLOG_FRONTEND_HTML_FILE")));
+                (address blogHtmlFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_HTML_FILE"), string(fileContents));
+                // CSS
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_CSS_FILE")));
+                (address blogCssFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_CSS_FILE"), string(fileContents));
+                // JS
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_JS_FILE")));
+                (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_JS_FILE"), string(fileContents));
 
+                blogFrontendLibrary.addFrontendVersion(blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer, "Initial version");
+            }
 
             // Printing the web3:// address of the factory frontend
             string memory web3FactoryFrontendAddress = string.concat("web3://", vm.toString(address(factory.factoryFrontend())));
@@ -114,6 +115,25 @@ contract DBlogFactoryScript is Script {
             console.log("web3:// factory: ", web3FactoryAddress);
         }
 
+        // Set the ENS resolver of dblog.eth to the contract
+        {
+            bytes32 topdomainNamehash = keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("eth"))));
+            bytes32 dblogDomainNamehash = keccak256(abi.encodePacked(topdomainNamehash, keccak256(abi.encodePacked(domain))));
+            nameWrapper.setResolver(dblogDomainNamehash, address(factory));
+        }
+
+        // Transferring dblog.eth to the factory
+        {
+            bytes32 topdomainNamehash = keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("eth"))));
+            bytes32 dblogDomainNamehash = keccak256(abi.encodePacked(topdomainNamehash, keccak256(abi.encodePacked(domain))));
+            nameWrapper.safeTransferFrom(msg.sender, address(factory), uint(dblogDomainNamehash), 1, "");
+            // Testnet: Temporary testing (double checking we can fetch back the domain)
+            if(targetChain != TargetChain.MAINNET) {
+                factory.testnetSendBackDomain();
+                nameWrapper.safeTransferFrom(msg.sender, address(factory), uint(dblogDomainNamehash), 1, "");
+            }
+        }
+
         // Adding the main blog
         factory.addBlog{value: 0.01 ether}("DBlog", "Decentralized blogs", domain);
         string memory web3BlogFrontendAddress = string.concat("web3://", vm.toString(address(factory.blogs(0).frontend())));
@@ -128,40 +148,20 @@ contract DBlogFactoryScript is Script {
         }
         console.log("web3://dblog.dblog.eth: ", web3BlogAddress);
 
-        // Set the ENS resolver of dblog.eth to the contract
-        {
-            bytes32 topdomainNamehash = keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("eth"))));
-            bytes32 dblogDomainNamehash = keccak256(abi.encodePacked(topdomainNamehash, keccak256(abi.encodePacked(domain))));
-            nameWrapper.setResolver(dblogDomainNamehash, address(factory));
-
-            // // Resolve a few domains
-            // // Get resolver of dblog.eth
-            // address dblogEthResolver = registry.resolver(dblogDomainNamehash);
-            // console.log("Resolver of dblog.eth: ", vm.toString(dblogEthResolver));
-            // // Resolve dblog.eth
-            // address dblogEthAddress = PublicResolver(dblogEthResolver).addr(dblogDomainNamehash);
-            // console.log("Address of dblog.eth: ", vm.toString(dblogEthAddress));
-            // // Resolve dblog.dblog.eth
-            // address dblogDblogEthAddress = PublicResolver(dblogEthResolver).addr(keccak256(abi.encodePacked(dblogDomainNamehash, keccak256(abi.encodePacked("dblog")))));
-            // console.log("Address of dblog.dblog.eth: ", vm.toString(dblogDblogEthAddress));
-            // // Resolve random.dblog.eth
-            // address randomDblogEthAddress = PublicResolver(dblogEthResolver).addr(keccak256(abi.encodePacked(dblogDomainNamehash, keccak256(abi.encodePacked("random")))));
-            // console.log("Address of random.dblog.eth: ", vm.toString(randomDblogEthAddress));
-        }
-
         vm.stopBroadcast();
     }
 
 
     /**
-     * Optionally register domain, get ENS name wrapper
+     * Optionally register domain, get some ENS contracts
      * Target chain:
      * - local: Deploy ENS, register domain, returns the name wrapper
      * - sepolia : Register test domain, return the name wrapper
      * - mainnet : Return the name wrapper
      */
-    function registerDomainAndGetEnsNameWrapper(TargetChain targetChain, string memory domain) public returns (NameWrapper) {
+    function registerDomainAndGetEnsContracts(TargetChain targetChain, string memory domain) public returns (NameWrapper, BaseRegistrarImplementation) {
         NameWrapper nameWrapper;
+        BaseRegistrarImplementation registrar;
         ETHRegistrarController registrarController;
 
         // Local chain : deploy ENS
@@ -189,7 +189,7 @@ contract DBlogFactoryScript is Script {
             registry.setSubnodeOwner(keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("reverse")))), keccak256(abi.encodePacked("addr")), address(reverseRegistrar));
             
             // Base registrar implementation
-            BaseRegistrarImplementation registrar = new BaseRegistrarImplementation(registry, topdomainNamehash);
+            registrar = new BaseRegistrarImplementation(registry, topdomainNamehash);
             root.setSubnodeOwner(keccak256(abi.encodePacked("eth")), address(registrar));
             console.log("Base registrar: ", vm.toString(address(registrar)));
             
@@ -250,16 +250,19 @@ contract DBlogFactoryScript is Script {
         // Sepolia: Get ENS sepolia addresses
         else if(targetChain == TargetChain.SEPOLIA) {
             nameWrapper = NameWrapper(0x0635513f179D50A207757E05759CbD106d7dFcE8);
+            registrar = BaseRegistrarImplementation(0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85);
             registrarController = ETHRegistrarController(0xFED6a969AaA60E4961FCD3EBF1A2e8913ac65B72);
         }
         // Sepolia: Get ENS holesky addresses
         else if(targetChain == TargetChain.HOLESKY) {
             nameWrapper = NameWrapper(0xab50971078225D365994dc1Edcb9b7FD72Bb4862);
+            registrar = BaseRegistrarImplementation(0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85);
             registrarController = ETHRegistrarController(0x179Be112b24Ad4cFC392eF8924DfA08C20Ad8583);
         }
         // Mainnet: Get ENS mainnet addresses
         else if(targetChain == TargetChain.MAINNET) {
             nameWrapper = NameWrapper(0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401);
+            registrar = BaseRegistrarImplementation(0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85);
             registrarController = ETHRegistrarController(0x253553366Da8546fC250F225fe3d25d0C782303b);
         }
 
@@ -272,7 +275,7 @@ contract DBlogFactoryScript is Script {
             registrarController.register{value: 0.05 ether}(domain, msg.sender, 31536000, 0x00, address(0x0), data, false, 0);
         }
 
-        return nameWrapper;
+        return (nameWrapper, registrar);
     }
 
     /**

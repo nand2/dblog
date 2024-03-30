@@ -22,6 +22,25 @@ cd ..
 # Load .env file
 # PRIVATE_KEY must be defined
 source .env
+# Determine the private key to use
+PRIVKEY=
+if [ "$TARGET_CHAIN" == "local" ]; then
+  PRIVKEY=$PRIVATE_KEY_LOCAL
+elif [ "$TARGET_CHAIN" == "sepolia" ]; then
+  PRIVKEY=$PRIVATE_KEY_SEPOLIA
+elif [ "$TARGET_CHAIN" == "holesky" ]; then
+  PRIVKEY=$PRIVATE_KEY_HOLESKY
+fi
+# Determine the RPC URL to use
+RPC_URL=
+if [ "$TARGET_CHAIN" == "local" ]; then
+  RPC_URL=http://127.0.0.1:8545
+elif [ "$TARGET_CHAIN" == "sepolia" ]; then
+  RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+elif [ "$TARGET_CHAIN" == "holesky" ]; then
+  RPC_URL=https://ethereum-holesky-rpc.publicnode.com
+fi
+
 
 # Timestamp
 TIMESTAMP=$(date +%s)
@@ -71,10 +90,20 @@ BLOG_FRONTEND_COMPRESSED_JS_FILE=${DOMAIN}-${TIMESTAMP}-${BLOG_FRONTEND_JS_FILE}
 gzip -c frontend-blog/dist/assets/${BLOG_FRONTEND_JS_FILE} > dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_JS_FILE}
 
 
+# Testnet : get back the domain we sent to DBlogFactory
+if [ "$TARGET_CHAIN" != "mainnet" ] && [ "$TARGET_CHAIN" != "local" ]; then
+  echo ""
+  echo "Fetching back domain ..."
+
+  DBLOGFACTORY_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/17000/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFactory")][0].contractAddress')
+  echo $DBLOGFACTORY_ADDRESS
+  cast send --private-key ${PRIVKEY} --rpc-url ${RPC_URL}  $DBLOGFACTORY_ADDRESS "testnetSendBackDomain()"
+fi
+
+
 # Launch the DBlogFactoryScript forge script
 echo ""
 echo "Deploying... "
-
 
 # Local target chain: Kill and restart anvil
 if [ "$TARGET_CHAIN" == "local" ]; then
@@ -91,13 +120,13 @@ fi
 FORGE_SCRIPT_OPTIONS=
 if [ "$TARGET_CHAIN" == "local" ]; then
   # 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
-  FORGE_SCRIPT_OPTIONS="--private-key ${PRIVATE_KEY_LOCAL} --rpc-url http://127.0.0.1:8545 --broadcast"
+  FORGE_SCRIPT_OPTIONS="--broadcast"
 elif [ "$TARGET_CHAIN" == "sepolia" ]; then
   # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
-  FORGE_SCRIPT_OPTIONS="--private-key ${PRIVATE_KEY_SEPOLIA} --rpc-url https://ethereum-sepolia-rpc.publicnode.com --broadcast"
+  FORGE_SCRIPT_OPTIONS="--broadcast"
 elif [ "$TARGET_CHAIN" == "holesky" ]; then
   # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
-  FORGE_SCRIPT_OPTIONS="--private-key ${PRIVATE_KEY_HOLESKY} --rpc-url https://ethereum-holesky-rpc.publicnode.com --broadcast --verify"
+  FORGE_SCRIPT_OPTIONS="--broadcast --verify"
 fi
 exec 5>&1
 OUTPUT="$(FACTORY_FRONTEND_HTML_FILE=$FACTORY_FRONTEND_COMPRESSED_HTML_FILE \
@@ -108,7 +137,7 @@ OUTPUT="$(FACTORY_FRONTEND_HTML_FILE=$FACTORY_FRONTEND_COMPRESSED_HTML_FILE \
   BLOG_FRONTEND_JS_FILE=$BLOG_FRONTEND_COMPRESSED_JS_FILE \
   TARGET_CHAIN=$TARGET_CHAIN \
   DOMAIN=$DOMAIN \
-  forge script DBlogFactoryScript $FORGE_SCRIPT_OPTIONS | tee >(cat - >&5))"
+  forge script DBlogFactoryScript --private-key ${PRIVKEY} --rpc-url ${RPC_URL}  $FORGE_SCRIPT_OPTIONS | tee >(cat - >&5))"
 
 
 # Write again at the end the web3:// address

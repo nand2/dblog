@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import {NameWrapper} from "ens-contracts/wrapper/NameWrapper.sol";
 
 import "./DBlogFactoryFrontend.sol";
 import "./DBlog.sol";
@@ -19,8 +20,12 @@ contract DBlogFactory {
     DBlog[] public blogs;
     event BlogCreated(uint indexed blogId, address blog, address blogFrontend);
 
+    NameWrapper public ensNameWrapper;
     // EIP-137 ENS resolver events
     event AddrChanged(bytes32 indexed node, address a);
+    // EIP-2304 ENS resolver events
+    event AddressChanged(bytes32 indexed node, uint coinType, bytes newAddress);
+    uint constant private COIN_TYPE_ETH = 60;
 
     string public topdomain;
     string public domain;
@@ -33,6 +38,12 @@ contract DBlogFactory {
     address public owner;
 
 
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+
+
     /**
      * 
      * @param _topdomain eth
@@ -42,7 +53,7 @@ contract DBlogFactory {
      * @param _blogFrontendImplementation The implementation of the blog frontend contract, to be cloned
      * @param _blogFrontendLibrary The library containing the blog frontend versions
      */
-    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary) {
+    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary, NameWrapper _ensNameWrapper) {
         owner = msg.sender;
 
         topdomain = _topdomain;
@@ -56,6 +67,8 @@ contract DBlogFactory {
         // Adding some backlinks
         factoryFrontend.setBlogFactory(this);
         blogFrontendLibrary.setBlogFactory(this);
+
+        ensNameWrapper = _ensNameWrapper;
     }
 
     /**
@@ -82,10 +95,19 @@ contract DBlogFactory {
             (bool isValidAndAvailable, string memory reason) = isSubdomainValidAndAvailable(subdomain);
             require(isValidAndAvailable, reason);
 
+            // Adding the namehash -> blog mapping for our custom resolver
             bytes32 subdomainNameHash = computeSubdomainNameHash(subdomain);
             subdomainNameHashToBlog[subdomainNameHash] = newBlog;
+
+            // ENS : Register the subdomain
+            // For more gas efficiency, we could have implemented the ENSIP-10 wildcard resolution
+            // but we would need to first update the web3:// lib ecosystem to use ENSIP-10 resolution
+            ensNameWrapper.setSubnodeRecord(computeSubdomainNameHash(""), subdomain, address(this), address(this), 0, 0, 0);
+
             // EIP-137 ENS resolver event
             emit AddrChanged(subdomainNameHash, address(newBlogFrontend));
+            // EIP-2304 ENS resolver event
+            emit AddressChanged(subdomainNameHash, COIN_TYPE_ETH, abi.encodePacked(address(newBlogFrontend)));
         }
 
         emit BlogCreated(blogs.length - 1, address(newBlog), address(newBlogFrontend));
@@ -150,9 +172,17 @@ contract DBlogFactory {
 
 
     ///
-    // Implementation of EIP-137 ENS resolver
+    // ENS : Custom resolver
     //
 
+    function supportsInterface(bytes4 interfaceID) public pure returns (bool) {
+        return interfaceID == 0x01ffc9a7 || 
+            interfaceID == 0x3b3b57de || // ENS EIP-137 addr(bytes32)
+            interfaceID == 0xf1cb7e06 || // ENS EIP-2304 addr(bytes32, uint256)
+            interfaceID == 0x59d1d43c; // ENS EIP-634 text()
+    }
+
+    // EIP-137 : Addr()
     function addr(bytes32 nameHash) public view returns (address) {
         if(nameHash == computeSubdomainNameHash("")) {
             return address(factoryFrontend);
@@ -163,18 +193,28 @@ contract DBlogFactory {
         return address(subdomainNameHashToBlog[nameHash].frontend());
     }
 
-    function supportsInterface(bytes4 interfaceID) public pure returns (bool) {
-        return interfaceID == 0x3b3b57de || interfaceID == 0x01ffc9a7;
-    }
-     
     // EIP-137 : Resolvers MUST specify a fallback function that throws. Not sure why.
     fallback() external {
         revert();
     }
+    
+    // EIP-2304 : addr()
+    function addr(bytes32 node, uint coinType) public view returns(bytes memory) {
+        if(coinType != COIN_TYPE_ETH) {
+            return "";
+        }
 
-    // Handle ENS text records
+        return abi.encodePacked(addr(node));
+    }
+
+    // EIP-634 : text()
     function text(bytes32 node, string memory key) public pure returns (string memory) {
         return "";
+    }
+
+    function testnetSendBackDomain() public onlyOwner {
+        require(block.chainid != 1, "Only testnet");
+        ensNameWrapper.safeTransferFrom(address(this), owner, uint(computeSubdomainNameHash("")), 1, "");
     }
 
 
@@ -242,5 +282,16 @@ contract DBlogFactory {
         }
 		
         return keccak256(abi.encodePacked(domainNamehash, keccak256(abi.encodePacked(subdomain))));
+    }
+
+    /**
+     * On suddomain registration, we receive an ERC1155 token
+     */
+    function onERC1155Received(address _operator, address _from, uint256 _id, uint256 _value, bytes calldata _data) external returns(bytes4) {
+        return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
+    }
+
+    function onERC1155BatchReceived(address _operator, address _from, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external returns(bytes4) {
+        return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
     }
 }
