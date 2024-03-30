@@ -22,6 +22,7 @@ import {ETHRegistrarController} from "ens-contracts/ethregistrar/ETHRegistrarCon
 import {OwnedResolver} from "ens-contracts/resolvers/OwnedResolver.sol";
 import {ExtendedDNSResolver} from "ens-contracts/resolvers/profiles/ExtendedDNSResolver.sol";
 import {PublicResolver} from "ens-contracts/resolvers/PublicResolver.sol";
+import {IPriceOracle} from "ens-contracts/ethregistrar/IPriceOracle.sol";
 
 contract DBlogFactoryScript is Script {
     enum TargetChain{ LOCAL, SEPOLIA, HOLESKY, MAINNET }
@@ -47,7 +48,7 @@ contract DBlogFactoryScript is Script {
         vm.startBroadcast();
 
         // Get ENS nameWrapper (will deploy ENS and register domain name if necessary)
-        (NameWrapper nameWrapper, BaseRegistrarImplementation baseRegistrar) = registerDomainAndGetEnsContracts(targetChain, domain);
+        (NameWrapper nameWrapper, BaseRegistrarImplementation baseRegistrar, ETHRegistrarController ethRegistrarController) = registerDomainAndGetEnsContracts(targetChain, domain);
 
         // Get ETHFS filestore
         FileStore store = getFileStore(targetChain);
@@ -66,7 +67,7 @@ contract DBlogFactoryScript is Script {
             DBlogFrontend blogFrontendImplementation = new DBlogFrontend();
 
             // Deploying the blog factory
-            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary, nameWrapper);
+            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary, nameWrapper, ethRegistrarController, baseRegistrar);
 
             // Add factory frontend initial version
             {
@@ -126,6 +127,7 @@ contract DBlogFactoryScript is Script {
         {
             bytes32 topdomainNamehash = keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("eth"))));
             bytes32 dblogDomainNamehash = keccak256(abi.encodePacked(topdomainNamehash, keccak256(abi.encodePacked(domain))));
+
             nameWrapper.safeTransferFrom(msg.sender, address(factory), uint(dblogDomainNamehash), 1, "");
             // Testnet: Temporary testing (double checking we can fetch back the domain)
             if(targetChain != TargetChain.MAINNET) {
@@ -159,7 +161,7 @@ contract DBlogFactoryScript is Script {
      * - sepolia : Register test domain, return the name wrapper
      * - mainnet : Return the name wrapper
      */
-    function registerDomainAndGetEnsContracts(TargetChain targetChain, string memory domain) public returns (NameWrapper, BaseRegistrarImplementation) {
+    function registerDomainAndGetEnsContracts(TargetChain targetChain, string memory domain) public returns (NameWrapper, BaseRegistrarImplementation, ETHRegistrarController) {
         NameWrapper nameWrapper;
         BaseRegistrarImplementation registrar;
         ETHRegistrarController registrarController;
@@ -270,12 +272,12 @@ contract DBlogFactoryScript is Script {
         // Local : Register dblog.eth
         if(targetChain == TargetChain.LOCAL) {
             bytes[] memory data = new bytes[](0);
-            bytes32 commitment = registrarController.makeCommitment(domain, msg.sender, 31536000, 0x00, address(0x0), data, false, 0);
+            bytes32 commitment = registrarController.makeCommitment(domain, msg.sender, 365 * 24 * 3600, 0x00, address(0x0), data, false, 0);
             registrarController.commit(commitment);
-            registrarController.register{value: 0.05 ether}(domain, msg.sender, 31536000, 0x00, address(0x0), data, false, 0);
+            registrarController.register{value: 0.05 ether}(domain, msg.sender, 365 * 24 * 3600, 0x00, address(0x0), data, false, 0);
         }
 
-        return (nameWrapper, registrar);
+        return (nameWrapper, registrar, registrarController);
     }
 
     /**

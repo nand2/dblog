@@ -3,6 +3,9 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import {NameWrapper} from "ens-contracts/wrapper/NameWrapper.sol";
+import {ETHRegistrarController} from "ens-contracts/ethregistrar/ETHRegistrarController.sol";
+import {BaseRegistrarImplementation} from "ens-contracts/ethregistrar/BaseRegistrarImplementation.sol";
+import {IPriceOracle} from "ens-contracts/ethregistrar/IPriceOracle.sol";
 
 import "./DBlogFactoryFrontend.sol";
 import "./DBlog.sol";
@@ -21,6 +24,9 @@ contract DBlogFactory {
     event BlogCreated(uint indexed blogId, address blog, address blogFrontend);
 
     NameWrapper public ensNameWrapper;
+    ETHRegistrarController public ensEthRegistrarController;
+    BaseRegistrarImplementation public ensBaseRegistrar;
+
     // EIP-137 ENS resolver events
     event AddrChanged(bytes32 indexed node, address a);
     // EIP-2304 ENS resolver events
@@ -53,7 +59,7 @@ contract DBlogFactory {
      * @param _blogFrontendImplementation The implementation of the blog frontend contract, to be cloned
      * @param _blogFrontendLibrary The library containing the blog frontend versions
      */
-    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary, NameWrapper _ensNameWrapper) {
+    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary, NameWrapper _ensNameWrapper, ETHRegistrarController __ensEthRegistrarController, BaseRegistrarImplementation _ensBaseRegistrar) {
         owner = msg.sender;
 
         topdomain = _topdomain;
@@ -69,6 +75,8 @@ contract DBlogFactory {
         blogFrontendLibrary.setBlogFactory(this);
 
         ensNameWrapper = _ensNameWrapper;
+        ensEthRegistrarController = __ensEthRegistrarController;
+        ensBaseRegistrar = _ensBaseRegistrar;
     }
 
     /**
@@ -171,6 +179,71 @@ contract DBlogFactory {
     }
 
 
+    //
+    // ENS : handling of dblog.eth
+    //
+
+    // Collected funds by the sale of subdomains have 2 roles : 
+    // - Fund the renewal of the dblog.eth domain of the next 100 years
+    // - Any overflow money go to the Protocol Guild
+    //
+    // -> Anyone can trigger this
+    // -> Deployer get nothing!
+    function deployFunds() public {
+        uint256 domainExpiry = ensBaseRegistrar.nameExpires(uint(keccak256(bytes(domain))));
+        uint256 domainYearsFunded = 0;
+        if(domainExpiry > block.timestamp) {
+            domainYearsFunded = (domainExpiry - block.timestamp) / (365 * 24 * 3600);
+        }
+        uint256 totalYearsToRenew = 100 - domainYearsFunded;
+        // We will renew by chunks of 5 years, to save gas
+        totalYearsToRenew = (totalYearsToRenew / 5) * 5;
+
+        // Determine how long we can renew
+        uint256 yearsToRenew = totalYearsToRenew;
+        IPriceOracle.Price memory ensRenewalPrice;
+        for(;yearsToRenew > 0; yearsToRenew -= 5) {
+            ensRenewalPrice = ensEthRegistrarController.rentPrice(domain, yearsToRenew * 365 * 24 * 3600);
+            if(ensRenewalPrice.base < address(this).balance) {
+                break;
+            }
+        }
+
+        // Renew the domain
+        if(yearsToRenew > 0) {
+            ensEthRegistrarController.renew{value: ensRenewalPrice.base}(domain, yearsToRenew * 365 * 24 * 3600);
+        }
+
+        // If years were to be renewed, but we could not renew all : 
+        // We don't have enough money left, we stop
+        if(totalYearsToRenew > 0 && yearsToRenew != totalYearsToRenew) {
+            return;
+        }
+
+        // Send all the remaining money to the Protocol guild
+        if(address(this).balance > 0) {
+            // Donations going to Ethereum protocol contributors via the Protocol guild
+            // https://twitter.com/StatefulWorks/status/1477006979704967169
+            // https://stateful.mirror.xyz/mEDvFXGCKdDhR-N320KRtsq60Y2OPk8rHcHBCFVryXY
+            // https://protocol-guild.readthedocs.io/en/latest/
+            address protocolGuildAddress = 0xF29Ff96aaEa6C9A1fBa851f74737f3c069d4f1a9;
+            payable(protocolGuildAddress).transfer(address(this).balance);
+        }
+    }
+
+    // If no more sales, and blog owners want to extend the renewal of dblog.eth, they can
+    // fund the contract then call deployFunds()
+    function fundContract() public payable {
+        // Thanks!
+    }
+
+    // Testnet only : Give back the domain so that we can reuse it for another test
+    function testnetSendBackDomain() public onlyOwner {
+        require(block.chainid != 1, "Only testnet");
+        ensNameWrapper.safeTransferFrom(address(this), owner, uint(computeSubdomainNameHash("")), 1, "");
+    }
+
+
     ///
     // ENS : Custom resolver
     //
@@ -210,11 +283,6 @@ contract DBlogFactory {
     // EIP-634 : text()
     function text(bytes32 node, string memory key) public pure returns (string memory) {
         return "";
-    }
-
-    function testnetSendBackDomain() public onlyOwner {
-        require(block.chainid != 1, "Only testnet");
-        ensNameWrapper.safeTransferFrom(address(this), owner, uint(computeSubdomainNameHash("")), 1, "");
     }
 
 
