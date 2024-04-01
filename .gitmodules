@@ -13,3 +13,6 @@
 [submodule "contracts/lib/buffer"]
 	path = contracts/lib/buffer
 	url = https://github.com/ensdomains/buffer
+[submodule "contracts/lib/storage-contracts-v1"]
+	path = contracts/lib/storage-contracts-v1
+	url = https://github.com/ethstorage/storage-contracts-v1
