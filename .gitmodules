@@ -16,3 +16,6 @@
 [submodule "contracts/lib/storage-contracts-v1"]
 	path = contracts/lib/storage-contracts-v1
 	url = https://github.com/ethstorage/storage-contracts-v1
+[submodule "contracts/lib/openzeppelin-contracts-upgradeable"]
+	path = contracts/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/openzeppelin/openzeppelin-contracts-upgradeable
