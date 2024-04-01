@@ -7,7 +7,11 @@ import {DBlogFactoryFrontend} from "../src/DBlogFactoryFrontend.sol";
 import {DBlogFrontendLibrary} from "../src/DBlogFrontendLibrary.sol";
 import {DBlogFrontend} from "../src/DBlogFrontend.sol";
 import {DBlog} from "../src/DBlog.sol";
+
+// EthFS
 import {FileStore, File} from "ethfs/FileStore.sol";
+
+// ENS
 import {ENSRegistry} from "ens-contracts/registry/ENSRegistry.sol";
 import {ReverseRegistrar} from "ens-contracts/reverseRegistrar/ReverseRegistrar.sol";
 import {Root} from "ens-contracts/root/Root.sol";
@@ -23,6 +27,10 @@ import {OwnedResolver} from "ens-contracts/resolvers/OwnedResolver.sol";
 import {ExtendedDNSResolver} from "ens-contracts/resolvers/profiles/ExtendedDNSResolver.sol";
 import {PublicResolver} from "ens-contracts/resolvers/PublicResolver.sol";
 import {IPriceOracle} from "ens-contracts/ethregistrar/IPriceOracle.sol";
+
+// EthStorage
+import {TestEthStorageContractKZG} from "storage-contracts-v1/TestEthStorageContractKZG.sol";
+import {StorageContract} from "storage-contracts-v1/StorageContract.sol";
 
 contract DBlogFactoryScript is Script {
     enum TargetChain{ LOCAL, SEPOLIA, HOLESKY, MAINNET }
@@ -53,6 +61,9 @@ contract DBlogFactoryScript is Script {
         // Get ETHFS filestore
         FileStore store = getFileStore(targetChain);
         console.log("FileStore: ", vm.toString(address(store)));
+
+        // Get EthStorage
+        TestEthStorageContractKZG ethStorage = getEthStorage(targetChain);
 
         DBlogFactory factory;
         {
@@ -308,5 +319,53 @@ contract DBlogFactoryScript is Script {
         }
         
         return store;
+    }
+
+    struct Config {
+        uint256 maxKvSizeBits;
+        uint256 shardSizeBits;
+        uint256 randomChecks;
+        uint256 minimumDiff;
+        uint256 cutoff;
+        uint256 diffAdjDivisor;
+        uint256 treasuryShare; // 10000 = 1.0
+    }
+    function getEthStorage(TargetChain targetChain) public returns (TestEthStorageContractKZG) {
+        TestEthStorageContractKZG ethStorageContract;
+
+        // Local: Deploy an ethstorage contract
+        if(targetChain == TargetChain.LOCAL) {
+            ethStorageContract = new TestEthStorageContractKZG();
+            StorageContract.Config memory ethStorageConfig = StorageContract.Config({
+                maxKvSizeBits: 17, // maxKvSizeBits, 131072
+                shardSizeBits: 39, // shardSizeBits ~ 512G
+                randomChecks: 2, // randomChecks
+                minimumDiff: 4718592000, // minimumDiff 5 * 3 * 3600 * 1024 * 1024 / 12 = 4718592000 for 5 replicas that can have 1M IOs in one epoch
+                cutoff: 7200, // cutoff = 2/3 * target internal (3 hours), 3 * 3600 * 2/3
+                diffAdjDivisor: 32, // diffAdjDivisor
+                treasuryShare: 100 // treasuryShare, means 1%
+            });
+            ethStorageContract.initialize(
+                ethStorageConfig,
+                block.timestamp, // startTime
+                1500000000000000, // storageCost - 1,500,000Gwei forever per blob - https://ethresear.ch/t/ethstorage-scaling-ethereum-storage-via-l2-and-da/14223/6#incentivization-for-storing-m-physical-replicas-1
+                340282366367469178095360967382638002176, // dcfFactor, it mean 0.95 for yearly discount
+                1048576, // nonceLimit 1024 * 1024 = 1M samples and finish sampling in 1.3s with IO rate 6144 MB/s: 4k * 2(random checks) / 6144 = 1.3s
+                msg.sender, // treasury
+                3145728000000000000000, // prepaidAmount - 50% * 2^39 / 131072 * 1500000Gwei, it also means 3145 ETH for half of the shard
+                msg.sender // owner
+                );
+            // Send some eth into the storage contract to give reward for empty mining
+            ethStorageContract.sendValue{value: 0.01 ether}();
+        }
+        // Sepolia : Get existing value
+        else if(targetChain == TargetChain.SEPOLIA) {
+            ethStorageContract = TestEthStorageContractKZG(0x804C520d3c084C805E37A35E90057Ac32831F96f);
+        }
+        // Holesky && mainnet: Not there yet
+
+        console.log("EthStorage: ", vm.toString(address(ethStorageContract)));
+
+        return ethStorageContract;
     }
 }
