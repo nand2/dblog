@@ -147,3 +147,6 @@ echo "$OUTPUT" | grep "ENS registry:"
 echo ""
 echo "Web3 addresses:"
 echo "$OUTPUT" | grep "web3://"
+
+
+# Upload blog factory frontend as blobs to EthStorage

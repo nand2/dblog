@@ -18,7 +18,9 @@
     "@fortawesome/vue-fontawesome": "^3.0.6",
     "@zoltu/ethereum-abi-encoder": "^5.0.4",
     "@zoltu/ethereum-types": "^9.0.4",
-    "viem": "^2.7.13",
+    "c-kzg": "^2.1.2",
+    "kzg-wasm": "^0.3.1",
+    "viem": "^2.9.15",
     "vue": "^3.4.19"
   },
   "devDependencies": {
