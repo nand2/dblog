@@ -68,27 +68,17 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         return blogFactory.ethStorage().upfrontPayment();
     }
 
-    function addEthStorageFrontendVersion(bytes32 _htmlFileKey, uint256 _htmlFileSize, bytes32 _cssFileKey, bytes32 _jsFileKey, string memory _infos) public payable onlyFactoryOrFactoryOwner {
-        bytes32[] memory keys = new bytes32[](3);
-        keys[0] = _htmlFileKey;
-        keys[1] = _cssFileKey;
-        keys[2] = _jsFileKey;
-        // blogFactory.ethStorage().putBlobs{value: this.getEthStorageUpfrontPayment() * 3}(keys);
-// Testing with 1 only, cheaper
-blogFactory.ethStorage().putBlob{value: this.getEthStorageUpfrontPayment()}(_htmlFileKey, 0, _htmlFileSize);
+    function addEthStorageFrontendVersion(bytes32 _htmlFileKey, uint256 _htmlFileSize, bytes32 _cssFileKey, uint256 _cssFileSize, bytes32 _jsFileKey, uint256 _jsFileSize, string memory _infos) public payable onlyFactoryOrFactoryOwner {
+        uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+
+        blogFactory.ethStorage().putBlob{value: upfrontPayment}(_htmlFileKey, 0, _htmlFileSize);
+        blogFactory.ethStorage().putBlob{value: upfrontPayment}(_cssFileKey, 1, _cssFileSize);
+        blogFactory.ethStorage().putBlob{value: upfrontPayment}(_jsFileKey, 2, _jsFileSize);
 
         FrontendVersion memory newFrontend = FrontendVersion(FrontendStorageMode.EthStorage, _htmlFileKey, _cssFileKey, _jsFileKey, _infos);
         frontendVersions.push(newFrontend);
         defaultFrontendIndex = frontendVersions.length - 1;
     }
-
-function test() public view returns (bytes memory) {
-    return blogFactory.ethStorage().get(frontendVersions[defaultFrontendIndex].htmlFile, DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, blogFactory.ethStorage().size(frontendVersions[defaultFrontendIndex].htmlFile));
-}
-
-function test2() public view returns (uint256) {
-    return blogFactory.ethStorage().size(frontendVersions[defaultFrontendIndex].htmlFile);
-}
 
     function setDefaultFrontend(uint256 _index) public onlyFactoryOrFactoryOwner {
         require(_index < frontendVersions.length, "Index out of bounds");
@@ -142,6 +132,9 @@ function test2() public view returns (uint256) {
                     File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontend.cssFile)))), (File));
                     body = file.read();
                 }
+                else if(frontend.storageMode == FrontendStorageMode.EthStorage) {
+                    body = string(blogFactory.ethStorage().get(frontend.cssFile, DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, blogFactory.ethStorage().size(frontend.cssFile)));
+                }
                 statusCode = 200;
                 headers = new KeyValue[](2);
                 headers[0].key = "Content-type";
@@ -154,6 +147,9 @@ function test2() public view returns (uint256) {
                 if(frontend.storageMode == FrontendStorageMode.SSTORE2) {
                     File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontend.jsFile)))), (File));
                     body = file.read();
+                }
+                else if(frontend.storageMode == FrontendStorageMode.EthStorage) {
+                    body = string(blogFactory.ethStorage().get(frontend.jsFile, DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, blogFactory.ethStorage().size(frontend.jsFile)));
                 }
                 statusCode = 200;
                 headers = new KeyValue[](2);

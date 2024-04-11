@@ -85,7 +85,9 @@ const frontendABI = [
     {"internalType":"bytes32","name":"htmlFile","type":"bytes32"},
     {"internalType":"uint256","name":"htmlFileSize","type":"uint256"},
     {"internalType":"bytes32","name":"cssFile","type":"bytes32"},
+    {"internalType":"uint256","name":"cssFileSize","type":"uint256"},
     {"internalType":"bytes32","name":"jsFile","type":"bytes32"},
+    {"internalType":"uint256","name":"jsFileSize","type":"uint256"},
     {"internalType":"string","name":"infos","type":"string"}],
     "name":"addEthStorageFrontendVersion","outputs":[],"stateMutability":"payable","type":"function"},
   {"inputs":[],"name":"getEthStorageUpfrontPayment","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
@@ -105,21 +107,27 @@ console.log("EthStorage upfront payment", upfrontPayment)
 let baseFeePerBlobGas = await getBaseFeePerBlobGas();
 let maxFeePerBlobGas = baseFeePerBlobGas * 2n;
 
-// Prepare blob
-// const blob1 = toBlobs({ data: toHex(fs.readFileSync(htmlFilePath)) }) 
-// const blob2 = toBlobs({ data: stringToHex('hello world') }) 
-// const blob3 = toBlobs({ data: stringToHex('hello world') }) 
-// const blobs = [...blob1, ...blob2, ...blob3];
+// Prepare the blobs
 const htmlData = fs.readFileSync(htmlFilePath);
-const htmlDataSize = Buffer.byteLength(htmlData);
-const blobs = toBlobs({ data: toHex(htmlData) }) 
-console.log("htmlDataSize", htmlDataSize)
+const htmlBlob = toBlobs({ data: toHex(htmlData) }) 
+const cssData = fs.readFileSync(cssFilePath);
+const cssBlob = toBlobs({ data: toHex(cssData) })
+const jsData = fs.readFileSync(jsFilePath);
+const jsBlob = toBlobs({ data: toHex(jsData) })
+const blobs = [...htmlBlob, ...cssBlob, ...jsBlob];
 
 // Prepare data call
 const data = encodeFunctionData({
   abi: frontendABI,
   functionName: 'addEthStorageFrontendVersion',
-  args: ['0x00000000000000000000000000000000000000000000000000000000000000f1', htmlDataSize, '0x00000000000000000000000000000000000000000000000000000000000000f2', '0x00000000000000000000000000000000000000000000000000000000000000f3', 'Initial version']
+  args: [
+    '0x00000000000000000000000000000000000000000000000000000000000000f1', 
+    Buffer.byteLength(htmlData), 
+    '0x00000000000000000000000000000000000000000000000000000000000000f2', 
+    Buffer.byteLength(cssData),
+    '0x00000000000000000000000000000000000000000000000000000000000000f3', 
+    Buffer.byteLength(jsData),
+    'Initial version']
 })
 
 // Send transaction
@@ -128,7 +136,7 @@ const hash = await client.sendTransaction({
   kzg,
   maxFeePerBlobGas: maxFeePerBlobGas,
   to: frontendAddress,
-  value: upfrontPayment,
+  value: upfrontPayment * 3n,
   data: data,
 })
 console.log("tx hash", hash)

@@ -153,4 +153,4 @@ echo "$OUTPUT" | grep "web3://"
 DBLOGFACTORY_FRONTEND_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/${CHAIN_ID}/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFactoryFrontend")][0].contractAddress')
 echo ""
 echo "Uploading frontend to DBlogFactoryFrontend ($DBLOGFACTORY_FRONTEND_ADDRESS) ..."
-node  --env-file=.env scripts/upload-ethstorage-file.js $TARGET_CHAIN $DBLOGFACTORY_FRONTEND_ADDRESS dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_HTML_FILE} dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_CSS_FILE} dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_JS_FILE}
+node  --env-file=.env scripts/upload-ethstorage-file.js $TARGET_CHAIN $DBLOGFACTORY_FRONTEND_ADDRESS dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_HTML_FILE} dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_CSS_FILE} dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_JS_FILE}
