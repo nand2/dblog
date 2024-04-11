@@ -88,7 +88,7 @@ contract DBlogFactoryScript is Script {
 
             // Add factory frontend initial version
             // Only if local (testnets and mainnet get the EthStorage version)
-            if(targetChain == TargetChain.LOCAL){
+            if(targetChain == TargetChain.LOCAL) {
                 // Storing files of the factory frontend
                 // HTML
                 bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/", vm.envString("FACTORY_FRONTEND_HTML_FILE")));
@@ -104,7 +104,8 @@ contract DBlogFactoryScript is Script {
             }
 
             // Add frontend library initial version
-            {
+            // Only if local (testnets and mainnet get the EthStorage version)
+            if(targetChain == TargetChain.LOCAL) {
                 // Storing files of the blog frontend
                 // HTML
                 bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/", vm.envString("BLOG_FRONTEND_HTML_FILE")));
@@ -116,7 +117,7 @@ contract DBlogFactoryScript is Script {
                 fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_JS_FILE")));
                 (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_JS_FILE"), string(fileContents));
 
-                blogFrontendLibrary.addFrontendVersion(blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer, "Initial version");
+                blogFrontendLibrary.addSStore2FrontendVersion(blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer, "Initial version");
             }
 
             // Printing the web3:// address of the factory frontend

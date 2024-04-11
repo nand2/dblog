@@ -10,7 +10,7 @@ DOMAIN=${2:-dblog}
 
 # Setup cleanup
 function cleanup {
-  echo "Fail, cleaning up..."
+  echo "Exiting, cleaning up..."
   # rm -rf dist
 }
 trap cleanup EXIT
@@ -148,9 +148,22 @@ echo "Web3 addresses:"
 echo "$OUTPUT" | grep "web3://"
 
 
-# Upload blog factory frontend as blobs to EthStorage
-# Fetch the address of the DBlogFactoryFrontend
-DBLOGFACTORY_FRONTEND_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/${CHAIN_ID}/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFactoryFrontend")][0].contractAddress')
-echo ""
-echo "Uploading frontend to DBlogFactoryFrontend ($DBLOGFACTORY_FRONTEND_ADDRESS) ..."
-node  --env-file=.env scripts/upload-ethstorage-file.js $TARGET_CHAIN $DBLOGFACTORY_FRONTEND_ADDRESS dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_HTML_FILE} dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_CSS_FILE} dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_JS_FILE}
+# Do the EthStorage uploads. Unfortunately, since blobs are involved, we need to to it outside
+# the main solidity script
+if [ "$TARGET_CHAIN" != "local" ]; then
+  # Upload blog factory frontend as blobs to EthStorage
+  # Fetch the address of the DBlogFactoryFrontend
+  DBLOGFACTORY_FRONTEND_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/${CHAIN_ID}/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFactoryFrontend")][0].contractAddress')
+  # Do the uploading
+  echo ""
+  echo "Uploading frontend to DBlogFactoryFrontend ($DBLOGFACTORY_FRONTEND_ADDRESS) ..."
+  node  --env-file=.env scripts/upload-ethstorage-frontend.js $TARGET_CHAIN $DBLOGFACTORY_FRONTEND_ADDRESS dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_HTML_FILE} dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_CSS_FILE} dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_JS_FILE}
+
+  # Upload blog frontend as blobs to EthStorage
+  # Fetch the address of the DBlogFrontendLibrary
+  DBLOGFRONTEND_LIBRARY_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/${CHAIN_ID}/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFrontendLibrary")][0].contractAddress')
+  # Do the uploading
+  echo ""
+  echo "Uploading frontend to DBlogFrontendLibrary ($DBLOGFRONTEND_LIBRARY_ADDRESS) ..."
+  node  --env-file=.env scripts/upload-ethstorage-frontend.js $TARGET_CHAIN $DBLOGFRONTEND_LIBRARY_ADDRESS dist/frontend-blog/${BLOG_FRONTEND_COMPRESSED_HTML_FILE} dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_CSS_FILE} dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_JS_FILE}
+fi

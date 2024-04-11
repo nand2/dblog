@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./DBlogFactory.sol";
-import "./interfaces/IDecentralizedApp.sol";
 import { File } from "ethfs/FileStore.sol";
 import { SSTORE2 } from "solady/utils/SSTORE2.sol";
 import { Strings } from "./library/Strings.sol";
 import { DecentralizedKV } from "storage-contracts-v1/DecentralizedKV.sol";
+import { TestEthStorageContractKZG } from "storage-contracts-v1/TestEthStorageContractKZG.sol";
+
+import "./DBlogFactory.sol";
+import "./interfaces/IDecentralizedApp.sol";
 
 contract DBlogFactoryFrontend is IDecentralizedApp {
     DBlogFactory public blogFactory;
 
-    // A version of a frontend, containing a single HTML, CSS and JS file.
     enum FrontendStorageMode {
-        SSTORE2,
-        EthStorage
+        SSTORE2, // Store on the ethereum network itself using SSTORE2
+        EthStorage // Store with the EthStorage project
     }
+    // A version of a frontend, containing a single HTML, CSS and JS file.
     struct FrontendVersion {
         // Storage mode for the frontend files
         FrontendStorageMode storageMode;
@@ -69,17 +71,19 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
     }
 
     function addEthStorageFrontendVersion(bytes32 _htmlFileKey, uint256 _htmlFileSize, bytes32 _cssFileKey, uint256 _cssFileSize, bytes32 _jsFileKey, uint256 _jsFileSize, string memory _infos) public payable onlyFactoryOrFactoryOwner {
+        TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
         uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
 
-        blogFactory.ethStorage().putBlob{value: upfrontPayment}(_htmlFileKey, 0, _htmlFileSize);
-        blogFactory.ethStorage().putBlob{value: upfrontPayment}(_cssFileKey, 1, _cssFileSize);
-        blogFactory.ethStorage().putBlob{value: upfrontPayment}(_jsFileKey, 2, _jsFileSize);
+        ethStorage.putBlob{value: upfrontPayment}(_htmlFileKey, 0, _htmlFileSize);
+        ethStorage.putBlob{value: upfrontPayment}(_cssFileKey, 1, _cssFileSize);
+        ethStorage.putBlob{value: upfrontPayment}(_jsFileKey, 2, _jsFileSize);
 
         FrontendVersion memory newFrontend = FrontendVersion(FrontendStorageMode.EthStorage, _htmlFileKey, _cssFileKey, _jsFileKey, _infos);
         frontendVersions.push(newFrontend);
         defaultFrontendIndex = frontendVersions.length - 1;
     }
 
+    // If a new frontend is borked, go back in history
     function setDefaultFrontend(uint256 _index) public onlyFactoryOrFactoryOwner {
         require(_index < frontendVersions.length, "Index out of bounds");
         defaultFrontendIndex = _index;
@@ -94,6 +98,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
         FrontendVersion memory frontend = frontendVersions[defaultFrontendIndex];
+        TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
 
         // Frontpage
         if(resource.length == 0) {
@@ -102,7 +107,11 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
                 body = file.read();
             }
             else if(frontend.storageMode == FrontendStorageMode.EthStorage) {
-                body = string(blogFactory.ethStorage().get(frontend.htmlFile, DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, blogFactory.ethStorage().size(frontend.htmlFile)));
+                body = string(ethStorage.get(
+                    frontend.htmlFile, 
+                    DecentralizedKV.DecodeType.PaddingPer31Bytes, 
+                    0, 
+                    ethStorage.size(frontend.htmlFile)));
             }
             statusCode = 200;
             headers = new KeyValue[](2);
@@ -113,8 +122,14 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         }
         // blogFactoryAddress.json : it exposes the addess of the blog factory
         else if(resource.length == 1 && Strings.compare(resource[0], "blogFactoryAddress.json")) {
+            uint chainid = block.chainid;
+            // Special case: Sepolia chain id 11155111 is > 65k, which breaks URL parsing in EVM browser
+            // As a temporary measure, we will test Sepolia with a fake chain id of 11155
+            if(chainid == 11155111) {
+                chainid = 11155;
+            }
             // Manual JSON serialization, safe with the vars we encode
-            body = string.concat("{\"address\":\"", Strings.toHexString(address(blogFactory)), "\", \"chainId\":", Strings.toString(block.chainid), "}");
+            body = string.concat("{\"address\":\"", Strings.toHexString(address(blogFactory)), "\", \"chainId\":", Strings.toString(chainid), "}");
             statusCode = 200;
             headers = new KeyValue[](1);
             headers[0].key = "Content-type";
@@ -133,7 +148,11 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
                     body = file.read();
                 }
                 else if(frontend.storageMode == FrontendStorageMode.EthStorage) {
-                    body = string(blogFactory.ethStorage().get(frontend.cssFile, DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, blogFactory.ethStorage().size(frontend.cssFile)));
+                    body = string(ethStorage.get(
+                        frontend.cssFile, 
+                        DecentralizedKV.DecodeType.PaddingPer31Bytes, 
+                        0, 
+                        ethStorage.size(frontend.cssFile)));
                 }
                 statusCode = 200;
                 headers = new KeyValue[](2);
@@ -149,7 +168,11 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
                     body = file.read();
                 }
                 else if(frontend.storageMode == FrontendStorageMode.EthStorage) {
-                    body = string(blogFactory.ethStorage().get(frontend.jsFile, DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, blogFactory.ethStorage().size(frontend.jsFile)));
+                    body = string(ethStorage.get(
+                        frontend.jsFile, 
+                        DecentralizedKV.DecodeType.PaddingPer31Bytes, 
+                        0, 
+                        ethStorage.size(frontend.jsFile)));
                 }
                 statusCode = 200;
                 headers = new KeyValue[](2);

@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import { File } from "ethfs/FileStore.sol";
+import { SSTORE2 } from "solady/utils/SSTORE2.sol";
+import { Strings } from "./library/Strings.sol";
+import { TestEthStorageContractKZG } from "storage-contracts-v1/TestEthStorageContractKZG.sol";
+
 import "./DBlog.sol";
 import "./interfaces/IDecentralizedApp.sol";
 import "./DBlogFrontendLibrary.sol";
 import "./DBlogFactory.sol";
-import { File } from "ethfs/FileStore.sol";
-import { SSTORE2 } from "solady/utils/SSTORE2.sol";
-import { Strings } from "./library/Strings.sol";
 
 contract DBlogFrontend is IDecentralizedApp {
     // The data of this blog frontend
@@ -49,17 +51,23 @@ contract DBlogFrontend is IDecentralizedApp {
 
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
-        BlogFrontendVersion memory frontend = blog.factory().blogFrontendLibrary().getDefaultFrontend();
+        DBlogFrontendLibrary frontendLibrary = blog.factory().blogFrontendLibrary();
+        BlogFrontendVersion memory frontend = frontendLibrary.getDefaultFrontend();
         if(useNonDefaultFrontend) {
-            frontend = blog.factory().blogFrontendLibrary().getFrontendVersion(overridenFrontendIndex);
+            frontend = frontendLibrary.getFrontendVersion(overridenFrontendIndex);
         }
 
         // Frontpage or single-page javascript app pages (#/page/1, #/page/2, etc.)
         // At the moment, proper SPA routing in JS with history.pushState() is broken (due 
         // to bad web3:// URL parsing in the browser)
         if(resource.length == 0 || Strings.compare(resource[0], "#")) {
-            File memory file = abi.decode(SSTORE2.read(frontend.htmlFile), (File));
-            body = file.read();
+            if(frontend.storageMode == FrontendStorageMode.SSTORE2) {
+                File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontend.htmlFile)))), (File));
+                body = file.read();
+            }
+            else if(frontend.storageMode == FrontendStorageMode.EthStorage) {
+                body = string(frontendLibrary.getEthStorageFileContents(frontend.htmlFile));
+            }
             statusCode = 200;
             headers = new KeyValue[](2);
             headers[0].key = "Content-type";
@@ -69,8 +77,14 @@ contract DBlogFrontend is IDecentralizedApp {
         }
         // blogAddress.json : it exposes the addess of the blog
         else if(resource.length == 1 && Strings.compare(resource[0], "blogAddress.json")) {
+            uint chainid = block.chainid;
+            // Special case: Sepolia chain id 11155111 is > 65k, which breaks URL parsing in EVM browser
+            // As a temporary measure, we will test Sepolia with a fake chain id of 11155
+            if(chainid == 11155111) {
+                chainid = 11155;
+            }
             // Manual JSON serialization, safe with the vars we encode
-            body = string.concat("{\"address\":\"", Strings.toHexString(address(blog)), "\", \"chainId\":", Strings.toString(block.chainid), "}");
+            body = string.concat("{\"address\":\"", Strings.toHexString(address(blog)), "\", \"chainId\":", Strings.toString(chainid), "}");
             statusCode = 200;
             headers = new KeyValue[](1);
             headers[0].key = "Content-type";
@@ -84,8 +98,13 @@ contract DBlogFrontend is IDecentralizedApp {
             // If the last 4 characters are ".css"
             if(Strings.strlen(assetName) > 4 && 
                 Strings.compare(Strings.substring(assetName, assetNameLen - 4, assetNameLen), ".css")) {
-                File memory file = abi.decode(SSTORE2.read(frontend.cssFile), (File));
-                body = file.read();
+                if(frontend.storageMode == FrontendStorageMode.SSTORE2) {
+                    File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontend.cssFile)))), (File));
+                    body = file.read();
+                }
+                else if(frontend.storageMode == FrontendStorageMode.EthStorage) {
+                    body = string(frontendLibrary.getEthStorageFileContents(frontend.cssFile));
+                }
                 statusCode = 200;
                 headers = new KeyValue[](2);
                 headers[0].key = "Content-type";
@@ -95,8 +114,13 @@ contract DBlogFrontend is IDecentralizedApp {
             }
             else if(Strings.strlen(assetName) > 3 && 
                 Strings.compare(Strings.substring(assetName, assetNameLen - 3, assetNameLen), ".js")) {
-                File memory file = abi.decode(SSTORE2.read(frontend.jsFile), (File));
-                body = file.read();
+                if(frontend.storageMode == FrontendStorageMode.SSTORE2) {
+                    File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontend.jsFile)))), (File));
+                    body = file.read();
+                }
+                else if(frontend.storageMode == FrontendStorageMode.EthStorage) {
+                    body = string(frontendLibrary.getEthStorageFileContents(frontend.jsFile));
+                }
                 statusCode = 200;
                 headers = new KeyValue[](2);
                 headers[0].key = "Content-type";

@@ -1,13 +1,9 @@
-import { createWalletClient, http, publicActions } from 'viem'
+import { createWalletClient, http, publicActions, toBlobs, toHex, setupKzg, encodeFunctionData, getContract } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, sepolia, holesky, hardhat } from 'viem/chains'
 import { default as cKzg } from 'c-kzg'
-import { setupKzg } from 'viem'
-import { parseGwei, stringToHex, toBlobs, toHex } from 'viem'
 import path from 'path';
 import {fileURLToPath} from 'url';
-import { encodeFunctionData } from 'viem'
-import { getContract } from 'viem'
 import fs from 'fs'
 
 const __filename = fileURLToPath(import.meta.url);
@@ -92,7 +88,7 @@ const frontendABI = [
     "name":"addEthStorageFrontendVersion","outputs":[],"stateMutability":"payable","type":"function"},
   {"inputs":[],"name":"getEthStorageUpfrontPayment","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
 ];
-const ethStorage = getContract({
+const frontendContract = getContract({
   address: frontendAddress,
   abi: frontendABI,
   client: client,
@@ -100,7 +96,7 @@ const ethStorage = getContract({
  
 
 // Fetch the upfront payment necessary to store the blob to ethStorage
-const upfrontPayment = await ethStorage.read.getEthStorageUpfrontPayment()
+const upfrontPayment = await frontendContract.read.getEthStorageUpfrontPayment()
 console.log("EthStorage upfront payment", upfrontPayment)
 
 
