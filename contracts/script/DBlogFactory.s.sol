@@ -78,10 +78,17 @@ contract DBlogFactoryScript is Script {
             DBlogFrontend blogFrontendImplementation = new DBlogFrontend();
 
             // Deploying the blog factory
-            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary, nameWrapper, ethRegistrarController, baseRegistrar);
+            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary, nameWrapper, ethRegistrarController, baseRegistrar, ethStorage);
+
+            console.log("DBlogFactory: ", address(factory));
+            console.log("DBlogFactoryFrontend: ", address(factoryFrontend));
+            console.log("DBlogFrontendLibrary: ", address(blogFrontendLibrary));
+            console.log("DBlogImplementation: ", address(blogImplementation));
+            console.log("DBlogFrontendImplementation: ", address(blogFrontendImplementation));
 
             // Add factory frontend initial version
-            {
+            // Only if local (testnets and mainnet get the EthStorage version)
+            if(targetChain == TargetChain.LOCAL){
                 // Storing files of the factory frontend
                 // HTML
                 bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/", vm.envString("FACTORY_FRONTEND_HTML_FILE")));
@@ -93,7 +100,7 @@ contract DBlogFactoryScript is Script {
                 fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")));
                 (address factoryJsFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_JS_FILE"), string(fileContents));
 
-                factoryFrontend.addFrontendVersion(factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, "Initial version");
+                factoryFrontend.addSStore2FrontendVersion(factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, "Initial version");
             }
 
             // Add frontend library initial version

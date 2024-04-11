@@ -6,6 +6,7 @@ import {NameWrapper} from "ens-contracts/wrapper/NameWrapper.sol";
 import {ETHRegistrarController} from "ens-contracts/ethregistrar/ETHRegistrarController.sol";
 import {BaseRegistrarImplementation} from "ens-contracts/ethregistrar/BaseRegistrarImplementation.sol";
 import {IPriceOracle} from "ens-contracts/ethregistrar/IPriceOracle.sol";
+import {TestEthStorageContractKZG} from "storage-contracts-v1/TestEthStorageContractKZG.sol";
 
 import "./DBlogFactoryFrontend.sol";
 import "./DBlog.sol";
@@ -33,6 +34,9 @@ contract DBlogFactory {
     event AddressChanged(bytes32 indexed node, uint coinType, bytes newAddress);
     uint constant private COIN_TYPE_ETH = 60;
 
+    // EthStorage contract
+    TestEthStorageContractKZG public ethStorage;
+
     string public topdomain;
     string public domain;
     mapping(bytes32 => DBlog) subdomainNameHashToBlog;
@@ -59,7 +63,7 @@ contract DBlogFactory {
      * @param _blogFrontendImplementation The implementation of the blog frontend contract, to be cloned
      * @param _blogFrontendLibrary The library containing the blog frontend versions
      */
-    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary, NameWrapper _ensNameWrapper, ETHRegistrarController __ensEthRegistrarController, BaseRegistrarImplementation _ensBaseRegistrar) {
+    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary, NameWrapper _ensNameWrapper, ETHRegistrarController __ensEthRegistrarController, BaseRegistrarImplementation _ensBaseRegistrar, TestEthStorageContractKZG _ethStorage) {
         owner = msg.sender;
 
         topdomain = _topdomain;
@@ -77,6 +81,8 @@ contract DBlogFactory {
         ensNameWrapper = _ensNameWrapper;
         ensEthRegistrarController = __ensEthRegistrarController;
         ensBaseRegistrar = _ensBaseRegistrar;
+
+        ethStorage = _ethStorage;
     }
 
     /**

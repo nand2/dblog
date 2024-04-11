@@ -6,17 +6,27 @@ import "./interfaces/IDecentralizedApp.sol";
 import { File } from "ethfs/FileStore.sol";
 import { SSTORE2 } from "solady/utils/SSTORE2.sol";
 import { Strings } from "./library/Strings.sol";
+import { DecentralizedKV } from "storage-contracts-v1/DecentralizedKV.sol";
 
 contract DBlogFactoryFrontend is IDecentralizedApp {
     DBlogFactory public blogFactory;
 
     // A version of a frontend, containing a single HTML, CSS and JS file.
+    enum FrontendStorageMode {
+        SSTORE2,
+        EthStorage
+    }
     struct FrontendVersion {
-        // Pointers to ethfs File structures stored with SSTORE2
+        // Storage mode for the frontend files
+        FrontendStorageMode storageMode;
+
+        // Pointers to the files
+        // If storage mode is SSTORE2, then these are address pointers to the SSTORE2 files
+        // If storage mode is EthStorage, then these are the keys to the EthStorage files
         // Note: These files are expected to be compressed with gzip
-        address htmlFile;
-        address cssFile;
-        address jsFile;
+        bytes32 htmlFile;
+        bytes32 cssFile;
+        bytes32 jsFile;
 
         // Infos about this version
         string infos;
@@ -43,10 +53,42 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         blogFactory = _blogFactory;
     }
 
-    function addFrontendVersion(address _htmlFile, address _cssFile, address _jsFile, string memory _infos) public onlyFactoryOrFactoryOwner {
-        FrontendVersion memory newFrontend = FrontendVersion(_htmlFile, _cssFile, _jsFile, _infos);
+    function addSStore2FrontendVersion(address _htmlFile, address _cssFile, address _jsFile, string memory _infos) public onlyFactoryOrFactoryOwner {
+        FrontendVersion memory newFrontend = FrontendVersion(
+            FrontendStorageMode.SSTORE2, 
+            bytes32(uint256(uint160(_htmlFile))), 
+            bytes32(uint256(uint160(_cssFile))), 
+            bytes32(uint256(uint160(_jsFile))), 
+            _infos);
         frontendVersions.push(newFrontend);
+        defaultFrontendIndex = frontendVersions.length - 1;
     }
+
+    function getEthStorageUpfrontPayment() external view returns (uint256) {
+        return blogFactory.ethStorage().upfrontPayment();
+    }
+
+    function addEthStorageFrontendVersion(bytes32 _htmlFileKey, uint256 _htmlFileSize, bytes32 _cssFileKey, bytes32 _jsFileKey, string memory _infos) public payable onlyFactoryOrFactoryOwner {
+        bytes32[] memory keys = new bytes32[](3);
+        keys[0] = _htmlFileKey;
+        keys[1] = _cssFileKey;
+        keys[2] = _jsFileKey;
+        // blogFactory.ethStorage().putBlobs{value: this.getEthStorageUpfrontPayment() * 3}(keys);
+// Testing with 1 only, cheaper
+blogFactory.ethStorage().putBlob{value: this.getEthStorageUpfrontPayment()}(_htmlFileKey, 0, _htmlFileSize);
+
+        FrontendVersion memory newFrontend = FrontendVersion(FrontendStorageMode.EthStorage, _htmlFileKey, _cssFileKey, _jsFileKey, _infos);
+        frontendVersions.push(newFrontend);
+        defaultFrontendIndex = frontendVersions.length - 1;
+    }
+
+function test() public view returns (bytes memory) {
+    return blogFactory.ethStorage().get(frontendVersions[defaultFrontendIndex].htmlFile, DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, blogFactory.ethStorage().size(frontendVersions[defaultFrontendIndex].htmlFile));
+}
+
+function test2() public view returns (uint256) {
+    return blogFactory.ethStorage().size(frontendVersions[defaultFrontendIndex].htmlFile);
+}
 
     function setDefaultFrontend(uint256 _index) public onlyFactoryOrFactoryOwner {
         require(_index < frontendVersions.length, "Index out of bounds");
@@ -65,8 +107,13 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
 
         // Frontpage
         if(resource.length == 0) {
-            File memory file = abi.decode(SSTORE2.read(frontend.htmlFile), (File));
-            body = file.read();
+            if(frontend.storageMode == FrontendStorageMode.SSTORE2) {
+                File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontend.htmlFile)))), (File));
+                body = file.read();
+            }
+            else if(frontend.storageMode == FrontendStorageMode.EthStorage) {
+                body = string(blogFactory.ethStorage().get(frontend.htmlFile, DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, blogFactory.ethStorage().size(frontend.htmlFile)));
+            }
             statusCode = 200;
             headers = new KeyValue[](2);
             headers[0].key = "Content-type";
@@ -91,8 +138,10 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
             // If the last 4 characters are ".css"
             if(Strings.strlen(assetName) > 4 && 
                 Strings.compare(Strings.substring(assetName, assetNameLen - 4, assetNameLen), ".css")) {
-                File memory file = abi.decode(SSTORE2.read(frontend.cssFile), (File));
-                body = file.read();
+                if(frontend.storageMode == FrontendStorageMode.SSTORE2) {
+                    File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontend.cssFile)))), (File));
+                    body = file.read();
+                }
                 statusCode = 200;
                 headers = new KeyValue[](2);
                 headers[0].key = "Content-type";
@@ -102,8 +151,10 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
             }
             else if(Strings.strlen(assetName) > 3 && 
                 Strings.compare(Strings.substring(assetName, assetNameLen - 3, assetNameLen), ".js")) {
-                File memory file = abi.decode(SSTORE2.read(frontend.jsFile), (File));
-                body = file.read();
+                if(frontend.storageMode == FrontendStorageMode.SSTORE2) {
+                    File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontend.jsFile)))), (File));
+                    body = file.read();
+                }
                 statusCode = 200;
                 headers = new KeyValue[](2);
                 headers[0].key = "Content-type";

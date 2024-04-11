@@ -10,7 +10,7 @@ DOMAIN=${2:-dblog}
 
 # Setup cleanup
 function cleanup {
-  echo "Cleaning up..."
+  echo "Fail, cleaning up..."
   # rm -rf dist
 }
 trap cleanup EXIT
@@ -22,23 +22,22 @@ cd ..
 # Load .env file
 # PRIVATE_KEY must be defined
 source .env
-# Determine the private key to use
+# Determine the private key and RPC URL to use, and the chain id
 PRIVKEY=
+RPC_URL=
+CHAIN_ID=
 if [ "$TARGET_CHAIN" == "local" ]; then
   PRIVKEY=$PRIVATE_KEY_LOCAL
+  RPC_URL=http://127.0.0.1:8545
+  CHAIN_ID=31337
 elif [ "$TARGET_CHAIN" == "sepolia" ]; then
   PRIVKEY=$PRIVATE_KEY_SEPOLIA
+  RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+  CHAIN_ID=11155111
 elif [ "$TARGET_CHAIN" == "holesky" ]; then
   PRIVKEY=$PRIVATE_KEY_HOLESKY
-fi
-# Determine the RPC URL to use
-RPC_URL=
-if [ "$TARGET_CHAIN" == "local" ]; then
-  RPC_URL=http://127.0.0.1:8545
-elif [ "$TARGET_CHAIN" == "sepolia" ]; then
-  RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
-elif [ "$TARGET_CHAIN" == "holesky" ]; then
   RPC_URL=https://ethereum-holesky-rpc.publicnode.com
+  CHAIN_ID=17000
 fi
 
 
@@ -95,7 +94,7 @@ if [ "$TARGET_CHAIN" != "mainnet" ] && [ "$TARGET_CHAIN" != "local" ]; then
   echo ""
   echo "Fetching back domain ..."
 
-  DBLOGFACTORY_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/17000/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFactory")][0].contractAddress')
+  DBLOGFACTORY_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/${CHAIN_ID}/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFactory")][0].contractAddress')
   echo $DBLOGFACTORY_ADDRESS
   cast send --private-key ${PRIVKEY} --rpc-url ${RPC_URL}  $DBLOGFACTORY_ADDRESS "testnetSendBackDomain()"
 fi
@@ -123,7 +122,7 @@ if [ "$TARGET_CHAIN" == "local" ]; then
   FORGE_SCRIPT_OPTIONS="--broadcast"
 elif [ "$TARGET_CHAIN" == "sepolia" ]; then
   # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
-  FORGE_SCRIPT_OPTIONS="--broadcast"
+  FORGE_SCRIPT_OPTIONS="--broadcast --verify"
 elif [ "$TARGET_CHAIN" == "holesky" ]; then
   # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
   FORGE_SCRIPT_OPTIONS="--broadcast --verify"
@@ -141,12 +140,17 @@ OUTPUT="$(FACTORY_FRONTEND_HTML_FILE=$FACTORY_FRONTEND_COMPRESSED_HTML_FILE \
 
 
 # Write again at the end the web3:// address
-echo ""
-echo "ENS:"
-echo "$OUTPUT" | grep "ENS registry:"
+# echo ""
+# echo "ENS:"
+# echo "$OUTPUT" | grep "ENS registry:"
 echo ""
 echo "Web3 addresses:"
 echo "$OUTPUT" | grep "web3://"
 
 
 # Upload blog factory frontend as blobs to EthStorage
+# Fetch the address of the DBlogFactoryFrontend
+DBLOGFACTORY_FRONTEND_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/${CHAIN_ID}/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFactoryFrontend")][0].contractAddress')
+echo ""
+echo "Uploading frontend to DBlogFactoryFrontend ($DBLOGFACTORY_FRONTEND_ADDRESS) ..."
+node  --env-file=.env scripts/upload-ethstorage-file.js $TARGET_CHAIN $DBLOGFACTORY_FRONTEND_ADDRESS dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_HTML_FILE} dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_CSS_FILE} dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_JS_FILE}
