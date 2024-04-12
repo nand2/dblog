@@ -125,9 +125,9 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
             uint chainid = block.chainid;
             // Special case: Sepolia chain id 11155111 is > 65k, which breaks URL parsing in EVM browser
             // As a temporary measure, we will test Sepolia with a fake chain id of 11155
-            if(chainid == 11155111) {
-                chainid = 11155;
-            }
+            // if(chainid == 11155111) {
+            //     chainid = 11155;
+            // }
             // Manual JSON serialization, safe with the vars we encode
             body = string.concat("{\"address\":\"", Strings.toHexString(address(blogFactory)), "\", \"chainId\":", Strings.toString(chainid), "}");
             statusCode = 200;

@@ -12,6 +12,7 @@ import "./DBlogFactoryFrontend.sol";
 import "./DBlog.sol";
 import "./DBlogFrontend.sol";
 import "./DBlogFrontendLibrary.sol";
+import "./library/Strings.sol";
 
 contract DBlogFactory {
     DBlogFactoryFrontend public immutable factoryFrontend;
@@ -287,7 +288,28 @@ contract DBlogFactory {
     }
 
     // EIP-634 : text()
-    function text(bytes32 node, string memory key) public pure returns (string memory) {
+    function text(bytes32 node, string memory key) public view returns (string memory) {
+        // If the blog frontend version is using EthStorage, use ERC-6821 cross-chain
+        // resolution so that the EthStorage chain is queried
+        if(keccak256(abi.encodePacked(key)) == keccak256(abi.encodePacked("contentcontract"))) {
+            // Determine which EthStorage chain we use
+            string memory ethStorageChainShortName = "w3q";
+            if(block.chainid != 1) {
+                ethStorageChainShortName = "w3q-t";
+            }
+
+            // Blog factory
+            if(node == computeSubdomainNameHash("")) {
+                return string.concat(ethStorageChainShortName, ":", Strings.toHexString(address(factoryFrontend)));
+            }
+
+            // Blogs
+            if(address(subdomainNameHashToBlog[node]) != address(0) &&
+            subdomainNameHashToBlog[node].frontend().blogFrontendVersion().storageMode == FrontendStorageMode.EthStorage) {
+                return string.concat(ethStorageChainShortName, ":", Strings.toHexString(address(subdomainNameHashToBlog[node].frontend())));
+            }
+        }
+        
         return "";
     }
 
