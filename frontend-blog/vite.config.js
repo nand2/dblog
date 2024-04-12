@@ -4,6 +4,18 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [],
   build: {
-    target: "esnext"
-  }
+    target: "esnext",
+  },
+  // Yarn run dev: it won't work with the loading of the wasm file
+  optimizeDeps: {
+    exclude: ['kzg-wasm'],
+    esbuildOptions: {
+      target: 'esnext',
+    },
+  },
+  resolve: {
+    alias: {
+      module: "./index.js"
+    }
+  },
 })

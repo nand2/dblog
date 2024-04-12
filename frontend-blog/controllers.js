@@ -2,6 +2,8 @@
 import { markdown } from './drawdown.js'
 import { strip_tags, uint8ArrayToHexString, parseWeb3Url } from './utils.js'
 import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
+import { createWalletClient, custom, publicActions, toBlobs, toHex, setupKzg, encodeFunctionData, stringToHex, blobsToCommitments, commitmentsToVersionedHashes, blobsToProofs } from 'viem'
+import { loadKZG } from 'kzg-wasm'
 
 /**
  * Home controller
@@ -268,6 +270,25 @@ export async function entryEditController(blogAddress, chainId) {
       stopWithError('Chain switch failed : ' + error.message)
       return
     }
+
+
+    // Testing
+    // const wasmKzg = await loadKZG()
+    // console.log(wasmKzg)
+    // const kzg = setupKzg(wasmKzg)
+    // console.log(kzg)
+    
+    // const blobs = toBlobs({ data: stringToHex("hello world") });
+    // const commitments = blobsToCommitments({blobs, kzg})
+    // const proofs = blobsToProofs({blobs, commitments, kzg})
+    // const versionedHashes = commitmentsToVersionedHashes({commitments})
+    // console.log(blobs)
+    // console.log(commitments)
+    // console.log(proofs)
+    // console.log(versionedHashes)
+
+
+
 
     // Prepare the calldata
     let calldata = null;
