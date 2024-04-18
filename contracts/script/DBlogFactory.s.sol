@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {Script, console} from "forge-std/Script.sol";
 import {DBlogFactory} from "../src/DBlogFactory.sol";
 import {DBlogFactoryFrontend} from "../src/DBlogFactoryFrontend.sol";
-import {DBlogFrontendLibrary} from "../src/DBlogFrontendLibrary.sol";
+import {DBlogFrontendLibrary, FileInfos} from "../src/DBlogFrontendLibrary.sol";
 import {DBlogFrontend} from "../src/DBlogFrontend.sol";
 import {DBlog} from "../src/DBlog.sol";
 
@@ -106,18 +106,31 @@ contract DBlogFactoryScript is Script {
             // Add frontend library initial version
             // Only if local (testnets and mainnet get the EthStorage version)
             if(targetChain == TargetChain.LOCAL) {
+                FileInfos[] memory files = new FileInfos[](3);
+
                 // Storing files of the blog frontend
                 // HTML
-                bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/", vm.envString("BLOG_FRONTEND_HTML_FILE")));
-                (address blogHtmlFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_HTML_FILE"), string(fileContents));
-                // CSS
-                fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_CSS_FILE")));
-                (address blogCssFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_CSS_FILE"), string(fileContents));
-                // JS
-                fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_JS_FILE")));
-                (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_JS_FILE"), string(fileContents));
+                bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/", vm.envString("BLOG_FRONTEND_COMPRESSED_HTML_FILE")));
+                (address blogHtmlFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_COMPRESSED_HTML_FILE"), string(fileContents));
+                bytes32[] memory contentKeys = new bytes32[](1);
+                contentKeys[0] = bytes32(uint256(uint160(blogHtmlFilePointer)));
+                files[0] = FileInfos("index.html", "text/html", contentKeys);
 
-                blogFrontendLibrary.addSStore2FrontendVersion(blogHtmlFilePointer, blogCssFilePointer, blogJsFilePointer, "Initial version");
+                // CSS
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_COMPRESSED_CSS_FILE")));
+                (address blogCssFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_COMPRESSED_CSS_FILE"), string(fileContents));
+                contentKeys = new bytes32[](1);
+                contentKeys[0] = bytes32(uint256(uint160(blogCssFilePointer)));
+                files[1] = FileInfos(string.concat("assets/", vm.envString("BLOG_FRONTEND_CSS_FILE")), "text/css", contentKeys);
+
+                // JS
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_COMPRESSED_JS_FILE")));
+                (address blogJsFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_COMPRESSED_JS_FILE"), string(fileContents));
+                contentKeys = new bytes32[](1);
+                contentKeys[0] = bytes32(uint256(uint160(blogJsFilePointer)));
+                files[2] = FileInfos(string.concat("assets/", vm.envString("BLOG_FRONTEND_JS_FILE")), "text/javascript", contentKeys);
+
+                blogFrontendLibrary.addSStore2FrontendVersion(files, "Initial version");
             }
 
             // Printing the web3:// address of the factory frontend

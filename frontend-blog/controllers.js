@@ -273,19 +273,19 @@ export async function entryEditController(blogAddress, chainId) {
 
 
     // Testing
-    // const wasmKzg = await loadKZG()
-    // console.log(wasmKzg)
-    // const kzg = setupKzg(wasmKzg)
-    // console.log(kzg)
+    const wasmKzg = await loadKZG()
+    console.log(wasmKzg)
+    const kzg = setupKzg(wasmKzg)
+    console.log(kzg)
     
-    // const blobs = toBlobs({ data: stringToHex("hello world") });
-    // const commitments = blobsToCommitments({blobs, kzg})
-    // const proofs = blobsToProofs({blobs, commitments, kzg})
-    // const versionedHashes = commitmentsToVersionedHashes({commitments})
-    // console.log(blobs)
-    // console.log(commitments)
-    // console.log(proofs)
-    // console.log(versionedHashes)
+    const blobs = toBlobs({ data: stringToHex("hello world") });
+    const commitments = blobsToCommitments({blobs, kzg})
+    const proofs = blobsToProofs({blobs, commitments, kzg})
+    const versionedHashes = commitmentsToVersionedHashes({commitments})
+    console.log(blobs)
+    console.log(commitments)
+    console.log(proofs)
+    console.log(versionedHashes)
 
 
 
