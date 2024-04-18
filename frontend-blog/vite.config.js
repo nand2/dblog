@@ -6,16 +6,11 @@ export default defineConfig({
   build: {
     target: "esnext",
   },
-  // Yarn run dev: it won't work with the loading of the wasm file
+  // Yarn run dev: it won't work with the loading of the wasm file, we need this
   optimizeDeps: {
     exclude: ['kzg-wasm'],
     esbuildOptions: {
       target: 'esnext',
     },
-  },
-  resolve: {
-    alias: {
-      module: "./index.js"
-    }
   },
 })
