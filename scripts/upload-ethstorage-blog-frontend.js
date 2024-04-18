@@ -65,7 +65,7 @@ if (targetChain === "local") {
 else if (targetChain === "sepolia") {
   privateKey = process.env.PRIVATE_KEY_SEPOLIA;
   chain = sepolia
-  rpcUrl = "https://ethereum-sepolia-rpc.publicnode.com";
+  rpcUrl = process.env.RPC_SEPOLIA || "https://ethereum-sepolia-rpc.publicnode.com";
 }
 else if (targetChain === "holesky") {
   privateKey = process.env.PRIVATE_KEY_HOLESKY;
@@ -128,7 +128,7 @@ let maxFeePerBlobGas = baseFeePerBlobGas * 2n;
 // Prepare the args
 let fileArgs = []
 let blobs = []
-const fullBlobDataSize = (32 - 1) * 4096 - 1;
+const fullBlobDataSize = (32 - 1) * 4096;
 files.forEach((file, index) => {
   // Determine mime type of the file
   let mimeType = mime.getType(file.htmlFilePath.split('.').pop())
