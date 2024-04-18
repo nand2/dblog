@@ -106,7 +106,7 @@ contract DBlogFactoryScript is Script {
             // Add frontend library initial version
             // Only if local (testnets and mainnet get the EthStorage version)
             if(targetChain == TargetChain.LOCAL) {
-                FileInfos[] memory files = new FileInfos[](3);
+                FileInfos[] memory files = new FileInfos[](4);
 
                 // Storing files of the blog frontend
                 // HTML
@@ -129,6 +129,13 @@ contract DBlogFactoryScript is Script {
                 contentKeys = new bytes32[](1);
                 contentKeys[0] = bytes32(uint256(uint160(blogJsFilePointer)));
                 files[2] = FileInfos(string.concat("assets/", vm.envString("BLOG_FRONTEND_JS_FILE")), "text/javascript", contentKeys);
+
+                // Wasm
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-blog/assets/", vm.envString("BLOG_FRONTEND_COMPRESSED_WASM_FILE")));
+                (address blogWasmFilePointer, ) = store.createFile(vm.envString("BLOG_FRONTEND_WASM_FILE"), string(fileContents));
+                contentKeys = new bytes32[](1);
+                contentKeys[0] = bytes32(uint256(uint160(blogWasmFilePointer)));
+                files[3] = FileInfos(string.concat("assets/", vm.envString("BLOG_FRONTEND_WASM_FILE")), "application/wasm", contentKeys);
 
                 blogFrontendLibrary.addSStore2FrontendVersion(files, "Initial version");
             }

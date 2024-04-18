@@ -65,9 +65,11 @@ contract DBlogFrontend is IDecentralizedApp {
         // Compute the filePath of the requested resource
         string memory filePath = "";
         // Root path requested("/")? Serve the index.html
-        // Frontpage or single-page javascript app pages (#/page/1, #/page/2, etc.)
-        // At the moment, proper SPA routing in JS with history.pushState() is broken (due 
-        // to bad web3:// URL parsing in the browser)
+        // We handle frontpage or single-page javascript app pages (#/page/1, #/page/2, etc.)
+        // -> At the moment, in EVM browser, proper SPA routing in JS with history.pushState() 
+        // is broken (due to bad web3:// URL parsing in the browser)
+        // Todo: clarify the behavior of the "#" character in resourceRequest mode, this 
+        // character is not forwarded to the web server in HTTP
         if(resource.length == 0 || Strings.compare(resource[0], "#")) {
             filePath = "index.html";
         }
@@ -80,7 +82,7 @@ contract DBlogFrontend is IDecentralizedApp {
             }
         }
 
-        // Search for the requested resource
+        // Search for the requested resource in our static file list
         for(uint i = 0; i < frontendVersion.files.length; i++) {
             if(Strings.compare(filePath, frontendVersion.files[i].filePath)) {
                 if(frontendVersion.storageMode == FrontendStorageMode.SSTORE2) {
