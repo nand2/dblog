@@ -95,9 +95,13 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         return "5219";
     }
 
+    function frontendVersion() public view returns (FrontendVersion memory) {
+        return frontendVersions[defaultFrontendIndex];
+    }
+
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
-        FrontendVersion memory frontend = frontendVersions[defaultFrontendIndex];
+        FrontendVersion memory frontend = frontendVersion();
         TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
 
         // Frontpage

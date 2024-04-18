@@ -299,7 +299,7 @@ contract DBlogFactory {
             }
 
             // Blog factory
-            if(node == computeSubdomainNameHash("")) {
+            if(node == computeSubdomainNameHash("") && factoryFrontend.frontendVersion().storageMode == DBlogFactoryFrontend.FrontendStorageMode.EthStorage) {
                 return string.concat(ethStorageChainShortName, ":", Strings.toHexString(address(factoryFrontend)));
             }
 
