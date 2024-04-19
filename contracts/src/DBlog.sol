@@ -126,6 +126,18 @@ contract DBlog {
         return (posts[index].title, posts[index].timestamp, posts[index].ethereumStateContent, posts[index].ethStorageContentKey);
     }
 
+    // Need to be called with the EthStorage chain
+    function getPostEthStorageContent(uint256 index) public view returns (bytes memory) {
+        require(index < posts.length, "Index out of bounds");
+        require(posts[index].ethStorageContentKey != 0, "Post is on Ethereum state");
+
+        return factory.ethStorage().get(
+            posts[index].ethStorageContentKey, 
+            DecentralizedKV.DecodeType.PaddingPer31Bytes, 
+            0, 
+            factory.ethStorage().size(posts[index].ethStorageContentKey));
+    }
+
     function editEthereumStatePost(uint256 index, string memory postTitle, string memory postContent) public onlyOwnerOrEditors {
         require(index < posts.length, "Index out of bounds");
         require(posts[index].ethStorageContentKey == 0, "Post is on EthStorage");

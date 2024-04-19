@@ -123,7 +123,7 @@ console.log("EthStorage upfront payment", upfrontPayment)
 
 
 let baseFeePerBlobGas = await getBaseFeePerBlobGas();
-let maxFeePerBlobGas = baseFeePerBlobGas * 2n;
+let maxFeePerBlobGas = baseFeePerBlobGas * 4n;
 
 // Prepare the args
 let fileArgs = []
