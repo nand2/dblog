@@ -84,6 +84,21 @@ document.querySelector('#app').innerHTML = `
             </div>
           </div>
         </div>
+        <div class="form-row">
+          <label for="burner-address">Burner wallet</label>
+          <div id="burner-address-area">
+            <div id="burner-address-field-area">
+              <input type="text" id="burner-address" name="burner-address" placeholder="Private key (0x...)">
+              <button type="button" id="generate-burner-address">Generate</button>
+            </div>
+            <div class="burner-help" id="burner-address-generated-area" style="display:none";>
+              Your burner wallet address is : <strong id="burner-address-generated"></strong>
+            </div>
+            <div class="burner-help">
+              This is necessary as long as your wallet (Metamask, ...) does not support blob transactions
+            </div>
+          </div>
+        </div>
         <div class="error-message">
           Error message
         </div>

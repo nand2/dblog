@@ -3,7 +3,7 @@ import { strip_tags, uint8ArrayToHexString, parseWeb3Url, getBaseFeePerBlobGas }
 import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
 import { createWalletClient, custom, publicActions, toBlobs, toHex, setupKzg, encodeFunctionData, stringToHex, blobsToCommitments, commitmentsToVersionedHashes, blobsToProofs, defineChain, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { sepolia } from 'viem/chains'
+import { sepolia, mainnet, anvil } from 'viem/chains'
 import { loadKZG } from 'kzg-wasm'
 
 /**
@@ -90,7 +90,7 @@ export async function blogEntryController(blogAddress, chainId) {
 
   // Get the content, from EthStorage or from Ethereum state
   let content = ''
-  if(post.ethStorageContentKey != "0x") {
+  if(post.ethStorageContentKey != "0x0000000000000000000000000000000000000000000000000000000000000000") {
     // Determine which EthStorage chain to use
     let ethStorageChainId = 333
     if(chainId != 1) {
@@ -233,6 +233,36 @@ export async function entryEditController(blogAddress, chainId) {
   showPreviewButton.removeEventListener('click', handlePreviewButton)
   showPreviewButton.addEventListener('click', handlePreviewButton)
 
+  // Burner wallet generation
+  const burnerAddressPrivateKeyInput = page.querySelector('#burner-address')
+  const burnerAddressGenerated = page.querySelector('#burner-address-generated')
+  const burnerAddressGeneratedArea = page.querySelector('#burner-address-generated-area')
+  const generateBurnerAddressButton = page.querySelector('#generate-burner-address')
+  const handleGenerateBurnerAddress = async (event) => {
+    if(confirm('Warning! This will generate a new burner wallet. Make sure to make a backup of the private key. \n\nThis is not safe to send large amount of funds on it, only send the strict minimum to pay for the transaction.\n\nContinue?') == false) {
+      return;
+    }
+    event.preventDefault()
+    const newBurnerArray = new Uint8Array(32);
+    self.crypto.getRandomValues(newBurnerArray);
+    const newBurnerPrivateKey = "0x" + uint8ArrayToHexString(newBurnerArray);
+    burnerAddressPrivateKeyInput.value = newBurnerPrivateKey
+    handleBurnerPrivateKeyChange()
+  }
+  const handleBurnerPrivateKeyChange = async (event) => {
+    try {
+      burnerAddressGenerated.innerHTML = privateKeyToAccount(burnerAddressPrivateKeyInput.value).address
+    }
+    catch (error) {
+      burnerAddressGenerated.innerHTML = burnerAddressPrivateKeyInput.value ? 'Invalid private key' : ''
+    }
+    burnerAddressGeneratedArea.style.display = burnerAddressPrivateKeyInput.value ? 'block' : 'none'
+  }
+  generateBurnerAddressButton.removeEventListener('click', handleGenerateBurnerAddress)
+  generateBurnerAddressButton.addEventListener('click', handleGenerateBurnerAddress)
+  burnerAddressPrivateKeyInput.removeEventListener('input', handleBurnerPrivateKeyChange)
+  burnerAddressPrivateKeyInput.addEventListener('input', handleBurnerPrivateKeyChange)
+
 
   // On submit, create a new blog by calling the createBlog method of the BlogFactory contract
   const form = page.querySelector('form');
@@ -254,6 +284,7 @@ export async function entryEditController(blogAddress, chainId) {
 
     const title = form.querySelector('#title').value;
     const content = form.querySelector('#content').value;
+    const burnerAddressPrivateKeyInput = form.querySelector('#burner-address')
 
     // If title or content is empty : throw an error
     if (title.length === 0 || content.length === 0) {
@@ -302,28 +333,51 @@ export async function entryEditController(blogAddress, chainId) {
       }
     ];
 
+    // Determine if we are using a burner wallet
+    let burnerWallet = null
+    try {
+      burnerWallet = privateKeyToAccount(burnerAddressPrivateKeyInput.value)
+    }
+    catch (error) {
+      // Not using a burner wallet, using metamask
+    }
+
     // Prepare a Viem client
-    const viemClient = createWalletClient({
+    let accountAddress = null
+    let createWalletClientOpts = {
       transport: custom(window.ethereum)
-    }).extend(publicActions)
+    }
+    if(burnerWallet) {
+      accountAddress = burnerWallet
+      createWalletClientOpts = {
+        account: burnerWallet,
+        chain: chainId == 31337 ? anvil : chainId == 11155111 ? sepolia : mainnet,
+        transport: http()
+      }
+    }
+    const viemClient = createWalletClient(createWalletClientOpts).extend(publicActions)
 
-    // Request the address
-    let accounts = []
-    try {
-      accounts = await viemClient.requestAddresses()
-    }
-    catch (error) {
-      stopWithError('Address fetching failed : ' + error.message)
-      return
+    // Request the address to use, if not using the burner wallet
+    if(burnerWallet == null) {
+      try {
+        let accounts = await viemClient.requestAddresses()
+        accountAddress = accounts[0]
+      }
+      catch (error) {
+        stopWithError('Address fetching failed : ' + error.message)
+        return
+      }
     }
 
-    // Request chain change
-    try {
-      await viemClient.switchChain({ id: chainId }) 
-    }
-    catch (error) {
-      stopWithError('Chain switch failed : ' + error.message)
-      return
+    // Request chain change, if not using the burner wallet
+    if(burnerWallet == null) {
+      try {
+        await viemClient.switchChain({ id: chainId }) 
+      }
+      catch (error) {
+        stopWithError('Chain switch failed : ' + error.message)
+        return
+      }
     }
 
     // Prepare the calldata/value/blobs
@@ -396,11 +450,10 @@ console.log("blobs length", blobs.length)
       chain: defineChain({
         id: chainId,
       }),
-      account: accounts[0],
+      account: accountAddress,
       to: blogAddress,
       data: calldata,
       value: value,
-      gas: 1000000n,
     }
     if(blobs.length > 0) {
       transactionOpts.blobs = blobs;

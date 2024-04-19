@@ -216,6 +216,20 @@ a#admin-link {
   display: none;
 }
 
+#page-entry-edit form #burner-address-area {
+  width: 100%;
+}
+
+#page-entry-edit form #burner-address-field-area {
+  display: flex;
+  gap: 1em;
+  margin-bottom: 5px;
+}
+
+#page-entry-edit form .burner-help {
+  font-size: 13px;
+}
+
 #page-entry-edit .error-message {
   display: none;
   margin-left: 120px;
