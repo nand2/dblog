@@ -85,10 +85,10 @@ document.querySelector('#app').innerHTML = `
           </div>
         </div>
         <div class="form-row">
-          <label for="burner-address">Burner wallet</label>
+          <label for="burner-address-private-key">Burner wallet</label>
           <div id="burner-address-area">
             <div id="burner-address-field-area">
-              <input type="text" id="burner-address" name="burner-address" placeholder="Private key (0x...)">
+              <input type="text" id="burner-address-private-key" name="burner-address-private-key" placeholder="Private key (0x...)">
               <button type="button" id="generate-burner-address">Generate</button>
             </div>
             <div class="burner-help" id="burner-address-generated-area" style="display:none";>

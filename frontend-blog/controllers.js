@@ -171,6 +171,7 @@ export async function entryEditController(blogAddress, chainId) {
   // Reinit fields
   page.querySelector('#title').value = ''
   page.querySelector('#content').value = ''
+  page.querySelector('#burner-address-private-key').value = ''
 
   // Determine if we are adding or editing by checking if the URL start with /add
   let parsedUrl = parseWeb3Url(window.location.href)
@@ -262,7 +263,7 @@ export async function entryEditController(blogAddress, chainId) {
   }
 
   // Burner wallet generation
-  const burnerAddressPrivateKeyInput = page.querySelector('#burner-address')
+  const burnerAddressPrivateKeyInput = page.querySelector('#burner-address-private-key')
   const burnerAddressGenerated = page.querySelector('#burner-address-generated')
   const burnerAddressGeneratedArea = page.querySelector('#burner-address-generated-area')
   const generateBurnerAddressButton = page.querySelector('#generate-burner-address')
@@ -276,6 +277,10 @@ export async function entryEditController(blogAddress, chainId) {
     const newBurnerPrivateKey = "0x" + uint8ArrayToHexString(newBurnerArray);
     burnerAddressPrivateKeyInput.value = newBurnerPrivateKey
     handleBurnerPrivateKeyChange()
+    // Store it on localStorage
+    if(localStorage) {
+      localStorage.setItem('burnerPrivateKey', newBurnerPrivateKey)
+    }
   }
   const handleBurnerPrivateKeyChange = async (event) => {
     try {
@@ -293,6 +298,11 @@ export async function entryEditController(blogAddress, chainId) {
   if(burnerAddressPrivateKeyInput.hasAttribute('data-event-listener-added') == false) {
     burnerAddressPrivateKeyInput.addEventListener('input', handleBurnerPrivateKeyChange)
     burnerAddressPrivateKeyInput.setAttribute('data-event-listener-added', 'true')
+  }
+  // Private key field: Load the burner address from localStorage, if it was previously stored
+  if(localStorage && localStorage.getItem('burnerPrivateKey')) {
+    burnerAddressPrivateKeyInput.value = localStorage.getItem('burnerPrivateKey')
+    handleBurnerPrivateKeyChange()
   }
 
 
@@ -316,7 +326,7 @@ export async function entryEditController(blogAddress, chainId) {
 
     const title = form.querySelector('#title').value;
     const content = form.querySelector('#content').value;
-    const burnerAddressPrivateKeyInput = form.querySelector('#burner-address')
+    const burnerAddressPrivateKeyInput = form.querySelector('#burner-address-private-key')
 
     // If title or content is empty : throw an error
     if (title.length === 0 || content.length === 0) {
