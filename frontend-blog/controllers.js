@@ -185,23 +185,47 @@ export async function entryEditController(blogAddress, chainId) {
   let post = null
   if (!newPost) {
     // Call the blog to fetch the post
-    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint256,string)`)
+    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint256,string,bytes32)`)
       .then(response => response.json())
       .then(data => {
         console.log("Fetched post : ", data)
         post = {
           title: data[0],
           date: data[1],
-          content: data[2],
+          ethereumStateContent: data[2],
+          ethStorageContentKey: data[3],
         }
       })
       .catch(error => {
         console.error(error)
       })
 
+    // Get the content, from EthStorage or from Ethereum state
+    let content = ''
+    if(post.ethStorageContentKey != "0x0000000000000000000000000000000000000000000000000000000000000000") {
+      // Determine which EthStorage chain to use
+      let ethStorageChainId = 333
+      if(chainId != 1) {
+        ethStorageChainId = 3333
+      }
+      // Call the EthStorage to fetch the content
+      await fetch(`web3://${blogAddress}:${ethStorageChainId}/getPostEthStorageContent/${postNumber}?returns=(string)`)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched blog ethstorage content : ", data)
+          content = data[0]
+        })
+        .catch(error => {
+          console.error(error)
+        })
+    }
+    else {
+      content = post.ethereumStateContent;
+    }
+
     // Insert the post
     page.querySelector('#title').value = post.title
-    page.querySelector('#content').value = post.content
+    page.querySelector('#content').value = content
   }
 
 
