@@ -252,10 +252,14 @@ export async function entryEditController(blogAddress, chainId) {
     isPreviewShown = true
     applyPreviewShownState()
   }
-  showMarkdownButton.removeEventListener('click', handleMarkdownButton)
-  showMarkdownButton.addEventListener('click', handleMarkdownButton)
-  showPreviewButton.removeEventListener('click', handlePreviewButton)
-  showPreviewButton.addEventListener('click', handlePreviewButton)
+  if(showMarkdownButton.hasAttribute('data-event-listener-added') == false) {
+    showMarkdownButton.addEventListener('click', handleMarkdownButton)
+    showMarkdownButton.setAttribute('data-event-listener-added', 'true')
+  }
+  if(showPreviewButton.hasAttribute('data-event-listener-added') == false) {
+    showPreviewButton.addEventListener('click', handlePreviewButton)
+    showPreviewButton.setAttribute('data-event-listener-added', 'true')
+  }
 
   // Burner wallet generation
   const burnerAddressPrivateKeyInput = page.querySelector('#burner-address')
@@ -282,10 +286,14 @@ export async function entryEditController(blogAddress, chainId) {
     }
     burnerAddressGeneratedArea.style.display = burnerAddressPrivateKeyInput.value ? 'block' : 'none'
   }
-  generateBurnerAddressButton.removeEventListener('click', handleGenerateBurnerAddress)
-  generateBurnerAddressButton.addEventListener('click', handleGenerateBurnerAddress)
-  burnerAddressPrivateKeyInput.removeEventListener('input', handleBurnerPrivateKeyChange)
-  burnerAddressPrivateKeyInput.addEventListener('input', handleBurnerPrivateKeyChange)
+  if(generateBurnerAddressButton.hasAttribute('data-event-listener-added') == false) {
+    generateBurnerAddressButton.addEventListener('click', handleGenerateBurnerAddress)
+    generateBurnerAddressButton.setAttribute('data-event-listener-added', 'true')
+  }
+  if(burnerAddressPrivateKeyInput.hasAttribute('data-event-listener-added') == false) {
+    burnerAddressPrivateKeyInput.addEventListener('input', handleBurnerPrivateKeyChange)
+    burnerAddressPrivateKeyInput.setAttribute('data-event-listener-added', 'true')
+  }
 
 
   // On submit, create a new blog by calling the createBlog method of the BlogFactory contract
@@ -533,6 +541,8 @@ console.log("txResult", txResult)
   };
 
   // Add the event listener only once
-  form.removeEventListener('submit', handleSubmit);
-  form.addEventListener('submit', handleSubmit);
+  if(form.hasAttribute('data-event-listener-added') == false) {
+    form.addEventListener('submit', handleSubmit);
+    form.setAttribute('data-event-listener-added', 'true')
+  }
 }
