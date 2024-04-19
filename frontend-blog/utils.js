@@ -19,3 +19,22 @@ export function parseWeb3Url(web3Url) {
 
   return matchResult.groups;
 }
+
+// Blob functions and constants
+const MIN_BLOB_GASPRICE = 1n;
+const BLOB_GASPRICE_UPDATE_FRACTION = 3338477n;
+function fakeExponential(factor, numerator, denominator) {
+    let i = 1n;
+    let output = 0n;
+    let numerator_accum = factor * denominator;
+    while (numerator_accum > 0n) {
+        output += numerator_accum;
+        numerator_accum = (numerator_accum * numerator) / (denominator * i);
+        i++;
+    }
+    return output / denominator;
+}
+export function getBaseFeePerBlobGas(blockExcessBlobGas) {
+  let blogGasFee = fakeExponential(MIN_BLOB_GASPRICE, blockExcessBlobGas ?? 0n,BLOB_GASPRICE_UPDATE_FRACTION);
+  return blogGasFee;
+}

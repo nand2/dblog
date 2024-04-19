@@ -83,8 +83,10 @@ gzip -c frontend-blog/dist/${BLOG_FRONTEND_HTML_FILE} > dist/frontend-blog/${BLO
 BLOG_FRONTEND_CSS_FILE=$(ls frontend-blog/dist/assets | grep "css")
 BLOG_FRONTEND_COMPRESSED_CSS_FILE=${DOMAIN}-${TIMESTAMP}-${BLOG_FRONTEND_CSS_FILE}.gz
 gzip -c frontend-blog/dist/assets/${BLOG_FRONTEND_CSS_FILE} > dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_CSS_FILE}
-# Find out the name of the JS file in the asset folder and compress it
-BLOG_FRONTEND_JS_FILE=$(ls frontend-blog/dist/assets | grep "js")
+# Find out the name of the biggest JS file in the asset folder and compress it
+# (there should only be one, but sometimes the bundler put a unused tiny bit on another file, 
+# which need to be debugged)
+BLOG_FRONTEND_JS_FILE=$(ls -S frontend-blog/dist/assets | grep "js" | head -n 1)
 BLOG_FRONTEND_COMPRESSED_JS_FILE=${DOMAIN}-${TIMESTAMP}-${BLOG_FRONTEND_JS_FILE}.gz
 gzip -c frontend-blog/dist/assets/${BLOG_FRONTEND_JS_FILE} > dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_JS_FILE}
 # Find out the name of the wasm file in the asset folder and compress it
@@ -93,7 +95,7 @@ BLOG_FRONTEND_COMPRESSED_WASM_FILE=${DOMAIN}-${TIMESTAMP}-${BLOG_FRONTEND_WASM_F
 gzip -c frontend-blog/dist/assets/${BLOG_FRONTEND_WASM_FILE} > dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_WASM_FILE}
 
 
-# Testnet : get back the domain we sent to DBlogFactory
+# # Testnet : get back the domain we sent to DBlogFactory
 if [ "$TARGET_CHAIN" != "mainnet" ] && [ "$TARGET_CHAIN" != "local" ]; then
   echo ""
   echo "Fetching back domain ..."
