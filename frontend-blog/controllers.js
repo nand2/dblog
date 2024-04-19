@@ -498,7 +498,7 @@ console.log("txResult", txResult)
       return
     }
     // Take the BlogCreated/BlogEdited event
-    const log = txResult.logs[0]
+    const log = txResult.logs[txResult.logs.length - 1]
     // Find the post number
     const savedPostNumber = parseInt(log.topics[1], 16)
     // Go to the post
