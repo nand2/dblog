@@ -152,6 +152,7 @@ contract DBlog {
         require(index < posts.length, "Index out of bounds");
         require(posts[index].ethStorageContentKey != 0, "Post is on Ethereum state");
 
+        posts[index].title = postTitle;
         // We store the content on EthStorage
         // No payment, as we reuse a key
         factory.ethStorage().putBlob(posts[index].ethStorageContentKey, 0, blobDataSize);
