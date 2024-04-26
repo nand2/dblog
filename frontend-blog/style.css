@@ -223,6 +223,7 @@ a#admin-link {
 
 #page-entry-edit form #content-preview {
   display: none;
+  min-height: 312px;
 }
 
 #page-entry-edit form #burner-address-area {
@@ -243,12 +244,12 @@ a#admin-link {
   display: none;
   margin-left: 120px;
   color: #ff6464;
-  margin-bottom: 1em;
+  margin-bottom: 10px;
   font-size: 90%;
 }
 
 #page-entry-edit form .buttons {
   display: flex;
-  justify-content: flex-end;
+  margin-left: 120px;
   gap: 1em;
 }

@@ -515,6 +515,8 @@ export async function entryEditController(blogAddress, chainId) {
   const form = page.querySelector('form');
   const submitButton = form.querySelector('button[type="submit"]');
   const errorMessageDiv = form.querySelector('.error-message');
+  errorMessageDiv.innerHTML = '';
+  errorMessageDiv.style.display = 'none';
 
   const stopWithError = (message) => {
     errorMessageDiv.innerHTML = strip_tags(message)
@@ -528,6 +530,7 @@ export async function entryEditController(blogAddress, chainId) {
     submitButton.disabled = true;
     submitButton.innerHTML = 'Saving ...';
     errorMessageDiv.innerHTML = '';
+    errorMessageDiv.style.display = 'none';
 
     const title = form.querySelector('#title').value;
     const content = form.querySelector('#content').value;
