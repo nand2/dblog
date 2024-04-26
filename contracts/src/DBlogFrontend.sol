@@ -85,11 +85,11 @@ contract DBlogFrontend is IDecentralizedApp {
         // Search for the requested resource in our static file list
         for(uint i = 0; i < frontendVersion.files.length; i++) {
             if(Strings.compare(filePath, frontendVersion.files[i].filePath)) {
-                if(frontendVersion.storageMode == FrontendStorageMode.SSTORE2) {
+                if(frontendVersion.storageMode == FileStorageMode.SSTORE2) {
                     File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontendVersion.files[i].contentKeys[0])))), (File));
                     body = file.read();
                 }
-                else if(frontendVersion.storageMode == FrontendStorageMode.EthStorage) {
+                else if(frontendVersion.storageMode == FileStorageMode.EthStorage) {
                     bytes memory content;
                     for(uint j = 0; j < frontendVersion.files[i].contentKeys.length; j++) {
                         content = bytes.concat(content, frontendLibrary.getEthStorageFileContents(frontendVersion.files[i].contentKeys[j]));
@@ -120,10 +120,37 @@ contract DBlogFrontend is IDecentralizedApp {
             headers = new KeyValue[](1);
             headers[0].key = "Content-type";
             headers[0].value = "application/json";
+            return (statusCode, body, headers);
         }
-        else {
-            statusCode = 404;
+
+        // /uploads/<uploadedFile>
+        if(resource.length == 2 && Strings.compare(resource[0], "uploads")) {
+            string memory uploadedFileName = resource[1];
+            FileInfosWithStorageMode memory uploadedFile;
+            for(uint i = 0; i < blog.getUploadedFilesCount(); i++) {
+                uploadedFile = blog.getUploadedFile(i);
+                if(Strings.compare(uploadedFileName, uploadedFile.fileInfos.filePath)) {
+                    if(uploadedFile.storageMode == FileStorageMode.SSTORE2) {
+                        File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(uploadedFile.fileInfos.contentKeys[0])))), (File));
+                        body = file.read();
+                    }
+                    else if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
+                        bytes memory content;
+                        for(uint j = 0; j < uploadedFile.fileInfos.contentKeys.length; j++) {
+                            content = bytes.concat(content, frontendLibrary.getEthStorageFileContents(uploadedFile.fileInfos.contentKeys[j]));
+                        }
+                        body = string(content);
+                    }
+                    statusCode = 200;
+                    headers = new KeyValue[](1);
+                    headers[0].key = "Content-type";
+                    headers[0].value = uploadedFile.fileInfos.contentType;
+                    return (statusCode, body, headers);
+                }
+            }
         }
+        
+        statusCode = 404;
     }
 
 }

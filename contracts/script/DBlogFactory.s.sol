@@ -4,7 +4,8 @@ pragma solidity ^0.8.13;
 import {Script, console} from "forge-std/Script.sol";
 import {DBlogFactory} from "../src/DBlogFactory.sol";
 import {DBlogFactoryFrontend} from "../src/DBlogFactoryFrontend.sol";
-import {DBlogFrontendLibrary, FileInfos} from "../src/DBlogFrontendLibrary.sol";
+import {DBlogFrontendLibrary} from "../src/DBlogFrontendLibrary.sol";
+import {FileInfos} from "../src/interfaces/FileInfos.sol";
 import {DBlogFrontend} from "../src/DBlogFrontend.sol";
 import {DBlog} from "../src/DBlog.sol";
 
@@ -78,7 +79,7 @@ contract DBlogFactoryScript is Script {
             DBlogFrontend blogFrontendImplementation = new DBlogFrontend();
 
             // Deploying the blog factory
-            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary, nameWrapper, ethRegistrarController, baseRegistrar, ethStorage);
+            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary, nameWrapper, ethRegistrarController, baseRegistrar, store, ethStorage);
 
             console.log("DBlogFactory: ", address(factory));
             console.log("DBlogFactoryFrontend: ", address(factoryFrontend));

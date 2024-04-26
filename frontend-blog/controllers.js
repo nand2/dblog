@@ -5,6 +5,7 @@ import { createPublicClient, createWalletClient, custom, publicActions, toBlobs,
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia, mainnet, anvil } from 'viem/chains'
 import { loadKZG } from 'kzg-wasm'
+import mime from 'mime';
 
 
 // Frontent contract ABI
@@ -45,6 +46,18 @@ const frontendABI = [
     name: 'removeEditor',
     outputs: [],
     type: 'function',
+  },
+  {
+    inputs: [{ name: 'fileName', type: 'string' }, { name: 'contentType', type: 'string' }, { name: 'blobDataSizes', type: 'uint256[]' }],
+    name: 'addUploadedFileOnEthStorage',
+    outputs: [],
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'filePath', type: 'string' }, { name: 'contentType', type: 'string' }, { name: 'fileContents', type: 'bytes' }],
+    name: 'addUploadedFileOnEthfs',
+    outputs: [],
+    type: 'function',
   }
 ];
 
@@ -64,11 +77,16 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
       burnerWallet = privateKeyToAccount(opts.burnerWalletPrivateKey)
     }
     catch (error) {
-      throw new Exception('Burner wallet private key is invalid')
+      throw new Error('Burner wallet private key is invalid')
     }
     // Store it on localStorage as the default burner wallet we are now using
-    if(opts.burnerWalletSavePrivateKeyToLocalStorage && localStorage) {
-      localStorage.setItem('burnerPrivateKey', opts.burnerWalletPrivateKey)
+    if(opts.burnerWalletSavePrivateKeyToLocalStorage) {
+      try {
+        localStorage.setItem('burnerPrivateKey', opts.burnerWalletPrivateKey)
+      }
+      catch (error) {
+        // Do nothing. We know localstorage support is not available in EVM browser
+      }
     }
   }
 
@@ -97,7 +115,7 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
   if(burnerWallet) {
     const walletBalance = await viemClient.getBalance({address: burnerWallet.address})
     if(walletBalance == 0n) {
-      throw new Exception('Burner wallet ' + burnerWallet.address + ' has no funds')
+      throw new Error('Burner wallet ' + burnerWallet.address + ' has no funds')
     }
   }
 
@@ -111,7 +129,7 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
         editors = data[0]
       })
       .catch(error => {
-        throw new Exception('Editors fetching failed : ' + error.message)
+        throw new Error('Editors fetching failed : ' + error.message)
       })
     
     if(editors.includes(burnerWallet.address) == false) {
@@ -121,7 +139,7 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
         await sendTransaction(blogAddress, chainId, "addEditor", [burnerWallet.address]);
       }
       catch (error) {
-        throw new Exception(error.message)
+        throw new Error(error.message)
       }
     }
   }
@@ -133,7 +151,7 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
       accountAddress = accounts[0]
     }
     catch (error) {
-      throw new Exception('Address fetching failed : ' + error.message)
+      throw new Error('Address fetching failed : ' + error.message)
     }
   }
 
@@ -143,7 +161,7 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
       await viemClient.switchChain({ id: chainId }) 
     }
     catch (error) {
-      throw new Exception('Chain switch failed : ' + error.message)
+      throw new Error('Chain switch failed : ' + error.message)
     }
   }
 
@@ -188,7 +206,7 @@ console.log("transactionOpts", transactionOpts)
   }
   catch (error) {
     console.log('Transaction failed : ' + error.message)
-    throw new Exception('Transaction failed : ' + error.details)
+    throw new Error('Transaction failed : ' + error.details)
   }
 console.log("txHash", txHash)
 
@@ -200,7 +218,7 @@ console.log("txHash", txHash)
     )
   }
   catch (error) {
-    throw new Exception('Failed to fetch the transaction result : ' + error.message)
+    throw new Error('Failed to fetch the transaction result : ' + error.message)
   }
 
   return txResult;
@@ -565,22 +583,89 @@ export async function entryEditController(blogAddress, chainId) {
     fileInput.style.display = 'none';
     fileInput.addEventListener('change', (event) => {
       const file = event.target.files[0];
+
+      // Determine mime type of the file
+      let mimeType = mime.getType(file.name.split('.').pop())
+      if(mimeType == "") {
+        alert("Unable to determine mime type of the file")
+        return;
+      }
+
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const fileContent = event.target.result;
-        // Convert the fileContent to blobs ready to be sent
-        let blobs = []
-        try {
-          blobs = toBlobs({ data: toHex(new Uint8Array(fileContent)) });
-          console.log("Image blobs count", blobs.length)
+
+        // Prepare the calldata/value/blobs
+        let methodName;
+        let args = [];
+        let value = 0n;
+        let blobs = [];
+        // Ethereum mainnet or sepolia: Store on EthStorage
+        if(chainId == 1 || chainId == 11155111) {
+          // Convert the fileContent to blobs ready to be sent
+          let blobs = []
+          try {
+            blobs = toBlobs({ data: toHex(new Uint8Array(fileContent)) });
+            console.log("Image blobs count", blobs.length)
+          }
+          // toBlobs will also catch if the file is too big ( > 6 blobs)
+          catch (error) {
+            alert(error);
+            return
+          }
+
+          // Prepare the data sizes stored in the blobs
+          let remaningFileSize = file.size
+          const fullBlobDataSize = (32 - 1) * 4096;
+          let blobDataSizes = []
+          for(let i = 0; i < blobs.length - 1; i++) {
+            blobDataSizes.push(fullBlobDataSize)
+            remaningFileSize -= fullBlobDataSize
+          }
+          blobDataSizes.push(remaningFileSize)
+
+          // Get price of ethstorage upfront payment
+          // We need to pay that
+          await fetch(`web3://${blogAddress}:${chainId}/getEthStorageUpfrontPayment?returns=(uint256)`)
+            .then(response => response.json())
+            .then(data => {
+              value = fromHex(data[0], 'bigint') * BigInt(blobs.length)
+            })
+            .catch(error => {
+              alert('EthStorage upfront fee fetching failed : ' + error.message)
+              return
+            })
+
+          methodName = "addUploadedFileOnEthStorage";
+          args = [file.name, mimeType, blobDataSizes];
         }
-        // toBlobs will also catch if the file is too big ( > 6 blobs)
-        catch (error) {
-          alert(error);
-          return
+        // Other networks: Otherwise store on state
+        else {
+          methodName = "addUploadedFileOnEthfs";
+          args = [file.name, mimeType, toHex(new Uint8Array(fileContent))];
         }
 
-        const imageUrl = "booyah"
+        // Make the call
+        const burnerAddressPrivateKey = page.querySelector('#burner-address-private-key').value
+        let txResult = null;
+        try {
+          txResult = await sendTransaction(blogAddress, chainId, methodName, args, {
+            value: value,
+            blobs: blobs,
+            burnerWalletPrivateKey: burnerAddressPrivateKey,
+            burnerWalletRequiredToBeEditor: true,
+            burnerWalletSavePrivateKeyToLocalStorage: true,
+          });
+        }
+        catch (error) {
+          stopWithError(error.message)
+          return
+        }
+          
+console.log("txResult", txResult)
+
+
+        const imageUrl = "/uploads/" + file.name;
         const content = page.querySelector('#content')
         const cursorPosition = content.selectionStart
         const contentBefore = content.value.substring(0, cursorPosition)
@@ -613,8 +698,11 @@ export async function entryEditController(blogAddress, chainId) {
     burnerAddressPrivateKeyInput.value = newBurnerPrivateKey
     handleBurnerPrivateKeyChange()
     // Store it on localStorage
-    if(localStorage) {
+    try {
       localStorage.setItem('burnerPrivateKey', newBurnerPrivateKey)
+    }
+    catch (error) {
+      // Do nothing. We know localstorage support is not available in EVM browser yet
     }
   }
   const handleBurnerPrivateKeyChange = async (event) => {
@@ -645,9 +733,14 @@ export async function entryEditController(blogAddress, chainId) {
     burnerAddressPrivateKeyInput.setAttribute('data-event-listener-added', 'true')
   }
   // Private key field: Load the burner address from localStorage, if it was previously stored
-  if(localStorage && localStorage.getItem('burnerPrivateKey')) {
-    burnerAddressPrivateKeyInput.value = localStorage.getItem('burnerPrivateKey')
-    handleBurnerPrivateKeyChange()
+  try {
+    if(localStorage.getItem('burnerPrivateKey')) {
+      burnerAddressPrivateKeyInput.value = localStorage.getItem('burnerPrivateKey')
+      handleBurnerPrivateKeyChange()
+    }
+  }
+  catch (error) {
+    // Do nothing. We know localstorage support is not available in EVM browser yet
   }
 
 
@@ -659,7 +752,7 @@ export async function entryEditController(blogAddress, chainId) {
   errorMessageDiv.style.display = 'none';
 
   const stopWithError = (message) => {
-    errorMessageDiv.innerHTML = strip_tags(message)
+    errorMessageDiv.innerHTML = strip_tags(message ?? "")
     errorMessageDiv.style.display = 'block'
     submitButton.disabled = false
     submitButton.innerHTML = 'Save'

@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "./DBlogFrontend.sol";
 import "./DBlogFactory.sol";
+import "./interfaces/FileInfos.sol";
 
 contract DBlog {
     // Link to our creator, handling all the blogs
@@ -23,10 +24,15 @@ contract DBlog {
     string public title;
     string public description;
 
+    // Files uploaded by the author/editors
+    FileInfosWithStorageMode[] uploadedFiles;
+
+    // EthStorage content keys: we use a simple incrementing key
     uint256 public ethStorageLastUsedKey = 0;
 
     event PostCreated(uint indexed postId);
     event PostEdited(uint indexed postId);
+    event FileUploaded(string filename, string contentType);
 
     struct BlogPost {
         string title;
@@ -175,5 +181,58 @@ contract DBlog {
 
     function getPosts() public view returns (BlogPost[] memory) {
         return posts;
+    }
+
+    function addUploadedFileOnEthfs(string memory fileName, string memory contentType, bytes memory fileContents) public onlyOwnerOrEditors {
+        uploadedFiles.push();
+        FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
+        newFile.storageMode = FileStorageMode.SSTORE2;
+        newFile.fileInfos.filePath = fileName;
+        newFile.fileInfos.contentType = contentType;
+
+        // We store the content on ethFs
+        (address filePointer, ) = factory.ethsFileStore().createFile(fileName, string(fileContents));
+        newFile.fileInfos.contentKeys.push(bytes32(uint256(uint160(filePointer))));
+
+        emit FileUploaded(fileName, contentType);
+    }
+
+    function addUploadedFileOnEthStorage(string memory filePath, string memory contentType, uint256[] memory blobDataSizes) public payable onlyOwnerOrEditors {
+        // Ensure file name is unique
+        for(uint i = 0; i < uploadedFiles.length; i++) {
+            require(keccak256(abi.encodePacked(uploadedFiles[i].fileInfos.filePath)) != keccak256(abi.encodePacked(filePath)), "File already uploaded");
+        }
+
+        uploadedFiles.push();
+        FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
+        newFile.storageMode = FileStorageMode.EthStorage;
+        newFile.fileInfos.filePath = filePath;
+        newFile.fileInfos.contentType = contentType;
+
+        // We store the content on EthStorage
+        bytes32[] memory ethStorageKeys = new bytes32[](blobDataSizes.length);
+        uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+        for(uint i = 0; i < blobDataSizes.length; i++) {
+            ethStorageLastUsedKey++;
+            ethStorageKeys[i] = bytes32(ethStorageLastUsedKey);
+            factory.ethStorage().putBlob{value: upfrontPayment}(ethStorageKeys[i], 0, blobDataSizes[i]);
+        }
+        newFile.fileInfos.contentKeys = ethStorageKeys;
+
+        emit FileUploaded(filePath, contentType);
+    }
+
+    function getUploadedFiles() public view returns (FileInfosWithStorageMode[] memory) {
+        return uploadedFiles;
+    }
+
+    function getUploadedFilesCount() public view returns (uint256) {
+        return uploadedFiles.length;
+    }
+
+    function getUploadedFile(uint256 index) public view returns (FileInfosWithStorageMode memory) {
+        require(index < uploadedFiles.length, "Index out of bounds");
+
+        return uploadedFiles[index];
     }
 }

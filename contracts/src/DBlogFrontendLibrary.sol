@@ -4,28 +4,13 @@ pragma solidity ^0.8.13;
 import { TestEthStorageContractKZG } from "storage-contracts-v1/TestEthStorageContractKZG.sol";
 import { DecentralizedKV } from "storage-contracts-v1/DecentralizedKV.sol";
 
+import "./interfaces/FileInfos.sol";
 import "./DBlogFactory.sol";
 
-enum FrontendStorageMode {
-    SSTORE2, // Store on the ethereum network itself using SSTORE2
-    EthStorage // Store with the EthStorage project
-}
-struct FileInfos {
-    // The path of the file, without root slash. E.g. "images/logo.png"
-    string filePath;
-    // The content type of the file, e.g. "image/png"
-    string contentType;
-
-    // Pointers to the file contents
-    // If storage mode is SSTORE2, then there will only be one address pointer to the SSTORE2 file
-    // If storage mode is EthStorage, then these are the keys to the EthStorage file parts
-    // Note: These files are expected to be compressed with gzip
-    bytes32[] contentKeys;
-}
 // A version of a frontend, containing a single HTML, CSS and JS file.
 struct BlogFrontendVersion {
     // Storage mode for the frontend files
-    FrontendStorageMode storageMode;
+    FileStorageMode storageMode;
 
     // The files of the frontend
     FileInfos[] files;
@@ -74,7 +59,7 @@ contract DBlogFrontendLibrary {
         // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
         frontendVersions.push();
         BlogFrontendVersion storage newFrontend = frontendVersions[frontendVersions.length - 1];
-        newFrontend.storageMode = FrontendStorageMode.SSTORE2;
+        newFrontend.storageMode = FileStorageMode.SSTORE2;
         for(uint i = 0; i < files.length; i++) {
             newFrontend.files.push(files[i]);
         }
@@ -108,7 +93,7 @@ contract DBlogFrontendLibrary {
         // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
         frontendVersions.push();
         BlogFrontendVersion storage newFrontend = frontendVersions[frontendVersions.length - 1];
-        newFrontend.storageMode = FrontendStorageMode.EthStorage;
+        newFrontend.storageMode = FileStorageMode.EthStorage;
         for(uint i = 0; i < files.length; i++) {
             bytes32[] memory ethStorageKeys = new bytes32[](files[i].blobIndexes.length);
             for(uint j = 0; j < files[i].blobIndexes.length; j++) {

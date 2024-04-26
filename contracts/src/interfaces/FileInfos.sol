@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+enum FileStorageMode {
+    SSTORE2, // Store on the ethereum network itself using SSTORE2
+    EthStorage // Store with the EthStorage project
+}
+
+struct FileInfos {
+    // The path of the file, without root slash. E.g. "images/logo.png"
+    string filePath;
+    // The content type of the file, e.g. "image/png"
+    string contentType;
+
+    // Pointers to the file contents
+    // If storage mode is SSTORE2, then there will only be one address pointer to the SSTORE2 file
+    // If storage mode is EthStorage, then these are the keys to the EthStorage file parts
+    // Note: These files are expected to be compressed with gzip
+    bytes32[] contentKeys;
+}
+
+// When we want to store the storage mode of individual files
+struct FileInfosWithStorageMode {
+    // Storage mode of the file
+    FileStorageMode storageMode;
+
+    FileInfos fileInfos;
+}

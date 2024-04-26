@@ -2,10 +2,14 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
+// ENS
 import {NameWrapper} from "ens-contracts/wrapper/NameWrapper.sol";
 import {ETHRegistrarController} from "ens-contracts/ethregistrar/ETHRegistrarController.sol";
 import {BaseRegistrarImplementation} from "ens-contracts/ethregistrar/BaseRegistrarImplementation.sol";
 import {IPriceOracle} from "ens-contracts/ethregistrar/IPriceOracle.sol";
+// EthFs
+import {FileStore, File} from "ethfs/FileStore.sol";
+// EthStorage
 import {TestEthStorageContractKZG} from "storage-contracts-v1/TestEthStorageContractKZG.sol";
 
 import "./DBlogFactoryFrontend.sol";
@@ -34,6 +38,9 @@ contract DBlogFactory {
     // EIP-2304 ENS resolver events
     event AddressChanged(bytes32 indexed node, uint coinType, bytes newAddress);
     uint constant private COIN_TYPE_ETH = 60;
+
+    // EthFs contract
+    FileStore public ethsFileStore;
 
     // EthStorage contract
     TestEthStorageContractKZG public ethStorage;
@@ -64,7 +71,7 @@ contract DBlogFactory {
      * @param _blogFrontendImplementation The implementation of the blog frontend contract, to be cloned
      * @param _blogFrontendLibrary The library containing the blog frontend versions
      */
-    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary, NameWrapper _ensNameWrapper, ETHRegistrarController __ensEthRegistrarController, BaseRegistrarImplementation _ensBaseRegistrar, TestEthStorageContractKZG _ethStorage) {
+    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary, NameWrapper _ensNameWrapper, ETHRegistrarController __ensEthRegistrarController, BaseRegistrarImplementation _ensBaseRegistrar, FileStore _ethfsFileStore, TestEthStorageContractKZG _ethStorage) {
         owner = msg.sender;
 
         topdomain = _topdomain;
@@ -82,6 +89,8 @@ contract DBlogFactory {
         ensNameWrapper = _ensNameWrapper;
         ensEthRegistrarController = __ensEthRegistrarController;
         ensBaseRegistrar = _ensBaseRegistrar;
+
+        ethsFileStore = _ethfsFileStore;
 
         ethStorage = _ethStorage;
     }
@@ -305,7 +314,7 @@ contract DBlogFactory {
 
             // Blogs
             if(address(subdomainNameHashToBlog[node]) != address(0) &&
-            subdomainNameHashToBlog[node].frontend().blogFrontendVersion().storageMode == FrontendStorageMode.EthStorage) {
+            subdomainNameHashToBlog[node].frontend().blogFrontendVersion().storageMode == FileStorageMode.EthStorage) {
                 return string.concat(ethStorageChainShortName, ":", Strings.toHexString(address(subdomainNameHashToBlog[node].frontend())));
             }
         }
