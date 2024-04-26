@@ -82,6 +82,10 @@ contract DBlog {
         editors.push(editor);
     }
 
+    function getEditors() public view returns (address[] memory) {
+        return editors;
+    }
+
     function removeEditor(address editor) public onlyOwner {
         for(uint i = 0; i < editors.length; i++) {
             if(editors[i] == editor) {

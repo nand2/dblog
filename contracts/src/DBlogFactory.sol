@@ -293,9 +293,9 @@ contract DBlogFactory {
         // resolution so that the EthStorage chain is queried
         if(keccak256(abi.encodePacked(key)) == keccak256(abi.encodePacked("contentcontract"))) {
             // Determine which EthStorage chain we use
-            string memory ethStorageChainShortName = "w3q";
+            string memory ethStorageChainShortName = "es";
             if(block.chainid != 1) {
-                ethStorageChainShortName = "w3q-t";
+                ethStorageChainShortName = "es-t";
             }
 
             // Blog factory

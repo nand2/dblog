@@ -1,10 +1,53 @@
 import { markdown } from './drawdown.js'
 import { strip_tags, uint8ArrayToHexString, parseWeb3Url, getBaseFeePerBlobGas } from './utils.js'
 import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
-import { createWalletClient, custom, publicActions, toBlobs, toHex, setupKzg, encodeFunctionData, stringToHex, blobsToCommitments, commitmentsToVersionedHashes, blobsToProofs, defineChain, http } from 'viem'
+import { createPublicClient, createWalletClient, custom, publicActions, toBlobs, toHex, setupKzg, encodeFunctionData, stringToHex, blobsToCommitments, commitmentsToVersionedHashes, blobsToProofs, defineChain, http, formatEther, fromHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia, mainnet, anvil } from 'viem/chains'
 import { loadKZG } from 'kzg-wasm'
+
+
+// Frontent contract ABI
+// All write functions, as we are using web3:// for read functions
+const frontendABI = [
+  {
+    inputs: [{ name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }],
+    name: 'addPostOnEthStorage',
+    outputs: [],
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }],
+    name: 'editEthStoragePost',
+    outputs: [],
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
+    name: 'addPostOnEthereumState',
+    outputs: [],
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
+    name: 'editEthereumStatePost',
+    outputs: [],
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'editor', type: 'address' }],
+    name: 'addEditor',
+    outputs: [],
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'editor', type: 'address' }],
+    name: 'removeEditor',
+    outputs: [],
+    type: 'function',
+  }
+];
+
 
 /**
  * Home controller
@@ -266,9 +309,10 @@ export async function entryEditController(blogAddress, chainId) {
   const burnerAddressPrivateKeyInput = page.querySelector('#burner-address-private-key')
   const burnerAddressGenerated = page.querySelector('#burner-address-generated')
   const burnerAddressGeneratedArea = page.querySelector('#burner-address-generated-area')
+  const burnerAddressBalance = page.querySelector('#burner-address-balance')
   const generateBurnerAddressButton = page.querySelector('#generate-burner-address')
   const handleGenerateBurnerAddress = async (event) => {
-    if(confirm('Warning! This will generate a new burner wallet. Make sure to make a backup of the private key. \n\nThis is not safe to send large amount of funds on it, only send the strict minimum to pay for the transaction.\n\nContinue?') == false) {
+    if(confirm('This will generate a new burner wallet. Make sure to make a backup of the private key. \n\nThen send some funds to this wallet. Only send a small amount to pay for the transaction.\n\nContinue?') == false) {
       return;
     }
     event.preventDefault()
@@ -283,11 +327,21 @@ export async function entryEditController(blogAddress, chainId) {
     }
   }
   const handleBurnerPrivateKeyChange = async (event) => {
-    try {
-      burnerAddressGenerated.innerHTML = privateKeyToAccount(burnerAddressPrivateKeyInput.value).address
-    }
-    catch (error) {
-      burnerAddressGenerated.innerHTML = burnerAddressPrivateKeyInput.value ? 'Invalid private key' : ''
+    const publicClient = createPublicClient({ 
+      chain: chainId == 31337 ? anvil : chainId == 11155111 ? sepolia : mainnet,
+      transport: http()
+    })
+
+    if(burnerAddressPrivateKeyInput.value) {
+      try {
+        const publicAddress = privateKeyToAccount(burnerAddressPrivateKeyInput.value).address;
+        burnerAddressGenerated.innerHTML = publicAddress
+        const balance = await publicClient.getBalance({address: publicAddress})
+        burnerAddressBalance.innerHTML = formatEther(balance)
+      }
+      catch (error) {
+        burnerAddressGenerated.innerHTML = burnerAddressPrivateKeyInput.value ? 'Invalid private key' : ''
+      }
     }
     burnerAddressGeneratedArea.style.display = burnerAddressPrivateKeyInput.value ? 'block' : 'none'
   }
@@ -340,48 +394,20 @@ export async function entryEditController(blogAddress, chainId) {
       return
     }
 
-    // Frontent contract ABI
-    const frontendABI = [
-      {
-        inputs:[],
-        name: "getEthStorageUpfrontPayment",
-        outputs: [{name:"", type :"uint256"}],
-        stateMutability: "view",
-        type: "function"
-      },
-      {
-        inputs: [{ name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }],
-        name: 'addPostOnEthStorage',
-        outputs: [],
-        type: 'function',
-      },
-      {
-        inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }],
-        name: 'editEthStoragePost',
-        outputs: [],
-        type: 'function',
-      },
-      {
-        inputs: [{ name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
-        name: 'addPostOnEthereumState',
-        outputs: [],
-        type: 'function',
-      },
-      {
-        inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
-        name: 'editEthereumStatePost',
-        outputs: [],
-        type: 'function',
-      }
-    ];
-
     // Determine if we are using a burner wallet
     let burnerWallet = null
-    try {
-      burnerWallet = privateKeyToAccount(burnerAddressPrivateKeyInput.value)
-    }
-    catch (error) {
-      // Not using a burner wallet, using metamask
+    if(burnerAddressPrivateKeyInput.value) {
+      try {
+        burnerWallet = privateKeyToAccount(burnerAddressPrivateKeyInput.value)
+        // Store it on localStorage as the default burner wallet we are now using
+        if(localStorage) {
+          localStorage.setItem('burnerPrivateKey', burnerAddressPrivateKeyInput.value)
+        }
+      }
+      catch (error) {
+        stopWithError('Burner wallet private key is invalid')
+        return
+      }
     }
 
     // Prepare a Viem client
@@ -398,6 +424,92 @@ export async function entryEditController(blogAddress, chainId) {
       }
     }
     const viemClient = createWalletClient(createWalletClientOpts).extend(publicActions)
+
+    // Burner wallet: check that there are funds in the wallet (this will be a regular error)
+    if(burnerWallet) {
+      const walletBalance = await viemClient.getBalance({address: burnerWallet.address})
+      if(walletBalance == 0n) {
+        stopWithError('Burner wallet ' + burnerWallet.address + ' has no funds')
+        return
+      }
+    }
+
+    // Burner wallet: Check that the wallet is an editor
+    // If not, we will ask the user to add the burner wallet as an editor
+    if(burnerWallet) {
+      let editors = []
+      await fetch(`web3://${blogAddress}:${chainId}/getEditors?returns=(address[])`)
+        .then(response => response.json())
+        .then(data => {
+          editors = data[0]
+        })
+        .catch(error => {
+          stopWithError('Editors fetching failed : ' + error.message)
+          return
+        })
+      
+      if(editors.includes(burnerWallet.address) == false) {
+        alert("The burner wallet needs to be added as an editor to be able to post. We will now ask you to sign a transaction to add the burner wallet as an editor.")
+       
+        // We need to recreate a viem client for the window.ethereum wallet
+        const viemEip1193Client = createWalletClient({
+          transport: custom(window.ethereum)
+        }).extend(publicActions)
+
+        // Request the address to use
+        let eip1193ClientAccountAddress = null
+        try {
+          let accounts = await viemEip1193Client.requestAddresses()
+          eip1193ClientAccountAddress = accounts[0]
+        }
+        catch (error) {
+          stopWithError('Address fetching failed : ' + error.message)
+          return
+        }
+
+        // Request chain change
+        try {
+          await viemEip1193Client.switchChain({ id: chainId }) 
+        }
+        catch (error) {
+          stopWithError('Chain switch failed : ' + error.message)
+          return
+        }
+
+        // Do the call to add the burner wallet as an editor
+        let txHash = null;
+        try {
+          txHash = await viemEip1193Client.sendTransaction({
+            chain: defineChain({
+              id: chainId,
+            }),
+            account: eip1193ClientAccountAddress,
+            to: blogAddress,
+            data: encodeFunctionData({
+              abi: frontendABI,
+              functionName: "addEditor",
+              args: [burnerWallet.address]
+            })
+          })
+        }
+        catch (error) {
+          stopWithError('Transaction failed : ' + error.details)
+          return
+        }
+
+        // Wait for the transaction to be mined
+        let txResult = null;
+        try {
+          txResult = await viemClient.waitForTransactionReceipt( 
+            { hash: txHash }
+          )
+        }
+        catch (error) {
+          stopWithError('Failed to fetch the transaction result : ' + error.message)
+          return
+        }
+      }
+    }
 
     // Request the address to use, if not using the burner wallet
     if(burnerWallet == null) {
@@ -443,12 +555,15 @@ export async function entryEditController(blogAddress, chainId) {
       if (newPost) {
         // Get price of ethstorage upfront payment
         // We need to pay that
-        const ethStorageUpfrontPayment = await viemClient.readContract({
-          address: blogAddress,
-          abi: frontendABI,
-          functionName: 'getEthStorageUpfrontPayment',
-        })
-        value = ethStorageUpfrontPayment
+        await fetch(`web3://${blogAddress}:${chainId}/getEthStorageUpfrontPayment?returns=(uint256)`)
+          .then(response => response.json())
+          .then(data => {
+            value = fromHex(data[0], 'bigint')
+          })
+          .catch(error => {
+            stopWithError('EthStorage upfront fee fetching failed : ' + error.message)
+            return
+          })
 
         calldata = encodeFunctionData({
           abi: frontendABI,
@@ -511,10 +626,11 @@ console.log("transactionOpts", transactionOpts)
       txHash = await viemClient.sendTransaction(transactionOpts)
     }
     catch (error) {
-      stopWithError('Transaction failed : ' + error.message)
+      stopWithError('Transaction failed : ' + error.details)
+      console.log('Transaction failed : ' + error.message)
       return
     }
-console.log("txHash", txHash)  
+console.log("txHash", txHash)
 
     // Wait for the transaction to be mined
     let txResult = null;

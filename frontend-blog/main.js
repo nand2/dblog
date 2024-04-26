@@ -92,10 +92,10 @@ document.querySelector('#app').innerHTML = `
               <button type="button" id="generate-burner-address">Generate</button>
             </div>
             <div class="burner-help" id="burner-address-generated-area" style="display:none";>
-              Your burner wallet address is : <strong id="burner-address-generated"></strong>
+              Your burner wallet address is : <strong id="burner-address-generated"></strong> (balance: <span id="burner-address-balance"></span> ETH)
             </div>
             <div class="burner-help">
-              This is necessary as long as your wallet (Metamask, ...) does not support blob transactions
+              Using an burner wallet is necessary as long as your wallet (Metamask, ...) does not support blob transactions
             </div>
           </div>
         </div>
