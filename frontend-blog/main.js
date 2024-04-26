@@ -102,6 +102,7 @@ document.querySelector('#app').innerHTML = `
         <div class="error-message">
           Error message
         </div>
+        <input type="hidden" id="post-number" name="post-number" value="">
         <div class="buttons">
           <button type="submit">Save</button>
         </div>

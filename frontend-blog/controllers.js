@@ -221,6 +221,8 @@ export async function entryEditController(blogAddress, chainId) {
   const newPost = parsedUrl.path.startsWith('/#/add')
   // If not a new post, fetch the post number from the URL
   const postNumber = newPost ? null : parseInt(parsedUrl.path.split('/')[3])
+  // Store the postNumber in the form
+  page.querySelector('#post-number').value = postNumber
 
   // Whether new blog post or editing an existing, change the page title
   page.querySelector('h2').innerHTML = newPost ? 'Add a new post' : 'Edit post'
@@ -381,6 +383,11 @@ export async function entryEditController(blogAddress, chainId) {
     const title = form.querySelector('#title').value;
     const content = form.querySelector('#content').value;
     const burnerAddressPrivateKeyInput = form.querySelector('#burner-address-private-key')
+    let postNumber = form.querySelector('#post-number').value;
+    const newPost = postNumber == '';
+    if(newPost == false) {
+      postNumber = parseInt(postNumber)
+    }
 
     // If title or content is empty : throw an error
     if (title.length === 0 || content.length === 0) {
