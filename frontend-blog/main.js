@@ -86,9 +86,10 @@ document.querySelector('#app').innerHTML = `
         <div class="form-row">
           <label for="content">Content</label>
           <div style="flex: 1;">
-            <div class="preview-buttons">
+            <div class="editor-toolbar">
               <button type="input" id="button-markdown" class="active">Markdown</button>
               <button type="input" id="button-preview">Preview</button>
+              <button type="input" id="button-insert-image">Insert image</button>
             </div>
             <div id="content-textarea">
               <textarea id="content" name="content"></textarea>

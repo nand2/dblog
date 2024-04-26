@@ -206,15 +206,20 @@ a#admin-link {
   padding: 0.5em 1em;
 }
 
-#page-entry-edit form .preview-buttons {
+#page-entry-edit form .editor-toolbar {
   display: flex; 
   gap: 0.5em;
   margin-bottom: 0.8em;
 }
 
-#page-entry-edit form .preview-buttons button.active {
+#page-entry-edit form .editor-toolbar button.active {
   background-color: #1a1a1a;
   cursor: default;
+}
+
+#page-entry-edit form .editor-toolbar #button-insert-image {
+  /* Align right */
+  margin-left: auto;
 }
 
 #page-entry-edit form #content-textarea {

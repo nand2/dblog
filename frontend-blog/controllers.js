@@ -48,64 +48,162 @@ const frontendABI = [
   }
 ];
 
-async function eip1193SendTransaction(blogAddress, chainId, methodName, args) {
-    // We need to recreate a viem client for the window.ethereum wallet
-    const viemEip1193Client = createWalletClient({
-      transport: custom(window.ethereum)
-    }).extend(publicActions)
+async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
+  // Put default options in opts
+  opts = opts || {}
+  opts.blobs = opts.blobs || []
+  opts.value = opts.value || 0n
+  opts.burnerWalletPrivateKey = opts.burnerWalletPrivateKey || null
+  opts.burnerWalletRequiredToBeEditor = opts.burnerWalletRequiredToBeEditor || false
+  opts.burnerWalletSavePrivateKeyToLocalStorage = opts.burnerWalletSavePrivateKeyToLocalStorage || false
 
-    // Request the address to use
-    let eip1193ClientAccountAddress = null
+  // Determine if we are using a burner wallet
+  let burnerWallet = null
+  if(opts.burnerWalletPrivateKey) {
     try {
-      let accounts = await viemEip1193Client.requestAddresses()
-      eip1193ClientAccountAddress = accounts[0]
+      burnerWallet = privateKeyToAccount(opts.burnerWalletPrivateKey)
     }
     catch (error) {
-      throw new Error('Address fetching failed : ' + error.message)
-      return
+      throw new Exception('Burner wallet private key is invalid')
     }
+    // Store it on localStorage as the default burner wallet we are now using
+    if(opts.burnerWalletSavePrivateKeyToLocalStorage && localStorage) {
+      localStorage.setItem('burnerPrivateKey', opts.burnerWalletPrivateKey)
+    }
+  }
 
-    // Request chain change
-    try {
-      await viemEip1193Client.switchChain({ id: chainId }) 
-    }
-    catch (error) {
-      throw new Error('Chain switch failed : ' + error.message)
-      return
-    }
+  // Check presence of EIP-1193 provider
+  if (burnerWallet == null && !window.ethereum) {
+    stopWithError('No Ethereum provider found')
+    return
+  }
 
-    // Do the call to add the burner wallet as an editor
-    let txHash = null;
-    try {
-      txHash = await viemEip1193Client.sendTransaction({
-        chain: defineChain({
-          id: chainId,
-        }),
-        account: eip1193ClientAccountAddress,
-        to: blogAddress,
-        data: encodeFunctionData({
-          abi: frontendABI,
-          functionName: methodName,
-          args: args
-        })
+  // Prepare a Viem client
+  let accountAddress = null
+  let createWalletClientOpts = {
+    transport: custom(window.ethereum)
+  }
+  if(burnerWallet) {
+    accountAddress = burnerWallet
+    createWalletClientOpts = {
+      account: burnerWallet,
+      chain: chainId == 31337 ? anvil : chainId == 11155111 ? sepolia : mainnet,
+      transport: http()
+    }
+  }
+  const viemClient = createWalletClient(createWalletClientOpts).extend(publicActions)
+
+  // Burner wallet: check that there are funds in the wallet (this will be a regular error)
+  if(burnerWallet) {
+    const walletBalance = await viemClient.getBalance({address: burnerWallet.address})
+    if(walletBalance == 0n) {
+      throw new Exception('Burner wallet ' + burnerWallet.address + ' has no funds')
+    }
+  }
+
+  // Burner wallet: Check that the wallet is an editor
+  // If not, we will ask the user to add the burner wallet as an editor
+  if(opts.burnerWalletRequiredToBeEditor && burnerWallet) {
+    let editors = []
+    await fetch(`web3://${blogAddress}:${chainId}/getEditors?returns=(address[])`)
+      .then(response => response.json())
+      .then(data => {
+        editors = data[0]
       })
+      .catch(error => {
+        throw new Exception('Editors fetching failed : ' + error.message)
+      })
+    
+    if(editors.includes(burnerWallet.address) == false) {
+      alert("The burner wallet needs to be added as an editor to be able to post. We will now ask you to sign a transaction to add the burner wallet as an editor.")
+      
+      try {
+        await sendTransaction(blogAddress, chainId, "addEditor", [burnerWallet.address]);
+      }
+      catch (error) {
+        throw new Exception(error.message)
+      }
     }
-    catch (error) {
-      throw new Error('Transaction failed : ' + (error.details ?? error))
-      return
-    }
+  }
 
-    // Wait for the transaction to be mined
-    let txResult = null;
+  // Request the address to use, if not using the burner wallet
+  if(burnerWallet == null) {
     try {
-      txResult = await viemEip1193Client.waitForTransactionReceipt( 
-        { hash: txHash }
-      )
+      let accounts = await viemClient.requestAddresses()
+      accountAddress = accounts[0]
     }
     catch (error) {
-      throw new Error('Failed to fetch the transaction result : ' + error.message)
-      return
+      throw new Exception('Address fetching failed : ' + error.message)
     }
+  }
+
+  // Request chain change, if not using the burner wallet
+  if(burnerWallet == null) {
+    try {
+      await viemClient.switchChain({ id: chainId }) 
+    }
+    catch (error) {
+      throw new Exception('Chain switch failed : ' + error.message)
+    }
+  }
+
+  // Prepare the calldata
+  const calldata = encodeFunctionData({
+    abi: frontendABI,
+    functionName: methodName,
+    args: args
+  })
+
+console.log("About to call", methodName, "with args", args)
+console.log("Calldata", calldata)
+console.log("value", opts.value)
+console.log("blobs length", opts.blobs.length)
+
+  // Prepare transaction
+  const transactionOpts = {
+    chain: defineChain({
+      id: chainId,
+    }),
+    account: accountAddress,
+    to: blogAddress,
+    data: calldata,
+    value: opts.value,
+  }
+  if(opts.blobs.length > 0) {
+    // Prepare the KZG setup
+    const wasmKzg = await loadKZG()
+    kzg = setupKzg(wasmKzg)
+
+    transactionOpts.blobs = opts.blobs;
+    transactionOpts.kzg = kzg;
+    let block = await viemClient.getBlock();
+    transactionOpts.maxFeePerBlobGas = getBaseFeePerBlobGas(block.excessBlobGas ?? 0n) * 2n;
+  }
+console.log("transactionOpts", transactionOpts)
+
+  // Send transaction
+  let txHash = null;
+  try {
+    txHash = await viemClient.sendTransaction(transactionOpts)
+  }
+  catch (error) {
+    console.log('Transaction failed : ' + error.message)
+    throw new Exception('Transaction failed : ' + error.details)
+  }
+console.log("txHash", txHash)
+
+  // Wait for the transaction to be mined
+  let txResult = null;
+  try {
+    txResult = await viemClient.waitForTransactionReceipt( 
+      { hash: txHash }
+    )
+  }
+  catch (error) {
+    throw new Exception('Failed to fetch the transaction result : ' + error.message)
+  }
+
+  return txResult;
 }
 
 
@@ -307,12 +405,12 @@ export async function adminController(blogAddress, chainId) {
     removeEditorButtons.forEach(button => {
       button.addEventListener('click', async (event) => {
         const addressToRemove = event.target.getAttribute('editor-address')
-        if(confirm('Are you sure you want to remove this editor?') == false) {
+        if(confirm(`Are you sure you want to remove ${addressToRemove} as an editor?`) == false) {
           return;
         }
         
         try {
-          await eip1193SendTransaction(blogAddress, chainId, "removeEditor", [addressToRemove]);
+          await sendTransaction(blogAddress, chainId, "removeEditor", [addressToRemove]);
         }
         catch (error) {
           alert(error.message)
@@ -338,7 +436,7 @@ export async function adminController(blogAddress, chainId) {
     }
 
     try {
-      await eip1193SendTransaction(blogAddress, chainId, "addEditor", [newEditorAddress]);
+      await sendTransaction(blogAddress, chainId, "addEditor", [newEditorAddress]);
     }
     catch (error) {
       alert(error.message)
@@ -456,6 +554,48 @@ export async function entryEditController(blogAddress, chainId) {
     showPreviewButton.setAttribute('data-event-listener-added', 'true')
   }
 
+  // Insert image button
+  const insertImageButton = page.querySelector('#button-insert-image')
+  const handleInsertImageButton = async (event) => {
+    event.preventDefault()
+    
+    // Show a file selector to the user with an hidden file input, get the content of the file
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.style.display = 'none';
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const fileContent = event.target.result;
+        // Convert the fileContent to blobs ready to be sent
+        let blobs = []
+        try {
+          blobs = toBlobs({ data: toHex(new Uint8Array(fileContent)) });
+          console.log("Image blobs count", blobs.length)
+        }
+        // toBlobs will also catch if the file is too big ( > 6 blobs)
+        catch (error) {
+          alert(error);
+          return
+        }
+
+        const imageUrl = "booyah"
+        const content = page.querySelector('#content')
+        const cursorPosition = content.selectionStart
+        const contentBefore = content.value.substring(0, cursorPosition)
+        const contentAfter = content.value.substring(cursorPosition)
+        content.value = contentBefore + `![Image](${imageUrl})` + contentAfter
+      };
+      reader.readAsArrayBuffer(file);
+    });
+    fileInput.click();    
+  }
+  if(insertImageButton.hasAttribute('data-event-listener-added') == false) {
+    insertImageButton.addEventListener('click', handleInsertImageButton)
+    insertImageButton.setAttribute('data-event-listener-added', 'true')
+  }
+
   // Burner wallet generation
   const burnerAddressPrivateKeyInput = page.querySelector('#burner-address-private-key')
   const burnerAddressGenerated = page.querySelector('#burner-address-generated')
@@ -534,7 +674,7 @@ export async function entryEditController(blogAddress, chainId) {
 
     const title = form.querySelector('#title').value;
     const content = form.querySelector('#content').value;
-    const burnerAddressPrivateKeyInput = form.querySelector('#burner-address-private-key')
+    const burnerAddressPrivateKey = form.querySelector('#burner-address-private-key').value
     let postNumber = form.querySelector('#post-number').value;
     const newPost = postNumber == '';
     if(newPost == false) {
@@ -547,106 +687,10 @@ export async function entryEditController(blogAddress, chainId) {
       return;
     }
 
-    // Check presence of EI-1193 provider
-    if (!window.ethereum) {
-      stopWithError('No Ethereum provider found')
-      return
-    }
-
-    // Determine if we are using a burner wallet
-    let burnerWallet = null
-    if(burnerAddressPrivateKeyInput.value) {
-      try {
-        burnerWallet = privateKeyToAccount(burnerAddressPrivateKeyInput.value)
-        // Store it on localStorage as the default burner wallet we are now using
-        if(localStorage) {
-          localStorage.setItem('burnerPrivateKey', burnerAddressPrivateKeyInput.value)
-        }
-      }
-      catch (error) {
-        stopWithError('Burner wallet private key is invalid')
-        return
-      }
-    }
-
-    // Prepare a Viem client
-    let accountAddress = null
-    let createWalletClientOpts = {
-      transport: custom(window.ethereum)
-    }
-    if(burnerWallet) {
-      accountAddress = burnerWallet
-      createWalletClientOpts = {
-        account: burnerWallet,
-        chain: chainId == 31337 ? anvil : chainId == 11155111 ? sepolia : mainnet,
-        transport: http()
-      }
-    }
-    const viemClient = createWalletClient(createWalletClientOpts).extend(publicActions)
-
-    // Burner wallet: check that there are funds in the wallet (this will be a regular error)
-    if(burnerWallet) {
-      const walletBalance = await viemClient.getBalance({address: burnerWallet.address})
-      if(walletBalance == 0n) {
-        stopWithError('Burner wallet ' + burnerWallet.address + ' has no funds')
-        return
-      }
-    }
-
-    // Burner wallet: Check that the wallet is an editor
-    // If not, we will ask the user to add the burner wallet as an editor
-    if(burnerWallet) {
-      let editors = []
-      await fetch(`web3://${blogAddress}:${chainId}/getEditors?returns=(address[])`)
-        .then(response => response.json())
-        .then(data => {
-          editors = data[0]
-        })
-        .catch(error => {
-          stopWithError('Editors fetching failed : ' + error.message)
-          return
-        })
-      
-      if(editors.includes(burnerWallet.address) == false) {
-        alert("The burner wallet needs to be added as an editor to be able to post. We will now ask you to sign a transaction to add the burner wallet as an editor.")
-       
-        try {
-          await eip1193SendTransaction(blogAddress, chainId, "addEditor", [burnerWallet.address]);
-        }
-        catch (error) {
-          stopWithError(error.message)
-          return
-        }
-      }
-    }
-
-    // Request the address to use, if not using the burner wallet
-    if(burnerWallet == null) {
-      try {
-        let accounts = await viemClient.requestAddresses()
-        accountAddress = accounts[0]
-      }
-      catch (error) {
-        stopWithError('Address fetching failed : ' + error.message)
-        return
-      }
-    }
-
-    // Request chain change, if not using the burner wallet
-    if(burnerWallet == null) {
-      try {
-        await viemClient.switchChain({ id: chainId }) 
-      }
-      catch (error) {
-        stopWithError('Chain switch failed : ' + error.message)
-        return
-      }
-    }
-
     // Prepare the calldata/value/blobs
-    let calldata = null;
+    let methodName;
+    let args = [];
     let value = 0n;
-    let kzg = null;
     let blobs = [];
     // Ethereum mainnet or sepolia: Store on EthStorage
     if(chainId == 1 || chainId == 11155111) {
@@ -656,10 +700,6 @@ export async function entryEditController(blogAddress, chainId) {
         stopWithError('Blog post entry too big (must be less than 126976 chars)')
         return
       }
-
-      // Prepare the KZG setup
-      const wasmKzg = await loadKZG()
-      kzg = setupKzg(wasmKzg)
 
       if (newPost) {
         // Get price of ethstorage upfront payment
@@ -674,82 +714,39 @@ export async function entryEditController(blogAddress, chainId) {
             return
           })
 
-        calldata = encodeFunctionData({
-          abi: frontendABI,
-          functionName: "addPostOnEthStorage",
-          args: [title, content.length]
-        })
+        methodName = "addPostOnEthStorage";
+        args = [title, content.length];
       }
       else {
-        calldata = encodeFunctionData({
-          abi: frontendABI,
-          functionName: "editEthStoragePost",
-          args: [postNumber, title, content.length]
-        })
+        methodName = "editEthStoragePost";
+        args = [postNumber, title, content.length];
       }
     }
     // Other networks: Otherwise store on state
     else {
       if(newPost) {
-        calldata = encodeFunctionData({
-          abi: frontendABI,
-          functionName: "addPostOnEthereumState",
-          args: [title, content]
-        })
+        methodName = "addPostOnEthereumState";
+        args = [title, content];
       }
       else {
-        calldata = encodeFunctionData({
-          abi: frontendABI,
-          functionName: "editEthereumStatePost",
-          args: [postNumber, title, content]
-        })
+        methodName = "editEthereumStatePost";
+        args = [postNumber, title, content];
       }
     }
 
-console.log("About to send with args:", title, content)
-console.log("Calldata", calldata)
-console.log("value", value)
-console.log("blobs length", blobs.length)
-
-    // Prepare transaction
-    const transactionOpts = {
-      chain: defineChain({
-        id: chainId,
-      }),
-      account: accountAddress,
-      to: blogAddress,
-      data: calldata,
-      value: value,
-    }
-    if(blobs.length > 0) {
-      transactionOpts.blobs = blobs;
-      transactionOpts.kzg = kzg;
-      let block = await viemClient.getBlock();
-      transactionOpts.maxFeePerBlobGas = getBaseFeePerBlobGas(block.excessBlobGas ?? 0n) * 2n;
-    }
-console.log("transactionOpts", transactionOpts)
-
-    // Send transaction
-    let txHash = null;
-    try {
-      txHash = await viemClient.sendTransaction(transactionOpts)
-    }
-    catch (error) {
-      stopWithError('Transaction failed : ' + error.details)
-      console.log('Transaction failed : ' + error.message)
-      return
-    }
-console.log("txHash", txHash)
-
-    // Wait for the transaction to be mined
+    // Make the call
     let txResult = null;
     try {
-      txResult = await viemClient.waitForTransactionReceipt( 
-        { hash: txHash }
-      )
+      txResult = await sendTransaction(blogAddress, chainId, methodName, args, {
+        value: value,
+        blobs: blobs,
+        burnerWalletPrivateKey: burnerAddressPrivateKey,
+        burnerWalletRequiredToBeEditor: true,
+        burnerWalletSavePrivateKeyToLocalStorage: true,
+      });
     }
     catch (error) {
-      stopWithError('Failed to fetch the transaction result : ' + error.message)
+      stopWithError(error.message)
       return
     }
       
