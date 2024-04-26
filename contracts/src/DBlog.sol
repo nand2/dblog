@@ -79,6 +79,11 @@ contract DBlog {
     }
 
     function addEditor(address editor) public onlyOwner {
+        // Check that it is not in the editor list already
+        for(uint i = 0; i < editors.length; i++) {
+            require(editors[i] != editor, "Already editor");
+        }
+
         editors.push(editor);
     }
 

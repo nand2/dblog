@@ -62,6 +62,19 @@ document.querySelector('#app').innerHTML = `
           2023-02-01 <a href="/#/entry/xx">My first blog entry</a> - <a href="/#/entry/xx/edit">Edit</a>
         </div>-->
       </div>
+      <h3>Editors</h3>
+      <div id="admin-editors">
+        <!--<div class="editor">
+          <span>0x1234...5678</span> (blog owner)
+        </div>
+        <div class="editor">
+          <span>0x1234...5678</span> <button type="button" class="admin-remove-editor">Remove</button>
+        </div>-->
+      </div>
+      <form id="admin-editor-add">
+        <input type="text" id="admin-new-editor-address" placeholder="New editor ethereum address">
+        <button type="submit" id="admin-add-editor">Add editor</button>
+      </form>
     </div>
     <div id="page-entry-edit">
       <h2>New blog post</h2>

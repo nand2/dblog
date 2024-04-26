@@ -30,6 +30,17 @@ body {
   min-height: 100vh;
 }
 
+form input, form textarea {
+  padding: 0.5em;
+  border-radius: 8px;
+  border: 1px solid #00000033;
+  background-color: #1a1a1a;
+  color: #fff;
+  transition: border-color 0.25s;
+}
+
+
+
 #app {
   max-width: 1024px;
   width: 100%;
@@ -142,6 +153,10 @@ a#admin-link {
   font-weight: normal;
 }
 
+#page-admin #admin-editors {
+  margin-bottom: 5px;
+}
+
 /** Blog entry edit */
 
 #page-entry-edit {
@@ -172,12 +187,6 @@ a#admin-link {
 
 #page-entry-edit form input, #page-entry-edit form textarea {
   flex: 1;
-  padding: 0.5em;
-  border-radius: 8px;
-  border: 1px solid #00000033;
-  background-color: #1a1a1a;
-  color: #fff;
-  transition: border-color 0.25s;
 }
 
 #page-entry-edit form input:focus-visible, #page-entry-edit form textarea:focus-visible {

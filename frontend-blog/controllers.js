@@ -48,6 +48,66 @@ const frontendABI = [
   }
 ];
 
+async function eip1193SendTransaction(blogAddress, chainId, methodName, args) {
+    // We need to recreate a viem client for the window.ethereum wallet
+    const viemEip1193Client = createWalletClient({
+      transport: custom(window.ethereum)
+    }).extend(publicActions)
+
+    // Request the address to use
+    let eip1193ClientAccountAddress = null
+    try {
+      let accounts = await viemEip1193Client.requestAddresses()
+      eip1193ClientAccountAddress = accounts[0]
+    }
+    catch (error) {
+      throw new Error('Address fetching failed : ' + error.message)
+      return
+    }
+
+    // Request chain change
+    try {
+      await viemEip1193Client.switchChain({ id: chainId }) 
+    }
+    catch (error) {
+      throw new Error('Chain switch failed : ' + error.message)
+      return
+    }
+
+    // Do the call to add the burner wallet as an editor
+    let txHash = null;
+    try {
+      txHash = await viemEip1193Client.sendTransaction({
+        chain: defineChain({
+          id: chainId,
+        }),
+        account: eip1193ClientAccountAddress,
+        to: blogAddress,
+        data: encodeFunctionData({
+          abi: frontendABI,
+          functionName: methodName,
+          args: args
+        })
+      })
+    }
+    catch (error) {
+      throw new Error('Transaction failed : ' + (error.details ?? error))
+      return
+    }
+
+    // Wait for the transaction to be mined
+    let txResult = null;
+    try {
+      txResult = await viemEip1193Client.waitForTransactionReceipt( 
+        { hash: txHash }
+      )
+    }
+    catch (error) {
+      throw new Error('Failed to fetch the transaction result : ' + error.message)
+      return
+    }
+}
+
 
 /**
  * Home controller
@@ -202,6 +262,95 @@ export async function adminController(blogAddress, chainId) {
     `;
     blogEntries.appendChild(blogEntry)
   })
+
+  const loadEditorsInterface = async () => {
+    // Call the blog to get the owner
+    let owner = null
+    await fetch(`web3://${blogAddress}:${chainId}/owner?returns=(address)`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("Fetched owner : ", data)
+        owner = data[0]
+      })
+      .catch(error => {
+        console.error(error)
+      })
+
+    // Call the blog to fetch the editors
+    let editors = []
+    await fetch(`web3://${blogAddress}:${chainId}/getEditors?returns=(address[])`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("Fetched editors : ", data)
+        editors = data[0]
+      })
+      .catch(error => {
+        console.error(error)
+      })
+    
+    // Insert the owner and editors
+    const adminEditors = document.getElementById('admin-editors')
+    adminEditors.innerHTML = ''
+    let ownerDiv = document.createElement('div')
+    ownerDiv.className = 'editor'
+    ownerDiv.innerHTML = `<span>${owner}</span> (blog owner)`
+    adminEditors.appendChild(ownerDiv)
+    editors.forEach(editor => {
+      let editorDiv = document.createElement('div')
+      editorDiv.className = 'editor'
+      editorDiv.innerHTML = `<span>${editor}</span> <button type="button" class="admin-remove-editor" editor-address="${editor}">Remove</button>`
+      adminEditors.appendChild(editorDiv)
+    })
+
+    // Add the event listener to remove editors
+    const removeEditorButtons = document.querySelectorAll('.admin-remove-editor')
+    removeEditorButtons.forEach(button => {
+      button.addEventListener('click', async (event) => {
+        const addressToRemove = event.target.getAttribute('editor-address')
+        if(confirm('Are you sure you want to remove this editor?') == false) {
+          return;
+        }
+        
+        try {
+          await eip1193SendTransaction(blogAddress, chainId, "removeEditor", [addressToRemove]);
+        }
+        catch (error) {
+          alert(error.message)
+          return
+        }
+
+        loadEditorsInterface()
+      })
+    })
+  }
+  loadEditorsInterface()
+
+  // Add an event listener to add a new editor
+  const addEditorButton = document.getElementById('admin-add-editor')
+  const addEditorButtonClickHandler = async (event) => {
+    event.preventDefault()
+    const newEditorAddress = document.getElementById('admin-new-editor-address').value
+    // If not the right format, skip
+    const ethereumAddressRegex = /^0x[a-fA-F0-9]{40}$/;
+    if (!ethereumAddressRegex.test(newEditorAddress)) {
+      alert('Invalid Ethereum address');
+      return
+    }
+
+    try {
+      await eip1193SendTransaction(blogAddress, chainId, "addEditor", [newEditorAddress]);
+    }
+    catch (error) {
+      alert(error.message)
+      return
+    }
+
+    loadEditorsInterface()
+  }
+  if(addEditorButton.hasAttribute('data-event-listener-added') == false) {
+    addEditorButton.addEventListener('click', addEditorButtonClickHandler)
+    addEditorButton.setAttribute('data-event-listener-added', 'true')
+  }
 }
 
 
@@ -458,61 +607,11 @@ export async function entryEditController(blogAddress, chainId) {
       if(editors.includes(burnerWallet.address) == false) {
         alert("The burner wallet needs to be added as an editor to be able to post. We will now ask you to sign a transaction to add the burner wallet as an editor.")
        
-        // We need to recreate a viem client for the window.ethereum wallet
-        const viemEip1193Client = createWalletClient({
-          transport: custom(window.ethereum)
-        }).extend(publicActions)
-
-        // Request the address to use
-        let eip1193ClientAccountAddress = null
         try {
-          let accounts = await viemEip1193Client.requestAddresses()
-          eip1193ClientAccountAddress = accounts[0]
+          await eip1193SendTransaction(blogAddress, chainId, "addEditor", [burnerWallet.address]);
         }
         catch (error) {
-          stopWithError('Address fetching failed : ' + error.message)
-          return
-        }
-
-        // Request chain change
-        try {
-          await viemEip1193Client.switchChain({ id: chainId }) 
-        }
-        catch (error) {
-          stopWithError('Chain switch failed : ' + error.message)
-          return
-        }
-
-        // Do the call to add the burner wallet as an editor
-        let txHash = null;
-        try {
-          txHash = await viemEip1193Client.sendTransaction({
-            chain: defineChain({
-              id: chainId,
-            }),
-            account: eip1193ClientAccountAddress,
-            to: blogAddress,
-            data: encodeFunctionData({
-              abi: frontendABI,
-              functionName: "addEditor",
-              args: [burnerWallet.address]
-            })
-          })
-        }
-        catch (error) {
-          stopWithError('Transaction failed : ' + error.details)
-          return
-        }
-
-        // Wait for the transaction to be mined
-        let txResult = null;
-        try {
-          txResult = await viemClient.waitForTransactionReceipt( 
-            { hash: txHash }
-          )
-        }
-        catch (error) {
-          stopWithError('Failed to fetch the transaction result : ' + error.message)
+          stopWithError(error.message)
           return
         }
       }
