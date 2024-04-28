@@ -184,8 +184,8 @@ const hash = await client.sendTransaction({
   data: data,
   gas: 1000000n, // Weirdly I need this on sepolia
   // Replace tx:
-  // nonce: 690,
-  // maxPriorityFeePerGas: 1575386694n,
+  // nonce: 748,
+  // maxPriorityFeePerGas: 537495867176n * 2n,
 })
 console.log("tx hash", hash)
 

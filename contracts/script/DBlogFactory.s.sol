@@ -90,7 +90,7 @@ contract DBlogFactoryScript is Script {
             // Add factory frontend initial version
             // Only if local (testnets and mainnet get the EthStorage version)
             if(targetChain == TargetChain.LOCAL) {
-                FileInfos[] memory files = new FileInfos[](3);
+                FileInfos[] memory files = new FileInfos[](4);
 
                 // Storing files of the factory frontend
                 // HTML
@@ -113,6 +113,13 @@ contract DBlogFactoryScript is Script {
                 contentKeys = new bytes32[](1);
                 contentKeys[0] = bytes32(uint256(uint160(factoryJsFilePointer)));
                 files[2] = FileInfos(string.concat("assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")), "text/javascript", contentKeys);
+
+                // SVG
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_COMPRESSED_SVG_FILE")));
+                (address factorySvgFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_COMPRESSED_SVG_FILE"), string(fileContents));
+                contentKeys = new bytes32[](1);
+                contentKeys[0] = bytes32(uint256(uint160(factorySvgFilePointer)));
+                files[3] = FileInfos(string.concat("assets/", vm.envString("FACTORY_FRONTEND_SVG_FILE")), "image/svg+xml", contentKeys);
 
                 factoryFrontend.addSStore2FrontendVersion(files, "Initial version");
             }
