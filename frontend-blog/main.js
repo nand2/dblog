@@ -44,7 +44,7 @@ document.querySelector('#app').innerHTML = `
       </div>
     </div>
     <div id="page-entry">
-      <h2><!--My first blog entry--></h2>
+      <h2 class="blog-entry-title"><!--My first blog entry--></h2>
       <hr />
       <div class="sub-hr">
         <div class="date"><!--09 Feb 2023--></div>
@@ -55,7 +55,7 @@ document.querySelector('#app').innerHTML = `
       </div>
     </div>
     <div id="page-admin">
-      <h2>Admin</h2>
+      <h2 class="page-title">Admin</h2>
       <h3>Blog entries <a href="/#/add">Add new</a></h3>
       <div id="admin-blog-entries">
         <!--<div class="blog-entry">
@@ -77,7 +77,7 @@ document.querySelector('#app').innerHTML = `
       </form>
     </div>
     <div id="page-entry-edit">
-      <h2>New blog post</h2>
+      <h2 class="page-title">New blog post</h2>
       <form>
         <div class="form-row">
           <label for="title">Title</label>

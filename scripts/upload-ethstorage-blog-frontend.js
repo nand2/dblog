@@ -183,6 +183,9 @@ const hash = await client.sendTransaction({
   value: upfrontPayment * BigInt(blobs.length),
   data: data,
   gas: 1000000n, // Weirdly I need this on sepolia
+  // Replace tx:
+  // nonce: 690,
+  // maxPriorityFeePerGas: 1575386694n,
 })
 console.log("tx hash", hash)
 

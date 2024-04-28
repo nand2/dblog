@@ -139,7 +139,7 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "contracts" ]; then
     FORGE_SCRIPT_OPTIONS="--broadcast"
   elif [ "$TARGET_CHAIN" == "sepolia" ]; then
     # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
-    FORGE_SCRIPT_OPTIONS="--broadcast --verify"
+    FORGE_SCRIPT_OPTIONS="--broadcast"
   elif [ "$TARGET_CHAIN" == "holesky" ]; then
     # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
     FORGE_SCRIPT_OPTIONS="--broadcast --verify"

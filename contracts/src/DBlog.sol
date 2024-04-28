@@ -231,7 +231,7 @@ contract DBlog {
         for(uint i = 0; i < blobDataSizes.length; i++) {
             ethStorageLastUsedKey++;
             ethStorageKeys[i] = bytes32(ethStorageLastUsedKey);
-            factory.ethStorage().putBlob{value: upfrontPayment}(ethStorageKeys[i], 0, blobDataSizes
+            factory.ethStorage().putBlob{value: upfrontPayment}(ethStorageKeys[i], i, blobDataSizes
             [i]);
         }
         newFile.fileInfos.contentKeys = ethStorageKeys;
@@ -274,7 +274,7 @@ contract DBlog {
         for(uint i = 0; i < blobDataSizes.length; i++) {
             ethStorageLastUsedKey++;
             uploadedFile.fileInfos.contentKeys[contentKeyStartingIndex + i] = bytes32(ethStorageLastUsedKey);
-            factory.ethStorage().putBlob{value: upfrontPayment}(uploadedFile.fileInfos.contentKeys[contentKeyStartingIndex + i], 0, blobDataSizes[i]);
+            factory.ethStorage().putBlob{value: upfrontPayment}(uploadedFile.fileInfos.contentKeys[contentKeyStartingIndex + i], i, blobDataSizes[i]);
         }
     }
 

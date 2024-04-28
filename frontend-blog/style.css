@@ -3,7 +3,7 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  color-scheme: dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
@@ -12,6 +12,12 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/** 
+ * EVM browser specific workaround: 
+ * As a workaround to another issue, in dark mode electron, EVM browser put pre color as black.
+ */
+@media (prefers-color-scheme: dark) {pre {color: rgba(255, 255, 255, 0.87)}}
 
 a {
   /* font-weight: 500; */
@@ -55,6 +61,14 @@ form input, form textarea {
   }
 }
 
+
+/**
+ * Common to all pages
+ */
+h2.page-title {
+  text-align: center;
+  margin-bottom: 0.4em;
+}
 
 /** 
  * Blog header 
@@ -122,7 +136,7 @@ a#admin-link {
   text-align: left;
 }
 
-#page-entry h2 {
+#page-entry .blog-entry-title {
   margin-bottom: 0.4em;
 }
 
@@ -147,7 +161,6 @@ a#admin-link {
 .blog-entry-content img {
   max-width: 100%;
   height: auto;
-  margin: 1em 0;
 }
 
 
@@ -157,11 +170,6 @@ a#admin-link {
 
 #page-admin {
   text-align: left;
-}
-
-#page-admin h2 {
-  text-align: center;
-  margin-bottom: 0.4em;
 }
 
 #page-admin h3 {
@@ -184,11 +192,6 @@ a#admin-link {
 
 #page-entry-edit {
   text-align: left;
-}
-
-#page-entry-edit h2 {
-  text-align: center;
-  margin-bottom: 0.4em;
 }
 
 #page-entry-edit form {
