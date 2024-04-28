@@ -486,10 +486,17 @@ export async function adminController(blogAddress, chainId) {
 export async function entryEditController(blogAddress, chainId) {
   const page = document.getElementById('page-entry-edit');
   
+  const titleField = page.querySelector('#title');
+  const insertImageButton = page.querySelector('#button-insert-image')
+  const contentField = page.querySelector('#content');
+  const burnerAddressPrivateKeyField = page.querySelector('#burner-address-private-key');
+  const generateBurnerAddressButton = page.querySelector('#generate-burner-address');
+  const submitButton = page.querySelector('button[type="submit"]');
+
   // Reinit fields
-  page.querySelector('#title').value = ''
-  page.querySelector('#content').value = ''
-  page.querySelector('#burner-address-private-key').value = ''
+  titleField.value = ''
+  contentField.value = ''
+  burnerAddressPrivateKeyField.value = ''
 
   // Determine if we are adding or editing by checking if the URL start with /add
   let parsedUrl = parseWeb3Url(window.location.href)
@@ -583,19 +590,24 @@ export async function entryEditController(blogAddress, chainId) {
   }
 
   // Insert image button
-  const insertImageButton = page.querySelector('#button-insert-image')
   const handleInsertImageButton = async (event) => {
     event.preventDefault()
+    burnerAddressPrivateKeyField.disabled = true
+    generateBurnerAddressButton.disabled = true
+    submitButton.disabled = true
     insertImageButton.disabled = true
     insertImageButton.innerHTML = 'Uploading ...';
 
-    const revertButtonState = () => {
+    const revertFormState = () => {
+      burnerAddressPrivateKeyField.disabled = false
+      generateBurnerAddressButton.disabled = false
+      submitButton.disabled = false
       insertImageButton.disabled = false
       insertImageButton.innerHTML = 'Insert image'
     }
     const stopWithError = (message) => {
       alert(message)
-      revertButtonState()
+      revertFormState()
     }
     
     // Show a file selector to the user with an hidden file input, get the content of the file
@@ -681,7 +693,7 @@ export async function entryEditController(blogAddress, chainId) {
 
           // Show a summary of what is going to happen to the user, let him confirm
           if(confirm('You are about to upload an image made of ' + blobs.length + ' blobs, in ' + chunkedBlobs.length + ' separate transactions. \n\n The cost will be:\n - The EthStorage cost: ' + formatEther(ethStorageUpfrontPayment * BigInt(blobs.length)) + ' ETH \n - The gas cost of the transactions themselves \n\n Do you want to continue?') == false) {
-            revertButtonState()
+            revertFormState()
             return
           }
 
@@ -704,7 +716,7 @@ export async function entryEditController(blogAddress, chainId) {
         const burnerAddressPrivateKey = page.querySelector('#burner-address-private-key').value
         if(burnerAddressPrivateKey == "" && calls.reduce((count, call) => count + call.blobs.length, 0) > 0) {
           if(confirm('You are not using a burner wallet. Unless your wallet supports blob transactions, this will fail. Do you want to continue?') == false) {
-            revertButtonState()
+            revertFormState()
             return
           }
         }
@@ -712,6 +724,8 @@ console.log("Calls to be made", calls);
 
         // Make the calls
         for(let i = 0; i < calls.length; i++) {
+          insertImageButton.innerHTML = 'Uploading (' + (i + 1) + '/' + calls.length + ' tx) ...';
+
           let txResult = null;
           try {
             txResult = await sendTransaction(blogAddress, chainId, calls[i].methodName, calls[i].args, {
@@ -737,10 +751,15 @@ console.log("txResult", txResult)
         const contentAfter = content.value.substring(cursorPosition)
         content.value = contentBefore + `![Image](${imageUrl})` + contentAfter
 
-        revertButtonState()
+        revertFormState()
       };
       reader.readAsArrayBuffer(file);
     });
+    fileInput.addEventListener('cancel', (event) => {
+      revertFormState();
+    });
+
+    // Launch the file selector
     fileInput.click();    
   }
   if(insertImageButton.hasAttribute('data-event-listener-added') == false) {
@@ -749,11 +768,9 @@ console.log("txResult", txResult)
   }
 
   // Burner wallet generation
-  const burnerAddressPrivateKeyInput = page.querySelector('#burner-address-private-key')
   const burnerAddressGenerated = page.querySelector('#burner-address-generated')
   const burnerAddressGeneratedArea = page.querySelector('#burner-address-generated-area')
   const burnerAddressBalance = page.querySelector('#burner-address-balance')
-  const generateBurnerAddressButton = page.querySelector('#generate-burner-address')
   const handleGenerateBurnerAddress = async (event) => {
     if(confirm('This will generate a new burner wallet. Make sure to make a backup of the private key. \n\nThen send some funds to this wallet. Only send a small amount to pay for the transaction.\n\nContinue?') == false) {
       return;
@@ -762,7 +779,7 @@ console.log("txResult", txResult)
     const newBurnerArray = new Uint8Array(32);
     self.crypto.getRandomValues(newBurnerArray);
     const newBurnerPrivateKey = "0x" + uint8ArrayToHexString(newBurnerArray);
-    burnerAddressPrivateKeyInput.value = newBurnerPrivateKey
+    burnerAddressPrivateKeyField.value = newBurnerPrivateKey
     handleBurnerPrivateKeyChange()
     // Store it on localStorage
     try {
@@ -778,31 +795,31 @@ console.log("txResult", txResult)
       transport: http()
     })
 
-    if(burnerAddressPrivateKeyInput.value) {
+    if(burnerAddressPrivateKeyField.value) {
       try {
-        const publicAddress = privateKeyToAccount(burnerAddressPrivateKeyInput.value).address;
+        const publicAddress = privateKeyToAccount(burnerAddressPrivateKeyField.value).address;
         burnerAddressGenerated.innerHTML = publicAddress
         const balance = await publicClient.getBalance({address: publicAddress})
         burnerAddressBalance.innerHTML = formatEther(balance)
       }
       catch (error) {
-        burnerAddressGenerated.innerHTML = burnerAddressPrivateKeyInput.value ? 'Invalid private key' : ''
+        burnerAddressGenerated.innerHTML = burnerAddressPrivateKeyField.value ? 'Invalid private key' : ''
       }
     }
-    burnerAddressGeneratedArea.style.display = burnerAddressPrivateKeyInput.value ? 'block' : 'none'
+    burnerAddressGeneratedArea.style.display = burnerAddressPrivateKeyField.value ? 'block' : 'none'
   }
   if(generateBurnerAddressButton.hasAttribute('data-event-listener-added') == false) {
     generateBurnerAddressButton.addEventListener('click', handleGenerateBurnerAddress)
     generateBurnerAddressButton.setAttribute('data-event-listener-added', 'true')
   }
-  if(burnerAddressPrivateKeyInput.hasAttribute('data-event-listener-added') == false) {
-    burnerAddressPrivateKeyInput.addEventListener('input', handleBurnerPrivateKeyChange)
-    burnerAddressPrivateKeyInput.setAttribute('data-event-listener-added', 'true')
+  if(burnerAddressPrivateKeyField.hasAttribute('data-event-listener-added') == false) {
+    burnerAddressPrivateKeyField.addEventListener('input', handleBurnerPrivateKeyChange)
+    burnerAddressPrivateKeyField.setAttribute('data-event-listener-added', 'true')
   }
   // Private key field: Load the burner address from localStorage, if it was previously stored
   try {
     if(localStorage.getItem('burnerPrivateKey')) {
-      burnerAddressPrivateKeyInput.value = localStorage.getItem('burnerPrivateKey')
+      burnerAddressPrivateKeyField.value = localStorage.getItem('burnerPrivateKey')
       handleBurnerPrivateKeyChange()
     }
   }
@@ -813,28 +830,42 @@ console.log("txResult", txResult)
 
   // On submit, create a new blog by calling the createBlog method of the BlogFactory contract
   const form = page.querySelector('form');
-  const submitButton = form.querySelector('button[type="submit"]');
   const errorMessageDiv = form.querySelector('.error-message');
   errorMessageDiv.innerHTML = '';
   errorMessageDiv.style.display = 'none';
 
+  const revertFormState = () => {
+    titleField.disabled = false;
+    insertImageButton.disabled = false;
+    contentField.disabled = false;
+    burnerAddressPrivateKeyField.disabled = false;
+    generateBurnerAddressButton.disabled = false;
+    submitButton.disabled = false
+    submitButton.innerHTML = 'Save'
+  }
+
   const stopWithError = (message) => {
     errorMessageDiv.innerHTML = strip_tags(message ?? "")
     errorMessageDiv.style.display = 'block'
-    submitButton.disabled = false
-    submitButton.innerHTML = 'Save'
+    revertFormState()
   }
  
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    titleField.disabled = true;
+    insertImageButton.disabled = true;
+    contentField.disabled = true;
+    burnerAddressPrivateKeyField.disabled = true;
+    generateBurnerAddressButton.disabled = true;
     submitButton.disabled = true;
     submitButton.innerHTML = 'Saving ...';
     errorMessageDiv.innerHTML = '';
     errorMessageDiv.style.display = 'none';
 
-    const title = form.querySelector('#title').value;
-    const content = form.querySelector('#content').value;
-    const burnerAddressPrivateKey = form.querySelector('#burner-address-private-key').value
+    const title = titleField.value;
+    const content = contentField.value;
+    const burnerAddressPrivateKey = burnerAddressPrivateKeyField.value
     let postNumber = form.querySelector('#post-number').value;
     const newPost = postNumber == '';
     if(newPost == false) {
@@ -928,8 +959,7 @@ console.log("txResult", txResult)
     // Go to the post
     window.location.href = `/#/entry/${savedPostNumber}`
 
-    submitButton.disabled = false;
-    submitButton.innerHTML = 'Save';
+    revertFormState();
   };
 
   // Add the event listener only once
