@@ -137,6 +137,7 @@ fetch(`web3://${blogAddress}:${chainId}/title`)
   .then(response => response.text())
   .then(data => {
     document.querySelector('#blog-title a').innerHTML = strip_tags(data)
+    document.title = strip_tags(data) + " - DBlog"
   })
   .catch(error => {
     console.error(error)

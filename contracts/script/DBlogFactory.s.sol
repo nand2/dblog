@@ -177,7 +177,7 @@ contract DBlogFactoryScript is Script {
         }
 
         // Adding the main blog
-        factory.addBlog{value: 0.01 ether}("DBlog", "Decentralized blogs", domain);
+        factory.addBlog{value: 0.01 ether}("DBlog news", "Latest news about the dblog.eth platform", domain);
         string memory web3BlogFrontendAddress = string.concat("web3://", vm.toString(address(factory.blogs(0).frontend())));
         if(block.chainid > 1) {
             web3BlogFrontendAddress = string.concat(web3BlogFrontendAddress, ":", vm.toString(block.chainid));
