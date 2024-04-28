@@ -708,6 +708,7 @@ export async function entryEditController(blogAddress, chainId) {
             return
           }
         }
+console.log("Calls to be made", calls);
 
         // Make the calls
         for(let i = 0; i < calls.length; i++) {
