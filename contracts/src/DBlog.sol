@@ -201,7 +201,19 @@ contract DBlog {
         emit FileUploaded(fileName, contentType);
     }
 
-    function addUploadedFileOnEthStorage(string memory filePath, string memory contentType, uint256[] memory blobDataSizes) public payable onlyOwnerOrEditors {
+    /**
+     * Adding a file on EthStorage can be done in multiple calls: this one, and several 
+     * completeUploadedFileOnEthStorage() calls.
+     * @param filePath The path of the file, without root slash. E.g. "images/logo.png"
+     * @param contentType The content type of the file, e.g. "image/png"
+     * @param blobsCount The number of blobs that will be uploaded, in this call and optional several other completeUploadedFileOnEthStorage() calls
+     * @param blobDataSizes The size of each blob that will be uploaded in this call.
+     */
+    function addUploadedFileOnEthStorage(string memory filePath, string memory contentType, uint256 blobsCount, uint256[] memory blobDataSizes) public payable onlyOwnerOrEditors {
+        require(Strings.compare(filePath, "") == false, "File path must be set");
+        require(Strings.compare(contentType, "") == false, "Content type must be set");
+        require(blobDataSizes.length > 0, "At least one blob");
+        require(blobsCount >= blobDataSizes.length, "Total blob count must be at least the blobDataSizes length");
         // Ensure file name is unique
         for(uint i = 0; i < uploadedFiles.length; i++) {
             require(keccak256(abi.encodePacked(uploadedFiles[i].fileInfos.filePath)) != keccak256(abi.encodePacked(filePath)), "File already uploaded");
@@ -214,16 +226,56 @@ contract DBlog {
         newFile.fileInfos.contentType = contentType;
 
         // We store the content on EthStorage
-        bytes32[] memory ethStorageKeys = new bytes32[](blobDataSizes.length);
+        bytes32[] memory ethStorageKeys = new bytes32[](blobsCount);
         uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
         for(uint i = 0; i < blobDataSizes.length; i++) {
             ethStorageLastUsedKey++;
             ethStorageKeys[i] = bytes32(ethStorageLastUsedKey);
-            factory.ethStorage().putBlob{value: upfrontPayment}(ethStorageKeys[i], 0, blobDataSizes[i]);
+            factory.ethStorage().putBlob{value: upfrontPayment}(ethStorageKeys[i], 0, blobDataSizes
+            [i]);
         }
         newFile.fileInfos.contentKeys = ethStorageKeys;
 
         emit FileUploaded(filePath, contentType);
+    }
+
+    /**
+     * Complete the upload of a file on EthStorage. This function can be called multiple times.
+     */
+    function completeUploadedFileOnEthStorage(string memory filePath, uint256[] memory blobDataSizes) public payable onlyOwnerOrEditors {
+        
+        uint uploadedFileIndex;
+        bool found = false;
+        for(uint i = 0; i < uploadedFiles.length; i++) {
+            if(Strings.compare(uploadedFiles[i].fileInfos.filePath, filePath)) {
+                uploadedFileIndex = i;
+                found = true;
+                break;
+            }
+        }
+        require(found, "File not found");
+        FileInfosWithStorageMode storage uploadedFile = uploadedFiles[uploadedFileIndex];
+
+        require(uploadedFile.storageMode == FileStorageMode.EthStorage, "File is not on EthStorage");
+
+        // Determine the position of the last blob which was not uploaded yet
+        uint contentKeyStartingIndex = 0;
+        for(uint i = 0; i < uploadedFile.fileInfos.contentKeys.length; i++) {
+            if(uploadedFile.fileInfos.contentKeys[i] == 0) {
+                contentKeyStartingIndex = i;
+                break;
+            }
+        }
+        require(contentKeyStartingIndex > 0, "All blobs already uploaded");
+        require(contentKeyStartingIndex + blobDataSizes.length <= uploadedFile.fileInfos.contentKeys.length, "Too many blobs");
+
+        // We store the content on EthStorage
+        uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+        for(uint i = 0; i < blobDataSizes.length; i++) {
+            ethStorageLastUsedKey++;
+            uploadedFile.fileInfos.contentKeys[contentKeyStartingIndex + i] = bytes32(ethStorageLastUsedKey);
+            factory.ethStorage().putBlob{value: upfrontPayment}(uploadedFile.fileInfos.contentKeys[contentKeyStartingIndex + i], 0, blobDataSizes[i]);
+        }
     }
 
     function getUploadedFiles() public view returns (FileInfosWithStorageMode[] memory) {

@@ -48,8 +48,14 @@ const frontendABI = [
     type: 'function',
   },
   {
-    inputs: [{ name: 'fileName', type: 'string' }, { name: 'contentType', type: 'string' }, { name: 'blobDataSizes', type: 'uint256[]' }],
+    inputs: [{ name: 'fileName', type: 'string' }, { name: 'contentType', type: 'string' }, { name: 'blobsCount', type: 'uint256' }, { name: 'blobDataSizes', type: 'uint256[]' }],
     name: 'addUploadedFileOnEthStorage',
+    outputs: [],
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'fileName', type: 'string' }, { name: 'blobDataSizes', type: 'uint256[]' }],
+    name: 'completeUploadedFileOnEthStorage',
     outputs: [],
     type: 'function',
   },
@@ -103,10 +109,14 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
   }
   if(burnerWallet) {
     accountAddress = burnerWallet
+    // Ideally we should use custom(window.ethereum) to pipe through request to the main wallet
+    // it seems to be issues with the presence of blobs
+    // So we use our own http transport with the embedded RPC endpoints of the viem lib
+    let transport = http()
     createWalletClientOpts = {
       account: burnerWallet,
       chain: chainId == 31337 ? anvil : chainId == 11155111 ? sepolia : mainnet,
-      transport: http()
+      transport: transport
     }
   }
   const viemClient = createWalletClient(createWalletClientOpts).extend(publicActions)
@@ -579,10 +589,13 @@ export async function entryEditController(blogAddress, chainId) {
     insertImageButton.disabled = true
     insertImageButton.innerHTML = 'Uploading ...';
 
-    const stopWithError = (message) => {
-      alert(message)
+    const revertButtonState = () => {
       insertImageButton.disabled = false
       insertImageButton.innerHTML = 'Insert image'
+    }
+    const stopWithError = (message) => {
+      alert(message)
+      revertButtonState()
     }
     
     // Show a file selector to the user with an hidden file input, get the content of the file
@@ -604,12 +617,10 @@ export async function entryEditController(blogAddress, chainId) {
         const fileContent = event.target.result;
 
         // Prepare the calldata/value/blobs
-        let methodName;
-        let args = [];
-        let value = 0n;
-        let blobs = [];
+        let calls = [];
         // Ethereum mainnet or sepolia: Store on EthStorage
         if(chainId == 1 || chainId == 11155111) {
+          let blobs = []
           // Convert the fileContent to blobs ready to be sent
           try {
             blobs = toBlobs({ data: toHex(new Uint8Array(fileContent)) });
@@ -633,50 +644,77 @@ export async function entryEditController(blogAddress, chainId) {
 
           // Get price of ethstorage upfront payment
           // We need to pay that
+          let ethStorageUpfrontPayment = 0n
           await fetch(`web3://${blogAddress}:${chainId}/getEthStorageUpfrontPayment?returns=(uint256)`)
             .then(response => response.json())
             .then(data => {
-              value = fromHex(data[0], 'bigint') * BigInt(blobs.length)
+              ethStorageUpfrontPayment = fromHex(data[0], 'bigint')
             })
             .catch(error => {
               stopWithError('EthStorage upfront fee fetching failed : ' + error.message)
               return
             })
 
-          methodName = "addUploadedFileOnEthStorage";
-          args = [file.name, mimeType, blobDataSizes];
+          // Now, because of public RPC endpoints limitations (e.g. rpc.sepolia.org will throw a 
+          // HTTP 413 error on eth_getTransactionReceipt, publicnode will throw a HTTP 500 if the
+          // body of the request is too big, ...), we limit the number of blobs to X per tx
+          // Chunk the blobDataSizes
+          let chunkSize = 2
+          let chunkedBlobs = []
+          let chunkedBlobDataSizes = []
+          for(let i = 0; i < blobDataSizes.length; i += chunkSize) {
+            chunkedBlobs.push(blobs.slice(i, i + chunkSize))
+            chunkedBlobDataSizes.push(blobDataSizes.slice(i, i + chunkSize))
+          }
+
+          // Show a summary of what is going to happen to the user, let him confirm
+          if(confirm('You are about to upload an image made of ' + blobs.length + ' blobs, in ' + chunkedBlobs.length + ' separate transactions. The EthStorage cost will be ' + formatEther(ethStorageUpfrontPayment * BigInt(blobs.length)) + ' ETH. Do you want to continue?') == false) {
+            revertButtonState()
+            return
+          }
+
+          // Now prepare the calls based on the chunkedBlobDataSizes
+          for(let i = 0; i < chunkedBlobs.length; i++) {
+            let methodName = i == 0 ? "addUploadedFileOnEthStorage" : "completeUploadedFileOnEthStorage";
+            let args = i == 0 ? [file.name, mimeType, blobs.length, chunkedBlobDataSizes[i]] : [file.name, chunkedBlobDataSizes[i]];
+            let value = ethStorageUpfrontPayment * BigInt(chunkedBlobs[i].length);
+            calls.push({ methodName: methodName, args: args, value: value, blobs: chunkedBlobs[i] });
+          }
         }
         // Other networks: Otherwise store on state
         else {
-          methodName = "addUploadedFileOnEthfs";
-          args = [file.name, mimeType, toHex(new Uint8Array(fileContent))];
+          let methodName = "addUploadedFileOnEthfs";
+          let args = [file.name, mimeType, toHex(new Uint8Array(fileContent))];
+          calls.push({ methodName: methodName, args: args, value: 0n, blobs: [] });
         }
 
         // Fetch the burner private key
         const burnerAddressPrivateKey = page.querySelector('#burner-address-private-key').value
-        if(burnerAddressPrivateKey == "" && blobs.length > 0) {
+        if(burnerAddressPrivateKey == "" && calls.reduce((count, call) => count + call.blobs.length, 0) > 0) {
           if(confirm('You are not using a burner wallet. Unless your wallet supports blob transactions, this will fail. Do you want to continue?') == false) {
+            revertButtonState()
             return
           }
         }
 
-        // Make the call
-        let txResult = null;
-        try {
-          txResult = await sendTransaction(blogAddress, chainId, methodName, args, {
-            value: value,
-            blobs: blobs,
-            burnerWalletPrivateKey: burnerAddressPrivateKey,
-            burnerWalletRequiredToBeEditor: true,
-            burnerWalletSavePrivateKeyToLocalStorage: true,
-          });
-        }
-        catch (error) {
-          stopWithError(error.message)
-          return
-        }
-          
+        // Make the calls
+        for(let i = 0; i < calls.length; i++) {
+          let txResult = null;
+          try {
+            txResult = await sendTransaction(blogAddress, chainId, calls[i].methodName, calls[i].args, {
+              value: calls[i].value,
+              blobs: calls[i].blobs,
+              burnerWalletPrivateKey: burnerAddressPrivateKey,
+              burnerWalletRequiredToBeEditor: true,
+              burnerWalletSavePrivateKeyToLocalStorage: true,
+            });
+          }
+          catch (error) {
+            stopWithError(error.message)
+            return
+          }  
 console.log("txResult", txResult)
+        }
 
 
         const imageUrl = "/uploads/" + file.name;
@@ -686,8 +724,7 @@ console.log("txResult", txResult)
         const contentAfter = content.value.substring(cursorPosition)
         content.value = contentBefore + `![Image](${imageUrl})` + contentAfter
 
-        insertImageButton.disabled = false
-        insertImageButton.innerHTML = 'Insert image'
+        revertButtonState()
       };
       reader.readAsArrayBuffer(file);
     });
