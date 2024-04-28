@@ -55,7 +55,10 @@ form input, form textarea {
   }
 }
 
-/** Blog header */
+
+/** 
+ * Blog header 
+ */
 
 #blog-title {
   margin-bottom: 0em;
@@ -87,7 +90,10 @@ a#admin-link {
   font-size: 0.8em;
 }
 
-/** Home */
+
+/** 
+ * Home 
+ */
 
 #page-home #blog-entries {
   display: flex;
@@ -107,7 +113,10 @@ a#admin-link {
   margin-bottom: 0;
 }
 
-/** Blog entry */
+
+/** 
+ * Blog entry 
+ */
 
 #page-entry {
   text-align: left;
@@ -133,7 +142,18 @@ a#admin-link {
   color: #888;
 }
 
-/** Admin page */
+/** Blog entry content, also reused in edit page preview */
+
+.blog-entry-content img {
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+}
+
+
+/** 
+ *Admin page 
+ */
 
 #page-admin {
   text-align: left;
@@ -157,7 +177,10 @@ a#admin-link {
   margin-bottom: 5px;
 }
 
-/** Blog entry edit */
+
+/** 
+ * Blog entry edit 
+ */
 
 #page-entry-edit {
   text-align: left;

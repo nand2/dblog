@@ -190,7 +190,7 @@ console.log("blobs length", opts.blobs.length)
   if(opts.blobs.length > 0) {
     // Prepare the KZG setup
     const wasmKzg = await loadKZG()
-    kzg = setupKzg(wasmKzg)
+    const kzg = setupKzg(wasmKzg)
 
     transactionOpts.blobs = opts.blobs;
     transactionOpts.kzg = kzg;
@@ -284,7 +284,7 @@ export async function blogEntryController(blogAddress, chainId) {
   // Clear the post
   page.querySelector('h2').innerHTML = ''
   page.querySelector('.date').innerHTML = ''
-  page.querySelector('.content').innerHTML = ''
+  page.querySelector('.blog-entry-content').innerHTML = ''
 
   // Extract the post number from the URL
   let parsedUrl = parseWeb3Url(window.location.href)
@@ -335,7 +335,7 @@ export async function blogEntryController(blogAddress, chainId) {
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
   const formattedDate = new Date(post.date * 1000).toLocaleDateString(undefined, options);
   page.querySelector('.date').innerHTML = formattedDate
-  page.querySelector('.content').innerHTML = markdown(strip_tags(content))
+  page.querySelector('.blog-entry-content').innerHTML = markdown(strip_tags(content))
 }
 
 
@@ -576,6 +576,14 @@ export async function entryEditController(blogAddress, chainId) {
   const insertImageButton = page.querySelector('#button-insert-image')
   const handleInsertImageButton = async (event) => {
     event.preventDefault()
+    insertImageButton.disabled = true
+    insertImageButton.innerHTML = 'Uploading ...';
+
+    const stopWithError = (message) => {
+      alert(message)
+      insertImageButton.disabled = false
+      insertImageButton.innerHTML = 'Insert image'
+    }
     
     // Show a file selector to the user with an hidden file input, get the content of the file
     const fileInput = document.createElement('input');
@@ -587,7 +595,7 @@ export async function entryEditController(blogAddress, chainId) {
       // Determine mime type of the file
       let mimeType = mime.getType(file.name.split('.').pop())
       if(mimeType == "") {
-        alert("Unable to determine mime type of the file")
+        stopWithError("Unable to determine mime type of the file")
         return;
       }
 
@@ -603,14 +611,13 @@ export async function entryEditController(blogAddress, chainId) {
         // Ethereum mainnet or sepolia: Store on EthStorage
         if(chainId == 1 || chainId == 11155111) {
           // Convert the fileContent to blobs ready to be sent
-          let blobs = []
           try {
             blobs = toBlobs({ data: toHex(new Uint8Array(fileContent)) });
             console.log("Image blobs count", blobs.length)
           }
           // toBlobs will also catch if the file is too big ( > 6 blobs)
           catch (error) {
-            alert(error);
+            stopWithError(error);
             return
           }
 
@@ -632,7 +639,7 @@ export async function entryEditController(blogAddress, chainId) {
               value = fromHex(data[0], 'bigint') * BigInt(blobs.length)
             })
             .catch(error => {
-              alert('EthStorage upfront fee fetching failed : ' + error.message)
+              stopWithError('EthStorage upfront fee fetching failed : ' + error.message)
               return
             })
 
@@ -645,8 +652,15 @@ export async function entryEditController(blogAddress, chainId) {
           args = [file.name, mimeType, toHex(new Uint8Array(fileContent))];
         }
 
-        // Make the call
+        // Fetch the burner private key
         const burnerAddressPrivateKey = page.querySelector('#burner-address-private-key').value
+        if(burnerAddressPrivateKey == "" && blobs.length > 0) {
+          if(confirm('You are not using a burner wallet. Unless your wallet supports blob transactions, this will fail. Do you want to continue?') == false) {
+            return
+          }
+        }
+
+        // Make the call
         let txResult = null;
         try {
           txResult = await sendTransaction(blogAddress, chainId, methodName, args, {
@@ -671,6 +685,9 @@ console.log("txResult", txResult)
         const contentBefore = content.value.substring(0, cursorPosition)
         const contentAfter = content.value.substring(cursorPosition)
         content.value = contentBefore + `![Image](${imageUrl})` + contentAfter
+
+        insertImageButton.disabled = false
+        insertImageButton.innerHTML = 'Insert image'
       };
       reader.readAsArrayBuffer(file);
     });

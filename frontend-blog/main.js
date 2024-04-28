@@ -44,14 +44,14 @@ document.querySelector('#app').innerHTML = `
       </div>
     </div>
     <div id="page-entry">
-      <h2>My first blog entry</h2>
+      <h2><!--My first blog entry--></h2>
       <hr />
       <div class="sub-hr">
-        <div class="date">09 Feb 2023</div>
+        <div class="date"><!--09 Feb 2023--></div>
         <a href="/#/">See all posts</a>
       </div>
-      <div class="content">
-        Some content here
+      <div class="blog-entry-content">
+        <!--Some content here-->
       </div>
     </div>
     <div id="page-admin">
@@ -94,7 +94,7 @@ document.querySelector('#app').innerHTML = `
             <div id="content-textarea">
               <textarea id="content" name="content"></textarea>
             </div>
-            <div id="content-preview">
+            <div id="content-preview" class="blog-entry-content">
             </div>
           </div>
         </div>

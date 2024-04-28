@@ -184,6 +184,10 @@ contract DBlog {
     }
 
     function addUploadedFileOnEthfs(string memory fileName, string memory contentType, bytes memory fileContents) public onlyOwnerOrEditors {
+        // EthFs already ensure file uniqueness
+        // This simple implementation has his drawback : the file name table is global
+        // But this is mostly done for local testing, even though it can be used on mainnet
+
         uploadedFiles.push();
         FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
         newFile.storageMode = FileStorageMode.SSTORE2;
