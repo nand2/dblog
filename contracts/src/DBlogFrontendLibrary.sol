@@ -7,30 +7,11 @@ import { DecentralizedKV } from "storage-contracts-v1/DecentralizedKV.sol";
 import "./interfaces/FileInfos.sol";
 import "./DBlogFactory.sol";
 
-// A version of a frontend, containing a single HTML, CSS and JS file.
-struct BlogFrontendVersion {
-    // Storage mode for the frontend files
-    FileStorageMode storageMode;
-
-    // The files of the frontend
-    FileInfos[] files;
-
-    // Pointers to the files
-    // If storage mode is SSTORE2, then these are address pointers to the SSTORE2 files
-    // If storage mode is EthStorage, then these are the keys to the EthStorage files
-    // Note: These files are expected to be compressed with gzip
-    bytes32 htmlFile;
-    bytes32 cssFile;
-    bytes32 jsFile;
-
-    // Infos about this version
-    string infos;
-}
 
 contract DBlogFrontendLibrary {
     DBlogFactory public blogFactory;
 
-    BlogFrontendVersion[] public frontendVersions;
+    FrontendFilesSet[] public frontendVersions;
     uint256 public defaultFrontendIndex;
 
     uint256 public ethStorageLastUsedKey = 0;
@@ -58,7 +39,7 @@ contract DBlogFrontendLibrary {
         // Weird insertion into frontendVersions due to :
         // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
         frontendVersions.push();
-        BlogFrontendVersion storage newFrontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
         newFrontend.storageMode = FileStorageMode.SSTORE2;
         for(uint i = 0; i < files.length; i++) {
             newFrontend.files.push(files[i]);
@@ -92,7 +73,7 @@ contract DBlogFrontendLibrary {
         // Weird insertion into frontendVersions due to :
         // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
         frontendVersions.push();
-        BlogFrontendVersion storage newFrontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
         newFrontend.storageMode = FileStorageMode.EthStorage;
         for(uint i = 0; i < files.length; i++) {
             bytes32[] memory ethStorageKeys = new bytes32[](files[i].blobIndexes.length);
@@ -124,7 +105,7 @@ contract DBlogFrontendLibrary {
             ethStorage.size(_key));
     }
 
-    function getFrontendVersion(uint256 _index) public view returns (BlogFrontendVersion memory) {
+    function getFrontendVersion(uint256 _index) public view returns (FrontendFilesSet memory) {
         require(_index < frontendVersions.length, "Index out of bounds");
         return frontendVersions[_index];
     }
@@ -134,7 +115,7 @@ contract DBlogFrontendLibrary {
         defaultFrontendIndex = _index;
     }
 
-    function getDefaultFrontend() public view returns (BlogFrontendVersion memory) {
+    function getDefaultFrontend() public view returns (FrontendFilesSet memory) {
         return frontendVersions[defaultFrontendIndex];
     }
 

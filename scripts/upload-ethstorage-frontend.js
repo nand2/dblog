@@ -5,6 +5,7 @@ import { default as cKzg } from 'c-kzg'
 import path from 'path';
 import {fileURLToPath} from 'url';
 import fs from 'fs'
+import mime from 'mime';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,12 +16,19 @@ const targetChain = process.argv[2] || "local"
 // Read second argument : contract address of the frontend
 const frontendAddress = process.argv[3]
 
-// Read third to fifth argument: file paths to upload
-const htmlFilePath = process.argv[4]
-const cssFilePath = process.argv[5]
-const jsFilePath = process.argv[6]
+// Read all remaining arguments: files to upload, in the format: <htmlFilePath>:<diskFilePath>
+// where htmlFilePath is the path to which it should answer on the web3:// protocol, and
+// diskFilePath is the path to the file on disk
+let files = []
+for (let i = 4; i < process.argv.length; i++) {
+  files.push({
+    htmlFilePath: process.argv[i].split(":")[0],
+    diskFilePath: process.argv[i].split(":")[1]
+  })
+}
 
-console.log(`Uploading ${htmlFilePath}, ${cssFilePath}, ${jsFilePath} to ${frontendAddress} on ${targetChain} chain`)
+console.log(`Uploading to ${frontendAddress} on ${targetChain} chain : `)
+files.forEach(file => console.log(`  - ${file.htmlFilePath} from ${file.diskFilePath}`))
 
 
 // Blob functions and constants
@@ -57,7 +65,7 @@ if (targetChain === "local") {
 else if (targetChain === "sepolia") {
   privateKey = process.env.PRIVATE_KEY_SEPOLIA;
   chain = sepolia
-  rpcUrl = "https://ethereum-sepolia-rpc.publicnode.com";
+  rpcUrl = process.env.RPC_SEPOLIA || "https://ethereum-sepolia-rpc.publicnode.com";
 }
 else if (targetChain === "holesky") {
   privateKey = process.env.PRIVATE_KEY_HOLESKY;
@@ -77,16 +85,30 @@ const kzg = setupKzg(cKzg, path.resolve(__dirname, "kzg-trusted-setup-mainnet.js
 
 // Setup Frontend contract
 const frontendABI = [
-  {"inputs":[
-    {"internalType":"bytes32","name":"htmlFile","type":"bytes32"},
-    {"internalType":"uint256","name":"htmlFileSize","type":"uint256"},
-    {"internalType":"bytes32","name":"cssFile","type":"bytes32"},
-    {"internalType":"uint256","name":"cssFileSize","type":"uint256"},
-    {"internalType":"bytes32","name":"jsFile","type":"bytes32"},
-    {"internalType":"uint256","name":"jsFileSize","type":"uint256"},
-    {"internalType":"string","name":"infos","type":"string"}],
-    "name":"addEthStorageFrontendVersion","outputs":[],"stateMutability":"payable","type":"function"},
-  {"inputs":[],"name":"getEthStorageUpfrontPayment","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+  {
+    "inputs":[
+      {
+        "components":[
+          {"internalType":"string","name":"filePath","type":"string"},
+          {"internalType":"string","name":"contentType","type":"string"},
+          {"internalType":"uint256[]","name":"blobIndexes","type":"uint256[]"},
+          {"internalType":"uint256[]","name":"blobDataSizes","type":"uint256[]"}
+        ],
+        "internalType":"struct DBlogFrontendLibrary.EthStorageFileUploadInfos[]",
+        "name":"files",
+        "type":"tuple[]"
+      },
+      {"internalType":"string","name":"_infos","type":"string"}
+    ],
+    "name":"addEthStorageFrontendVersion",
+    "outputs":[],"stateMutability":"payable","type":"function"
+  },
+  {
+    "inputs":[],
+    "name":"getEthStorageUpfrontPayment",
+    "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+    "stateMutability":"view","type":"function"
+  }
 ];
 const frontendContract = getContract({
   address: frontendAddress,
@@ -101,29 +123,55 @@ console.log("EthStorage upfront payment", upfrontPayment)
 
 
 let baseFeePerBlobGas = await getBaseFeePerBlobGas();
-let maxFeePerBlobGas = baseFeePerBlobGas * 2n;
+let maxFeePerBlobGas = baseFeePerBlobGas * 4n;
 
-// Prepare the blobs
-const htmlData = fs.readFileSync(htmlFilePath);
-const htmlBlob = toBlobs({ data: toHex(htmlData) }) 
-const cssData = fs.readFileSync(cssFilePath);
-const cssBlob = toBlobs({ data: toHex(cssData) })
-const jsData = fs.readFileSync(jsFilePath);
-const jsBlob = toBlobs({ data: toHex(jsData) })
-const blobs = [...htmlBlob, ...cssBlob, ...jsBlob];
+// Prepare the args
+let fileArgs = []
+let blobs = []
+const fullBlobDataSize = (32 - 1) * 4096;
+files.forEach((file, index) => {
+  // Determine mime type of the file
+  let mimeType = mime.getType(file.htmlFilePath.split('.').pop())
+  if(mimeType == "") {
+    console.log("ERROR: unknown mime type for file", file.htmlFilePath)
+    process.exit(1);
+  }
+  
+  const data = fs.readFileSync(file.diskFilePath);
+  const fileBlobs = toBlobs({ data: toHex(data) })
+
+  let fileBlobIndexes = []
+  let fileBlobDataSizes = []
+  let remaningDataSize = Buffer.byteLength(data)
+  for(let i = 0; i < fileBlobs.length; i++) {
+    blobs.push(fileBlobs[i])
+    fileBlobIndexes.push(blobs.length - 1)
+    if(i < fileBlobs.length - 1) {
+      fileBlobDataSizes.push(fullBlobDataSize)
+    }
+    else {
+      fileBlobDataSizes.push(remaningDataSize)
+    }
+    remaningDataSize -= fileBlobDataSizes[fileBlobDataSizes.length - 1]
+  }
+
+  fileArgs.push([
+    file.htmlFilePath,
+    mimeType,
+    fileBlobIndexes,
+    fileBlobDataSizes,
+  ])
+})
 
 // Prepare data call
+const args = [
+  fileArgs,
+  'Initial version'
+]
 const data = encodeFunctionData({
   abi: frontendABI,
   functionName: 'addEthStorageFrontendVersion',
-  args: [
-    '0x00000000000000000000000000000000000000000000000000000000000000f1', 
-    Buffer.byteLength(htmlData), 
-    '0x00000000000000000000000000000000000000000000000000000000000000f2', 
-    Buffer.byteLength(cssData),
-    '0x00000000000000000000000000000000000000000000000000000000000000f3', 
-    Buffer.byteLength(jsData),
-    'Initial version']
+  args: args,
 })
 
 // Send transaction
@@ -132,8 +180,12 @@ const hash = await client.sendTransaction({
   kzg,
   maxFeePerBlobGas: maxFeePerBlobGas,
   to: frontendAddress,
-  value: upfrontPayment * 3n,
+  value: upfrontPayment * BigInt(blobs.length),
   data: data,
+  gas: 1000000n, // Weirdly I need this on sepolia
+  // Replace tx:
+  // nonce: 690,
+  // maxPriorityFeePerGas: 1575386694n,
 })
 console.log("tx hash", hash)
 

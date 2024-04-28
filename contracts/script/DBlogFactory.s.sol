@@ -90,18 +90,31 @@ contract DBlogFactoryScript is Script {
             // Add factory frontend initial version
             // Only if local (testnets and mainnet get the EthStorage version)
             if(targetChain == TargetChain.LOCAL) {
+                FileInfos[] memory files = new FileInfos[](3);
+
                 // Storing files of the factory frontend
                 // HTML
-                bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/", vm.envString("FACTORY_FRONTEND_HTML_FILE")));
-                (address factoryHtmlFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_HTML_FILE"), string(fileContents));
-                // CSS
-                fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_CSS_FILE")));
-                (address factoryCssFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_CSS_FILE"), string(fileContents));
-                // JS
-                fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")));
-                (address factoryJsFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_JS_FILE"), string(fileContents));
+                bytes memory fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/", vm.envString("FACTORY_FRONTEND_COMPRESSED_HTML_FILE")));
+                (address factoryHtmlFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_COMPRESSED_HTML_FILE"), string(fileContents));
+                bytes32[] memory contentKeys = new bytes32[](1);
+                contentKeys[0] = bytes32(uint256(uint160(factoryHtmlFilePointer)));
+                files[0] = FileInfos("index.html", "text/html", contentKeys);
 
-                factoryFrontend.addSStore2FrontendVersion(factoryHtmlFilePointer, factoryCssFilePointer, factoryJsFilePointer, "Initial version");
+                // CSS
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_COMPRESSED_CSS_FILE")));
+                (address factoryCssFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_COMPRESSED_CSS_FILE"), string(fileContents));
+                contentKeys = new bytes32[](1);
+                contentKeys[0] = bytes32(uint256(uint160(factoryCssFilePointer)));
+                files[1] = FileInfos(string.concat("assets/", vm.envString("FACTORY_FRONTEND_CSS_FILE")), "text/css", contentKeys);
+
+                // JS
+                fileContents = vm.readFileBinary(string.concat("dist/frontend-factory/assets/", vm.envString("FACTORY_FRONTEND_COMPRESSED_JS_FILE")));
+                (address factoryJsFilePointer, ) = store.createFile(vm.envString("FACTORY_FRONTEND_COMPRESSED_JS_FILE"), string(fileContents));
+                contentKeys = new bytes32[](1);
+                contentKeys[0] = bytes32(uint256(uint160(factoryJsFilePointer)));
+                files[2] = FileInfos(string.concat("assets/", vm.envString("FACTORY_FRONTEND_JS_FILE")), "text/javascript", contentKeys);
+
+                factoryFrontend.addSStore2FrontendVersion(files, "Initial version");
             }
 
             // Add frontend library initial version

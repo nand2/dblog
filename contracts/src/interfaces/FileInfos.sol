@@ -19,6 +19,18 @@ struct FileInfos {
     bytes32[] contentKeys;
 }
 
+// A version of a frontend, containing some static files
+struct FrontendFilesSet {
+    // Storage mode for the frontend files
+    FileStorageMode storageMode;
+
+    // The files of the frontend
+    FileInfos[] files;
+
+    // Infos about this frontend version
+    string infos;
+}
+
 // When we want to store the storage mode of individual files
 struct FileInfosWithStorageMode {
     // Storage mode of the file

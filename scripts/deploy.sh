@@ -145,9 +145,12 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "contracts" ]; then
     FORGE_SCRIPT_OPTIONS="--broadcast --verify"
   fi
   exec 5>&1
-  OUTPUT="$(FACTORY_FRONTEND_HTML_FILE=$FACTORY_FRONTEND_COMPRESSED_HTML_FILE \
-    FACTORY_FRONTEND_CSS_FILE=$FACTORY_FRONTEND_COMPRESSED_CSS_FILE \
-    FACTORY_FRONTEND_JS_FILE=$FACTORY_FRONTEND_COMPRESSED_JS_FILE \
+  OUTPUT="$(FACTORY_FRONTEND_HTML_FILE=$FACTORY_FRONTEND_HTML_FILE \
+    FACTORY_FRONTEND_CSS_FILE=$FACTORY_FRONTEND_CSS_FILE \
+    FACTORY_FRONTEND_JS_FILE=$FACTORY_FRONTEND_JS_FILE \
+    FACTORY_FRONTEND_COMPRESSED_HTML_FILE=$FACTORY_FRONTEND_COMPRESSED_HTML_FILE \
+    FACTORY_FRONTEND_COMPRESSED_CSS_FILE=$FACTORY_FRONTEND_COMPRESSED_CSS_FILE \
+    FACTORY_FRONTEND_COMPRESSED_JS_FILE=$FACTORY_FRONTEND_COMPRESSED_JS_FILE \
     BLOG_FRONTEND_HTML_FILE=$BLOG_FRONTEND_HTML_FILE \
     BLOG_FRONTEND_CSS_FILE=$BLOG_FRONTEND_CSS_FILE \
     BLOG_FRONTEND_JS_FILE=$BLOG_FRONTEND_JS_FILE \
@@ -183,11 +186,11 @@ if [ "$TARGET_CHAIN" != "local" ]; then
     # Do the uploading
     echo ""
     echo "Uploading frontend to DBlogFactoryFrontend ($DBLOGFACTORY_FRONTEND_ADDRESS) ..."
-    node  --env-file=.env scripts/upload-ethstorage-frontend.js \
+    node --env-file=.env scripts/upload-ethstorage-frontend.js \
       $TARGET_CHAIN $DBLOGFACTORY_FRONTEND_ADDRESS \
-      dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_HTML_FILE} \
-      dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_CSS_FILE} \
-      dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_JS_FILE}
+      ${FACTORY_FRONTEND_HTML_FILE}:dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_HTML_FILE} \
+      assets/${FACTORY_FRONTEND_CSS_FILE}:dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_CSS_FILE} \
+      assets/${FACTORY_FRONTEND_JS_FILE}:dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_JS_FILE}
   fi
 
 
@@ -199,7 +202,7 @@ if [ "$TARGET_CHAIN" != "local" ]; then
     # Do the uploading
     echo ""
     echo "Uploading frontend to DBlogFrontendLibrary ($DBLOGFRONTEND_LIBRARY_ADDRESS) ..."
-    node  --env-file=.env scripts/upload-ethstorage-blog-frontend.js \
+    node --env-file=.env scripts/upload-ethstorage-frontend.js \
       $TARGET_CHAIN $DBLOGFRONTEND_LIBRARY_ADDRESS \
       ${BLOG_FRONTEND_HTML_FILE}:dist/frontend-blog/${BLOG_FRONTEND_COMPRESSED_HTML_FILE} \
       assets/${BLOG_FRONTEND_CSS_FILE}:dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_CSS_FILE} \
