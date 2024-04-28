@@ -130,17 +130,7 @@ contract DBlogFrontend is IDecentralizedApp {
             for(uint i = 0; i < blog.getUploadedFilesCount(); i++) {
                 uploadedFile = blog.getUploadedFile(i);
                 if(Strings.compare(uploadedFileName, uploadedFile.fileInfos.filePath)) {
-                    if(uploadedFile.storageMode == FileStorageMode.SSTORE2) {
-                        File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(uploadedFile.fileInfos.contentKeys[0])))), (File));
-                        body = file.read();
-                    }
-                    else if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
-                        bytes memory content;
-                        for(uint j = 0; j < uploadedFile.fileInfos.contentKeys.length; j++) {
-                            content = bytes.concat(content, frontendLibrary.getEthStorageFileContents(uploadedFile.fileInfos.contentKeys[j]));
-                        }
-                        body = string(content);
-                    }
+                    body = string(blog.getUploadedFileContents(i));
                     statusCode = 200;
                     headers = new KeyValue[](1);
                     headers[0].key = "Content-type";

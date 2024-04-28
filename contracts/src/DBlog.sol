@@ -239,4 +239,23 @@ contract DBlog {
 
         return uploadedFiles[index];
     }
+
+    function getUploadedFileContents(uint256 index) public view returns (bytes memory contents) {
+        require(index < uploadedFiles.length, "Index out of bounds");
+
+        TestEthStorageContractKZG ethStorage = factory.ethStorage();
+        FileInfosWithStorageMode memory uploadedFile = uploadedFiles[index];
+
+        if(uploadedFile.storageMode == FileStorageMode.SSTORE2) {
+            File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(uploadedFile.fileInfos.contentKeys[0])))), (File));
+            contents = bytes(file.read());
+        }
+        else if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
+            bytes memory content;
+            for(uint j = 0; j < uploadedFile.fileInfos.contentKeys.length; j++) {
+                content = bytes.concat(content, ethStorage.get(uploadedFile.fileInfos.contentKeys[j], DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, ethStorage.size(uploadedFile.fileInfos.contentKeys[j])));
+            }
+            contents = content;
+        }
+    }
 }
