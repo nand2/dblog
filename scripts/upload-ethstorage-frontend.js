@@ -122,7 +122,7 @@ const frontendABI = [
   },
   {
     "inputs":[],
-    "name":"resetCurrentFrontendVersion",
+    "name":"resetLatestFrontendVersion",
     "outputs":[],"stateMutability":"payable","type":"function"
   },
   {
@@ -233,8 +233,8 @@ else if(false) {
     blobs: []
   })
   for(let i = 0; i < fileArgsChunks.length; i++) {
-    methodName = 'addFilesToLatestEthStorageFrontendVersion'
-    args = [fileArgsChunks[i]]
+    let methodName = 'addFilesToLatestEthStorageFrontendVersion'
+    let args = [fileArgsChunks[i]]
     
     calls.push({
       methodName: methodName,
@@ -254,10 +254,7 @@ for(let i = 0; i < calls.length; i++) {
   })
 
   // Send transaction
-  const hash = await client.sendTransaction({
-    blobs: calls[i].blobs,
-    kzg: kzg,
-    maxFeePerBlobGas: maxFeePerBlobGas,
+  let transactionOpts = {
     to: frontendAddress,
     value: upfrontPayment * BigInt(calls[i].blobs.length),
     data: data,
@@ -265,7 +262,16 @@ for(let i = 0; i < calls.length; i++) {
     // Replace tx:
     // nonce: 748,
     // maxPriorityFeePerGas: 53776n * 2n,
-  })
+  }
+  if(calls[i].blobs.length > 0) {
+    transactionOpts = {
+      ...transactionOpts,
+      blobs: calls[i].blobs,
+      kzg: kzg,
+      maxFeePerBlobGas: maxFeePerBlobGas,
+    }
+  }
+  const hash = await client.sendTransaction(transactionOpts)
   console.log("tx hash", hash)
 
   const transaction = await client.waitForTransactionReceipt( 

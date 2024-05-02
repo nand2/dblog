@@ -501,7 +501,7 @@ export async function adminController(blogAddress, chainId) {
             complete: true,
           }
           // EthStorage: Maybe the user did not complete all upload calls
-          if(item.storageMode == 1 /** EthStorage */ && file[1][2].contains("0x0000000000000000000000000000000000000000000000000000000000000000")) {
+          if(item.storageMode == 1 /** EthStorage */ && file[1][2].indexOf("0x0000000000000000000000000000000000000000000000000000000000000000") != -1) {
             item.complete = false
           }
           return item
