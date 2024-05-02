@@ -117,7 +117,12 @@ const frontendABI = [
         "type":"tuple[]"
       }
     ],
-    "name":"addFilesToCurrentEthStorageFrontendVersion",
+    "name":"addFilesToLatestEthStorageFrontendVersion",
+    "outputs":[],"stateMutability":"payable","type":"function"
+  },
+  {
+    "inputs":[],
+    "name":"resetCurrentFrontendVersion",
     "outputs":[],"stateMutability":"payable","type":"function"
   },
   {
@@ -203,19 +208,40 @@ fileArgsChunks.forEach((chunk, index) => {
 
 // Prepare the calls
 let calls = []
-for(let i = 0; i < fileArgsChunks.length; i++) {
-  let methodName = 'addEthStorageFrontendVersion'
-  let args = [fileArgsChunks[i], 'Initial version']
-  if(i > 0) {
-    methodName = 'addFilesToCurrentEthStorageFrontendVersion'
-    args = [fileArgsChunks[i]]
+// New frontend
+if(true) {
+  for(let i = 0; i < fileArgsChunks.length; i++) {
+    let methodName = 'addEthStorageFrontendVersion'
+    let args = [fileArgsChunks[i], 'Initial version']
+    if(i > 0) {
+      methodName = 'addFilesToLatestEthStorageFrontendVersion'
+      args = [fileArgsChunks[i]]
+    }
+    
+    calls.push({
+      methodName: methodName,
+      args: args,
+      blobs: blobsChunks[i]
+    })
   }
-  
+}
+// Erase an unlocked frontend and resend the files
+else if(false) {
   calls.push({
-    methodName: methodName,
-    args: args,
-    blobs: blobsChunks[i]
+    methodName: 'resetLatestFrontendVersion',
+    args: [],
+    blobs: []
   })
+  for(let i = 0; i < fileArgsChunks.length; i++) {
+    methodName = 'addFilesToLatestEthStorageFrontendVersion'
+    args = [fileArgsChunks[i]]
+    
+    calls.push({
+      methodName: methodName,
+      args: args,
+      blobs: blobsChunks[i]
+    })
+  }
 }
 
 

@@ -117,7 +117,7 @@ contract DBlogFrontendLibrary {
     }
 
     // Add extra files to the current unlocked EthStorage frontend version
-    function addFilesToCurrentEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files) public payable onlyFactoryOrFactoryOwner {
+    function addFilesToLatestEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files) public payable onlyFactoryOrFactoryOwner {
         TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
         uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
         uint256 fundsUsed = 0;
@@ -155,23 +155,19 @@ contract DBlogFrontendLibrary {
         }
     }
 
-    // Lock a frontend version
-    function lockFrontendVersion(uint256 _index) public onlyFactoryOrFactoryOwner {
-        require(_index < frontendVersions.length, "Index out of bounds");
-        require(!frontendVersions[_index].locked, "Already locked");
-
-        FrontendFilesSet storage frontend = frontendVersions[_index];
+    // Lock the latest frontend version
+    function lockLatestFrontendVersion() public onlyFactoryOrFactoryOwner {
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
+        require(!frontend.locked, "Already locked");
         frontend.locked = true;
     }
 
-    // Empty the files of a frontend version
+    // Empty the files of the latest frontend version, if not locked yet
     // This is useful if we want to deploy a small fix to a frontend version
     // In the case of EthStorage, we don't need to repay the upfront payment
-    function resetFrontendVersion(uint256 _index) public onlyFactoryOrFactoryOwner {
-        require(_index < frontendVersions.length, "Index out of bounds");
-        require(!frontendVersions[_index].locked, "Frontend version is locked");
-
-        FrontendFilesSet storage frontend = frontendVersions[_index];
+    function resetLatestFrontendVersion() public onlyFactoryOrFactoryOwner {
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
+        require(!frontend.locked, "Already locked");
 
         // If EthStorage: move back the pointer of last used key, so that we can
         // reuse them for free
