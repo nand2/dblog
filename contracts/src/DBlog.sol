@@ -29,6 +29,8 @@ contract DBlog {
 
     // EthStorage content keys: we use a simple incrementing key
     uint256 public ethStorageLastUsedKey = 0;
+    // When deleting files, we store the keys to reuse them (we don't need to pay EthStorage again)
+    bytes32[] public reusableEthStorageKeys;
 
     uint256 public constant ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK = 4;
 
@@ -230,15 +232,31 @@ contract DBlog {
         // We store the content on EthStorage
         bytes32[] memory ethStorageKeys = new bytes32[](blobsCount);
         uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+        uint256 fundsUsed = 0;
         for(uint i = 0; i < blobDataSizes.length; i++) {
-            ethStorageLastUsedKey++;
-            ethStorageKeys[i] = bytes32(ethStorageLastUsedKey);
-            factory.ethStorage().putBlob{value: upfrontPayment}(ethStorageKeys[i], i, blobDataSizes
+            uint payment = 0;
+
+            if(reusableEthStorageKeys.length > 0) {
+                ethStorageKeys[i] = reusableEthStorageKeys[reusableEthStorageKeys.length - 1];
+                reusableEthStorageKeys.pop();
+            } else {
+                ethStorageLastUsedKey++;
+                ethStorageKeys[i] = bytes32(ethStorageLastUsedKey);
+                payment = upfrontPayment;
+            }
+
+            factory.ethStorage().putBlob{value: payment}(ethStorageKeys[i], i, blobDataSizes
             [i]);
+            fundsUsed += payment;
         }
         newFile.fileInfos.contentKeys = ethStorageKeys;
 
         emit FileUploaded(filePath, contentType);
+
+        // Send back remaining funds sent by the caller
+        if(msg.value - fundsUsed > 0) {
+            payable(msg.sender).transfer(msg.value - fundsUsed);
+        }
     }
 
     /**
@@ -334,9 +352,12 @@ contract DBlog {
 
         FileInfosWithStorageMode storage uploadedFile = uploadedFiles[index];
 
-        // if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
-            // Store the keys to reuse them?
-        // }
+        if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
+            // Store the keys to reuse them
+            for(uint i = 0; i < uploadedFile.fileInfos.contentKeys.length; i++) {
+                reusableEthStorageKeys.push(uploadedFile.fileInfos.contentKeys[i]);
+            }
+        }
 
         uploadedFile = uploadedFiles[uploadedFiles.length - 1];
         uploadedFiles.pop();

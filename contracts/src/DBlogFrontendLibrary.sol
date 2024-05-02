@@ -116,7 +116,7 @@ contract DBlogFrontendLibrary {
         defaultFrontendIndex = frontendVersions.length - 1;
     }
 
-    // Add extra files to the current unlocked EthStorage frontend version
+    // Add extra files to the latest unlocked EthStorage frontend version
     function addFilesToLatestEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files) public payable onlyFactoryOrFactoryOwner {
         TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
         uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
@@ -136,11 +136,11 @@ contract DBlogFrontendLibrary {
                 if(ethStorage.exist(ethStorageKeys[j]) == false) {
                     payment = upfrontPayment;
                 }
-                fundsUsed += payment;
 
                 // Upload part of the file
                 // ethStorageKeys[j] is a key we choose, and it will be mixed with msg.sender
                 ethStorage.putBlob{value: payment}(ethStorageKeys[j], files[i].blobIndexes[j], files[i].blobDataSizes[j]);
+                fundsUsed += payment;
             }
             frontend.files.push(FileInfos({
                 filePath: files[i].filePath,

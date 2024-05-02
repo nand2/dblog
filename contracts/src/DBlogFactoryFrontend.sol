@@ -139,11 +139,11 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
                 if(ethStorage.exist(ethStorageKeys[j]) == false) {
                     payment = upfrontPayment;
                 }
-                fundsUsed += payment;
 
                 // Upload part of the file
                 // ethStorageKeys[j] is a key we choose, and it will be mixed with msg.sender
                 ethStorage.putBlob{value: payment}(ethStorageKeys[j], files[i].blobIndexes[j], files[i].blobDataSizes[j]);
+                fundsUsed += payment;
             }
             frontend.files.push(FileInfos({
                 filePath: files[i].filePath,
