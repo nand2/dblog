@@ -65,6 +65,10 @@ form input, form textarea {
 /**
  * Common to all pages
  */
+div[id^=page-] {
+  display: none;
+}
+
 h2.page-title {
   text-align: center;
   margin-bottom: 0.4em;

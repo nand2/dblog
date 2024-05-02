@@ -88,6 +88,29 @@ contract DBlog {
         }
     }
 
+    // To not overwhelm RPC clients (rate limits), pack as much infos as we can in a single call
+    function getTitleAndDescriptionAndOwner() public view returns (string memory, string memory, address) {
+        return (title, description, owner);
+    }
+    function getEditorsAndPostsAndUploadedFiles() public view returns (address[] memory, BlogPost[] memory, FileInfosWithStorageMode[] memory) {
+        return (editors, posts, uploadedFiles);
+    }
+
+    function setTitle(string memory _title) public onlyOwner {
+        require(bytes(_title).length > 0, "Title must be not empty");
+        title = _title;
+    }
+
+    function setDescription(string memory _description) public onlyOwner {
+        require(bytes(_description).length > 0, "Description must be not empty");
+        description = _description;
+    }
+
+
+    //
+    // Editors
+    //
+
     function addEditor(address editor) public onlyOwner {
         // Check that it is not in the editor list already
         for(uint i = 0; i < editors.length; i++) {
@@ -110,6 +133,11 @@ contract DBlog {
             }
         }
     }
+
+
+    //
+    // Blog posts
+    //
 
     function addPostOnEthereumState(string memory postTitle, string memory postContent) public onlyOwnerOrEditors {
         posts.push();
@@ -186,6 +214,11 @@ contract DBlog {
     function getPosts() public view returns (BlogPost[] memory) {
         return posts;
     }
+
+
+    //
+    // Uploaded files for the blog posts
+    //
 
     function addUploadedFileOnEthfs(string memory fileName, string memory contentType, bytes memory fileContents) public onlyOwnerOrEditors {
         // EthFs already ensure file uniqueness

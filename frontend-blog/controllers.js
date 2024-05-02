@@ -358,74 +358,79 @@ export async function blogEntryController(blogAddress, chainId) {
 /**
  * Admin page controller
  */
-export async function adminController(blogAddress, chainId) { 
-  // Remove the blog posts
-  const blogEntries = document.getElementById('admin-blog-entries')
-  blogEntries.innerHTML = ''
+export async function adminController(blogAddress, chainId, blogOwner) { 
 
-  // Call the blog to fetch the posts
-  let posts = []
-  await fetch(`web3://${blogAddress}:${chainId}/getPosts?returns=((string,uint256,string)[])`)
-    .then(response => response.json())
-    .then(data => {
-      console.log("Fetched posts : ", data)
-      // The blogs are returned as a an array of array, we convert that into an array of objects
-      posts = data[0].map((post, index) => {
-        return {
-          id: index,
-          title: post[0],
-          date: post[1],
-          content: post[2],
-        }
-      })
-    })
-    .catch(error => {
-      console.error(error)
-    })
-
-  // Insert the posts
-  posts.reverse().forEach(post => {
-    let blogEntry = document.createElement('div')
-    blogEntry.className = 'blog-entry'
-    const formattedDate = new Date(post.date * 1000).toISOString().split('T')[0];
-    blogEntry.innerHTML = `
-      <span class="date">${formattedDate}</span>
-      <a href="/#/entry/${post.id}">${strip_tags(post.title)}</a> - <a href="/#/entry/${post.id}/edit">edit</a>
-    `;
-    blogEntries.appendChild(blogEntry)
-  })
-
-  const loadEditorsInterface = async () => {
-    // Call the blog to get the owner
-    let owner = null
-    await fetch(`web3://${blogAddress}:${chainId}/owner?returns=(address)`)
-      .then(response => response.json())
-      .then(data => {
-        console.log("Fetched owner : ", data)
-        owner = data[0]
-      })
-      .catch(error => {
-        console.error(error)
-      })
-
-    // Call the blog to fetch the editors
+  const loadAdminInterface = async () => {
+    // Call the blog to fetch the editors, posts and uploaded files
     let editors = []
-    await fetch(`web3://${blogAddress}:${chainId}/getEditors?returns=(address[])`)
-      .then(response => response.json())
-      .then(data => {
-        console.log("Fetched editors : ", data)
-        editors = data[0]
-      })
-      .catch(error => {
-        console.error(error)
-      })
+    let posts = []
+    let uploadedFiles = []
+    try {
+      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint256,string)[],(uint8,(string,string,bytes32[]))[])`)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched editors, posts, uploadedFiles : ", data)
+
+          // Editors
+          editors = data[0]
+
+          // Posts
+          posts = data[1].map((post, index) => {
+            return {
+              id: index,
+              title: post[0],
+              date: post[1],
+              content: post[2],
+            }
+          })
+
+          // Uploaded files
+          uploadedFiles = data[2].map((file, index) => {
+            let item = {
+              id: index,
+              storageMode: fromHex(file[0], 'number'),
+              name: file[1][0],
+              contentType: file[1][1],
+              complete: true,
+            }
+            // EthStorage: Maybe the user did not complete all upload calls
+            if(item.storageMode == 1 /** EthStorage */ && file[1][2].indexOf("0x0000000000000000000000000000000000000000000000000000000000000000") != -1) {
+              item.complete = false
+            }
+            return item
+          })
+
+          console.log("Processed editors, posts, uploadedFiles : ", editors, posts, uploadedFiles)
+        })
+    }
+    catch(error) {
+      console.error(error)
+      alert('Fetching editors, posts and uploaded files failed : ' + error.message)
+      return
+    }
     
+
+    // Insert the posts
+    const blogEntries = document.getElementById('admin-blog-entries')
+    blogEntries.innerHTML = ''
+    posts.reverse().forEach(post => {
+      let blogEntry = document.createElement('div')
+      blogEntry.className = 'blog-entry'
+      const formattedDate = new Date(post.date * 1000).toISOString().split('T')[0];
+      blogEntry.innerHTML = `
+        <span class="date">${formattedDate}</span>
+        <a href="/#/entry/${post.id}">${strip_tags(post.title)}</a> - <a href="/#/entry/${post.id}/edit">edit</a>
+      `;
+      blogEntries.appendChild(blogEntry)
+    })
+
+
     // Insert the owner and editors
     const adminEditors = document.getElementById('admin-editors')
     adminEditors.innerHTML = ''
     let ownerDiv = document.createElement('div')
     ownerDiv.className = 'editor'
-    ownerDiv.innerHTML = `<span>${owner}</span> (blog owner)`
+    ownerDiv.innerHTML = `<span>${blogOwner}</span> (blog owner)`
     adminEditors.appendChild(ownerDiv)
     editors.forEach(editor => {
       let editorDiv = document.createElement('div')
@@ -451,65 +456,37 @@ export async function adminController(blogAddress, chainId) {
           return
         }
 
-        loadEditorsInterface()
+        loadAdminInterface()
       })
     })
-  }
-  loadEditorsInterface()
 
-  // Add an event listener to add a new editor
-  const addEditorButton = document.getElementById('admin-add-editor')
-  const addEditorButtonClickHandler = async (event) => {
-    event.preventDefault()
-    const newEditorAddress = document.getElementById('admin-new-editor-address').value
-    // If not the right format, skip
-    const ethereumAddressRegex = /^0x[a-fA-F0-9]{40}$/;
-    if (!ethereumAddressRegex.test(newEditorAddress)) {
-      alert('Invalid Ethereum address');
-      return
+    // Add an event listener to add a new editor
+    const addEditorButton = document.getElementById('admin-add-editor')
+    const addEditorButtonClickHandler = async (event) => {
+      event.preventDefault()
+      const newEditorAddress = document.getElementById('admin-new-editor-address').value
+      // If not the right format, skip
+      const ethereumAddressRegex = /^0x[a-fA-F0-9]{40}$/;
+      if (!ethereumAddressRegex.test(newEditorAddress)) {
+        alert('Invalid Ethereum address');
+        return
+      }
+
+      try {
+        await sendTransaction(blogAddress, chainId, "addEditor", [newEditorAddress]);
+      }
+      catch (error) {
+        alert(error.message)
+        return
+      }
+
+      loadAdminInterface()
+    }
+    if(addEditorButton.hasAttribute('data-event-listener-added') == false) {
+      addEditorButton.addEventListener('click', addEditorButtonClickHandler)
+      addEditorButton.setAttribute('data-event-listener-added', 'true')
     }
 
-    try {
-      await sendTransaction(blogAddress, chainId, "addEditor", [newEditorAddress]);
-    }
-    catch (error) {
-      alert(error.message)
-      return
-    }
-
-    loadEditorsInterface()
-  }
-  if(addEditorButton.hasAttribute('data-event-listener-added') == false) {
-    addEditorButton.addEventListener('click', addEditorButtonClickHandler)
-    addEditorButton.setAttribute('data-event-listener-added', 'true')
-  }
-
-
-  // Call the blog to fetch the uploaded files
-  const loadUploadedFilesInterface = async () => {
-    let uploadedFiles = []
-    await fetch(`web3://${blogAddress}:${chainId}/getUploadedFiles?returns=((uint8,(string,string,bytes32[]))[])`)
-      .then(response => response.json())
-      .then(data => {
-        console.log("Fetched uploaded files : ", data)
-        uploadedFiles = data[0].map((file, index) => {
-          let item = {
-            id: index,
-            storageMode: fromHex(file[0], Number),
-            name: file[1][0],
-            contentType: file[1][1],
-            complete: true,
-          }
-          // EthStorage: Maybe the user did not complete all upload calls
-          if(item.storageMode == 1 /** EthStorage */ && file[1][2].indexOf("0x0000000000000000000000000000000000000000000000000000000000000000") != -1) {
-            item.complete = false
-          }
-          return item
-        })
-      })
-      .catch(error => {
-        console.error(error)
-      })
 
     // Insert the uploaded files
     const adminUploadedFiles = document.getElementById('admin-uploaded-files')
@@ -539,11 +516,12 @@ export async function adminController(blogAddress, chainId) {
         }
 
         // Refresh the uploaded files
-        loadUploadedFilesInterface()
+        loadAdminInterface()
       })
     })
   }
-  loadUploadedFilesInterface()
+  // Initial load
+  loadAdminInterface()
 }
 
 

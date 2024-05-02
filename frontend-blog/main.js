@@ -7,16 +7,18 @@ import { strip_tags } from './utils.js'
 // of the blog smart contract
 let blogAddress = null
 let chainId = null
-await fetch(`/blogAddress.json`)
-  .then(response => response.json())
-  .then(data => {
-    console.log("Fetched blog address : ", data.address, data.chainId)
-    blogAddress = data.address
-    chainId = data.chainId
-  })
-  .catch(error => {
-    console.error(error)
-  })
+try {
+  await fetch(`/blogAddress.json`)
+    .then(response => response.json())
+    .then(data => {
+      console.log("Fetched blog address : ", data.address, data.chainId)
+      blogAddress = data.address
+      chainId = data.chainId
+    })
+}
+catch(error) {
+  alert("Failed fetching the blog contract address: " + error)
+}
 
 
 document.querySelector('#app').innerHTML = `
@@ -132,26 +134,26 @@ document.querySelector('#app').innerHTML = `
   </div>
 `
 
-// Setup the routing
-setupRouting(blogAddress, chainId)
-
-
 // Fetch the blog title and description
-fetch(`web3://${blogAddress}:${chainId}/title`)
-  .then(response => response.text())
-  .then(data => {
-    document.querySelector('#blog-title a').innerHTML = strip_tags(data)
-    document.title = strip_tags(data) + " - DBlog"
-  })
-  .catch(error => {
-    console.error(error)
-  })
+let blogTitle = null
+let blogDescription = null
+let blogOwner = null
+try {
+  await fetch(`web3://${blogAddress}:${chainId}/getTitleAndDescriptionAndOwner?returns=(string,string,address)`)
+    .then(response => response.json())
+    .then(data => {
+      blogTitle = data[0]
+      blogDescription = data[1]
+      blogOwner = data[2]
 
-fetch(`web3://${blogAddress}:${chainId}/description`)
-  .then(response => response.text())
-  .then(data => {
-    document.querySelector('#blog-subtitle').innerHTML = strip_tags(data)
-  })
-  .catch(error => {
-    console.error(error)
-  })
+      document.querySelector('#blog-title a').innerHTML = strip_tags(blogTitle)
+      document.title = strip_tags(blogTitle) + " - DBlog"
+      document.querySelector('#blog-subtitle').innerHTML = strip_tags(blogDescription)
+    })
+}
+catch(error) {
+  alert("Error while fetching blog title, description and owner: " + error)
+}
+
+// Setup the routing
+setupRouting(blogAddress, chainId, blogOwner)

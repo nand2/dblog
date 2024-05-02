@@ -1,7 +1,7 @@
 import { homeController, blogEntryController, adminController, entryEditController } from "./controllers.js";
 import { parseWeb3Url } from "./utils.js";
 
-export function setupRouting(blogAddress, chainId) {
+export function setupRouting(blogAddress, chainId, blogOwner) {
   const routes = [
     {
       path: "^/$",
@@ -81,7 +81,7 @@ export function setupRouting(blogAddress, chainId) {
     // document.title = route.title;
     // Call the controller
     if (route.controller) {
-        route.controller(blogAddress, chainId);
+        route.controller(blogAddress, chainId, blogOwner);
     }
   };
   
