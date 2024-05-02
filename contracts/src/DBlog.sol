@@ -30,6 +30,8 @@ contract DBlog {
     // EthStorage content keys: we use a simple incrementing key
     uint256 public ethStorageLastUsedKey = 0;
 
+    uint256 public constant ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK = 4;
+
     event PostCreated(uint indexed postId);
     event PostEdited(uint indexed postId);
     event FileUploaded(string filename, string contentType);
@@ -292,7 +294,23 @@ contract DBlog {
         return uploadedFiles[index];
     }
 
-    function getUploadedFileContents(uint256 index) public view returns (bytes memory contents) {
+    function getUploadedFileContentsChunkCount(uint256 index) public view returns (uint256 chunkCount) {
+        require(index < uploadedFiles.length, "Index out of bounds");
+
+        FileInfosWithStorageMode memory uploadedFile = uploadedFiles[index];
+
+        if(uploadedFile.storageMode == FileStorageMode.SSTORE2) {
+            chunkCount = 1;
+        }
+        else if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
+            chunkCount = uploadedFile.fileInfos.contentKeys.length / ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK;
+            if(uploadedFile.fileInfos.contentKeys.length % ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK > 0) {
+                chunkCount++;
+            }
+        }
+    }
+
+    function getUploadedFileContents(uint256 index, uint256 chunkId) public view returns (bytes memory contents) {
         require(index < uploadedFiles.length, "Index out of bounds");
 
         TestEthStorageContractKZG ethStorage = factory.ethStorage();
@@ -304,7 +322,7 @@ contract DBlog {
         }
         else if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
             bytes memory content;
-            for(uint j = 0; j < uploadedFile.fileInfos.contentKeys.length; j++) {
+            for(uint j = chunkId * ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK; j < (chunkId + 1) * ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK && j < uploadedFile.fileInfos.contentKeys.length; j++) {
                 content = bytes.concat(content, ethStorage.get(uploadedFile.fileInfos.contentKeys[j], DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, ethStorage.size(uploadedFile.fileInfos.contentKeys[j])));
             }
             contents = content;

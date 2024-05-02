@@ -131,11 +131,39 @@ contract DBlogFrontend is IDecentralizedApp {
             for(uint i = 0; i < blog.getUploadedFilesCount(); i++) {
                 uploadedFile = blog.getUploadedFile(i);
                 if(Strings.compare(uploadedFileName, uploadedFile.fileInfos.filePath)) {
-                    body = string(blog.getUploadedFileContents(i));
+                    // web3:// chunk feature : if the file is big, we will send the file
+                    // in chunks
+                    uint chunkCount = blog.getUploadedFileContentsChunkCount(i);
+
+                    // Determine the requested chunk
+                    uint chunkIndex = 0;
+                    for(uint j = 0; j < params.length; j++) {
+                        if(Strings.compare(params[j].key, "chunk")) {
+                            chunkIndex = Strings.stringToUint(params[j].value);
+                            break;
+                        }
+                    }
+                    if(chunkIndex >= chunkCount) {
+                        statusCode = 404;
+                        return (statusCode, body, headers);
+                    }
+
+                    body = string(blog.getUploadedFileContents(i, chunkIndex));
                     statusCode = 200;
-                    headers = new KeyValue[](1);
+
+                    uint headersCount = 1;
+                    if(chunkIndex < chunkCount - 1) {
+                        headersCount = 2;
+                    }
+                    headers = new KeyValue[](headersCount);
                     headers[0].key = "Content-type";
                     headers[0].value = uploadedFile.fileInfos.contentType;
+                    // If there is more chunk remaining, add a pointer to the next chunk
+                    if(chunkIndex < chunkCount - 1) {
+                        headers[1].key = "web3-next-chunk";
+                        headers[1].value = string.concat("/uploads/", resource[1], "?chunk=", Strings.toString(chunkIndex + 1));
+                    }
+                    
                     return (statusCode, body, headers);
                 }
             }

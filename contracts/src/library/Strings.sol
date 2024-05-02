@@ -81,4 +81,17 @@ library Strings {
         }
         return string(buffer);
     }
+
+    // From https://ethereum.stackexchange.com/questions/10932/how-to-convert-string-to-int
+    function stringToUint(string memory s) public pure returns (uint) {
+        bytes memory b = bytes(s);
+        uint result = 0;
+        for (uint256 i = 0; i < b.length; i++) {
+            uint256 c = uint256(uint8(b[i]));
+            if (c >= 48 && c <= 57) {
+                result = result * 10 + (c - 48);
+            }
+        }
+        return result;
+    }
 }
