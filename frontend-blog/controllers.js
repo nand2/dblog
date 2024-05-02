@@ -736,15 +736,17 @@ export async function entryEditController(blogAddress, chainId) {
           // Get price of ethstorage upfront payment
           // We need to pay that
           let ethStorageUpfrontPayment = 0n
-          await fetch(`web3://${blogAddress}:${chainId}/getEthStorageUpfrontPayment?returns=(uint256)`)
-            .then(response => response.json())
-            .then(data => {
-              ethStorageUpfrontPayment = fromHex(data[0], 'bigint')
-            })
-            .catch(error => {
-              stopWithError('EthStorage upfront fee fetching failed : ' + error.message)
-              return
-            })
+          try {
+            await fetch(`web3://${blogAddress}:${chainId}/getEthStorageUpfronXXXXXtPayment?returns=(uint256)`)
+              .then(response => response.json())
+              .then(data => {
+                ethStorageUpfrontPayment = fromHex(data[0], 'bigint')
+              })
+          }
+          catch(error) {
+            stopWithError('EthStorage upfront fee fetching failed : ' + error.message)
+            return
+          }
 
           // Now, because of public RPC endpoints limitations (e.g. rpc.sepolia.org will throw a 
           // HTTP 413 error on eth_getTransactionReceipt, publicnode will throw a HTTP 500 if the
@@ -962,15 +964,17 @@ console.log("txResult", txResult)
       if (newPost) {
         // Get price of ethstorage upfront payment
         // We need to pay that
-        await fetch(`web3://${blogAddress}:${chainId}/getEthStorageUpfrontPayment?returns=(uint256)`)
-          .then(response => response.json())
-          .then(data => {
-            value = fromHex(data[0], 'bigint')
-          })
-          .catch(error => {
-            stopWithError('EthStorage upfront fee fetching failed : ' + error.message)
-            return
-          })
+        try {
+          await fetch(`web3://${blogAddress}:${chainId}/getEthStorageUpfrontPayment?returns=(uint256)`)
+            .then(response => response.json())
+            .then(data => {
+              value = fromHex(data[0], 'bigint')
+            })
+        }
+        catch(error) {
+          stopWithError('EthStorage upfront fee fetching failed : ' + error.message)
+          return
+        }
 
         methodName = "addPostOnEthStorage";
         args = [title, content.length];
