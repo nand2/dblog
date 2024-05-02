@@ -29,6 +29,9 @@ struct FrontendFilesSet {
 
     // Infos about this frontend version
     string infos;
+
+    // When locked, the frontend version cannot be modified any longer
+    bool locked;
 }
 
 // When we want to store the storage mode of individual files

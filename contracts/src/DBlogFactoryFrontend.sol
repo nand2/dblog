@@ -39,6 +39,11 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
     }
 
     function addSStore2FrontendVersion(FileInfos[] memory files, string memory _infos) public onlyFactoryOrFactoryOwner {
+        // Previous frontend version must be locked
+        if(frontendVersions.length > 0) {
+            require(frontendVersions[frontendVersions.length - 1].locked, "Previous frontend version must be locked");
+        }
+
         // Weird insertion into frontendVersions due to :
         // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
         frontendVersions.push();
@@ -50,6 +55,17 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         newFrontend.infos = _infos;
         defaultFrontendIndex = frontendVersions.length - 1;
     }
+
+    function addFilesToCurrentSStore2FrontendVersion(FileInfos[] memory files) public onlyFactoryOrFactoryOwner {
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
+        require(!frontend.locked, "Frontend version is locked");
+        require(frontend.storageMode == FileStorageMode.SSTORE2, "Not SSTORE2 mode");
+
+        for(uint i = 0; i < files.length; i++) {
+            frontend.files.push(files[i]);
+        }
+    }
+
 
     function getEthStorageUpfrontPayment() external view returns (uint256) {
         return blogFactory.ethStorage().upfrontPayment();
@@ -72,6 +88,11 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
     function addEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files, string memory _infos) public payable onlyFactoryOrFactoryOwner {
         TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
         uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+
+        // Previous frontend version must be locked
+        if(frontendVersions.length > 0) {
+            require(frontendVersions[frontendVersions.length - 1].locked, "Previous frontend version must be locked");
+        }
 
         // Weird insertion into frontendVersions due to :
         // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
@@ -96,6 +117,78 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         newFrontend.infos = _infos;
         defaultFrontendIndex = frontendVersions.length - 1;
     }
+
+
+    // Add extra files to the current unlocked EthStorage frontend version
+    function addFilesToCurrentEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files) public payable onlyFactoryOrFactoryOwner {
+        TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
+        uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+        uint256 fundsUsed = 0;
+
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
+        require(!frontend.locked, "Frontend version is locked");
+        require(frontend.storageMode == FileStorageMode.EthStorage, "Not EthStorage mode");
+
+        for(uint i = 0; i < files.length; i++) {
+            bytes32[] memory ethStorageKeys = new bytes32[](files[i].blobIndexes.length);
+            for(uint j = 0; j < files[i].blobIndexes.length; j++) {
+                ethStorageLastUsedKey++;
+                ethStorageKeys[j] = bytes32(ethStorageLastUsedKey);
+
+                uint payment = 0;
+                if(ethStorage.exist(ethStorageKeys[j]) == false) {
+                    payment = upfrontPayment;
+                }
+                fundsUsed += payment;
+
+                // Upload part of the file
+                // ethStorageKeys[j] is a key we choose, and it will be mixed with msg.sender
+                ethStorage.putBlob{value: payment}(ethStorageKeys[j], files[i].blobIndexes[j], files[i].blobDataSizes[j]);
+            }
+            frontend.files.push(FileInfos({
+                filePath: files[i].filePath,
+                contentType: files[i].contentType,
+                contentKeys: ethStorageKeys
+            }));
+        }
+
+        // Send back remaining funds sent by the caller
+        if(msg.value - fundsUsed > 0) {
+            payable(msg.sender).transfer(msg.value - fundsUsed);
+        }
+    }
+
+    // Lock a frontend version
+    function lockFrontendVersion(uint256 _index) public onlyFactoryOrFactoryOwner {
+        require(_index < frontendVersions.length, "Index out of bounds");
+        require(!frontendVersions[_index].locked, "Already locked");
+
+        FrontendFilesSet storage frontend = frontendVersions[_index];
+        frontend.locked = true;
+    }
+
+    // Empty the files of a frontend version
+    // This is useful if we want to deploy a small fix to a frontend version
+    // In the case of EthStorage, we don't need to repay the upfront payment
+    function resetFrontendVersion(uint256 _index) public onlyFactoryOrFactoryOwner {
+        require(_index < frontendVersions.length, "Index out of bounds");
+        require(!frontendVersions[_index].locked, "Frontend version is locked");
+
+        FrontendFilesSet storage frontend = frontendVersions[_index];
+
+        // If EthStorage: move back the pointer of last used key, so that we can
+        // reuse them for free
+        if(frontend.storageMode == FileStorageMode.EthStorage) {
+            for(uint i = 0; i < frontend.files.length; i++) {
+                ethStorageLastUsedKey -= frontend.files[i].contentKeys.length;
+            }
+        }
+        // Clear the file list
+        while(frontend.files.length > 0) {
+            frontend.files.pop();
+        }
+    }
+
 
     // If a new frontend is borked, go back in history
     function setDefaultFrontend(uint256 _index) public onlyFactoryOrFactoryOwner {

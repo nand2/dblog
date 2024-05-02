@@ -104,6 +104,23 @@ const frontendABI = [
     "outputs":[],"stateMutability":"payable","type":"function"
   },
   {
+    "inputs":[
+      {
+        "components":[
+          {"internalType":"string","name":"filePath","type":"string"},
+          {"internalType":"string","name":"contentType","type":"string"},
+          {"internalType":"uint256[]","name":"blobIndexes","type":"uint256[]"},
+          {"internalType":"uint256[]","name":"blobDataSizes","type":"uint256[]"}
+        ],
+        "internalType":"struct DBlogFrontendLibrary.EthStorageFileUploadInfos[]",
+        "name":"files",
+        "type":"tuple[]"
+      }
+    ],
+    "name":"addFilesToCurrentEthStorageFrontendVersion",
+    "outputs":[],"stateMutability":"payable","type":"function"
+  },
+  {
     "inputs":[],
     "name":"getEthStorageUpfrontPayment",
     "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
@@ -121,14 +138,17 @@ const frontendContract = getContract({
 const upfrontPayment = await frontendContract.read.getEthStorageUpfrontPayment()
 console.log("EthStorage upfront payment", upfrontPayment)
 
-
+const fullBlobDataSize = (32 - 1) * 4096;
 let baseFeePerBlobGas = await getBaseFeePerBlobGas();
 let maxFeePerBlobGas = baseFeePerBlobGas * 4n;
 
 // Prepare the args
-let fileArgs = []
-let blobs = []
-const fullBlobDataSize = (32 - 1) * 4096;
+// Put 4 blobs max per call (we see that 6-blobs calls are taking quite some time to get mined)
+const maxBlobsPerCall = 4
+let fileArgsChunks = []
+let blobsChunks = []
+let currentFileArgsChunk = []
+let currentBlobsChunk = []
 files.forEach((file, index) => {
   // Determine mime type of the file
   let mimeType = mime.getType(file.htmlFilePath.split('.').pop())
@@ -140,12 +160,19 @@ files.forEach((file, index) => {
   const data = fs.readFileSync(file.diskFilePath);
   const fileBlobs = toBlobs({ data: toHex(data) })
 
+  if(currentBlobsChunk.length + fileBlobs.length > maxBlobsPerCall) {
+    fileArgsChunks.push(currentFileArgsChunk)
+    blobsChunks.push(currentBlobsChunk)
+    currentFileArgsChunk = []
+    currentBlobsChunk = []
+  }
+
   let fileBlobIndexes = []
   let fileBlobDataSizes = []
   let remaningDataSize = Buffer.byteLength(data)
   for(let i = 0; i < fileBlobs.length; i++) {
-    blobs.push(fileBlobs[i])
-    fileBlobIndexes.push(blobs.length - 1)
+    currentBlobsChunk.push(fileBlobs[i])
+    fileBlobIndexes.push(currentBlobsChunk.length - 1)
     if(i < fileBlobs.length - 1) {
       fileBlobDataSizes.push(fullBlobDataSize)
     }
@@ -155,41 +182,68 @@ files.forEach((file, index) => {
     remaningDataSize -= fileBlobDataSizes[fileBlobDataSizes.length - 1]
   }
 
-  fileArgs.push([
+  currentFileArgsChunk.push([
     file.htmlFilePath,
     mimeType,
     fileBlobIndexes,
     fileBlobDataSizes,
   ])
 })
+fileArgsChunks.push(currentFileArgsChunk)
+blobsChunks.push(currentBlobsChunk)
 
-// Prepare data call
-const args = [
-  fileArgs,
-  'Initial version'
-]
-const data = encodeFunctionData({
-  abi: frontendABI,
-  functionName: 'addEthStorageFrontendVersion',
-  args: args,
+// A bit of logging
+fileArgsChunks.forEach((chunk, index) => {
+  console.log(`Chunk ${index} (${blobsChunks[index].length} blobs):`)
+  chunk.forEach((args, index) => {
+    console.log(`  - ${args[0]} (${args[1]}) - blob indexes: ${args[2]} blob data sizes: ${args[3]}`)
+  })
 })
 
-// Send transaction
-const hash = await client.sendTransaction({
-  blobs,
-  kzg,
-  maxFeePerBlobGas: maxFeePerBlobGas,
-  to: frontendAddress,
-  value: upfrontPayment * BigInt(blobs.length),
-  data: data,
-  gas: 1000000n, // Weirdly I need this on sepolia
-  // Replace tx:
-  // nonce: 748,
-  // maxPriorityFeePerGas: 53776n * 2n,
-})
-console.log("tx hash", hash)
 
-const transaction = await client.waitForTransactionReceipt( 
-  { hash: hash }
-)
-console.log(transaction)
+// Prepare the calls
+let calls = []
+for(let i = 0; i < fileArgsChunks.length; i++) {
+  let methodName = 'addEthStorageFrontendVersion'
+  let args = [fileArgsChunks[i], 'Initial version']
+  if(i > 0) {
+    methodName = 'addFilesToCurrentEthStorageFrontendVersion'
+    args = [fileArgsChunks[i]]
+  }
+  
+  calls.push({
+    methodName: methodName,
+    args: args,
+    blobs: blobsChunks[i]
+  })
+}
+
+
+// Make the calls
+for(let i = 0; i < calls.length; i++) {
+  const data = encodeFunctionData({
+    abi: frontendABI,
+    functionName: calls[i].methodName,
+    args: calls[i].args,
+  })
+
+  // Send transaction
+  const hash = await client.sendTransaction({
+    blobs: calls[i].blobs,
+    kzg: kzg,
+    maxFeePerBlobGas: maxFeePerBlobGas,
+    to: frontendAddress,
+    value: upfrontPayment * BigInt(calls[i].blobs.length),
+    data: data,
+    gas: 1000000n, // Weirdly I need this on sepolia
+    // Replace tx:
+    // nonce: 748,
+    // maxPriorityFeePerGas: 53776n * 2n,
+  })
+  console.log("tx hash", hash)
+
+  const transaction = await client.waitForTransactionReceipt( 
+    { hash: hash }
+  )
+  console.log(transaction)
+}
