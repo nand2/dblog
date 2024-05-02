@@ -328,4 +328,17 @@ contract DBlog {
             contents = content;
         }
     }
+
+    function removeUploadedFile(uint256 index) public onlyOwnerOrEditors {
+        require(index < uploadedFiles.length, "Index out of bounds");
+
+        FileInfosWithStorageMode storage uploadedFile = uploadedFiles[index];
+
+        // if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
+            // Store the keys to reuse them?
+        // }
+
+        uploadedFile = uploadedFiles[uploadedFiles.length - 1];
+        uploadedFiles.pop();
+    }
 }

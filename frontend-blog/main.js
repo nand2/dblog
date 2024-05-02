@@ -75,6 +75,10 @@ document.querySelector('#app').innerHTML = `
         <input type="text" id="admin-new-editor-address" placeholder="New editor ethereum address">
         <button type="submit" id="admin-add-editor">Add editor</button>
       </form>
+      <h3>Uploaded files</h3>
+      <ul id="admin-uploaded-files">
+        <!--<li><a href="/...">File name</a> <button type="button" class="admin-remove-file">Remove</button></li>-->
+      </ul>
     </div>
     <div id="page-entry-edit">
       <h2 class="page-title">New blog post</h2>

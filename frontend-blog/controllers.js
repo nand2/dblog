@@ -64,7 +64,13 @@ const frontendABI = [
     name: 'addUploadedFileOnEthfs',
     outputs: [],
     type: 'function',
-  }
+  },
+  {
+    inputs: [{ name: 'index', type: 'uint256' }],
+    name: 'removeUploadedFile',
+    outputs: [],
+    type: 'function',
+  },
 ];
 
 async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
@@ -477,6 +483,60 @@ export async function adminController(blogAddress, chainId) {
     addEditorButton.addEventListener('click', addEditorButtonClickHandler)
     addEditorButton.setAttribute('data-event-listener-added', 'true')
   }
+
+
+  // Call the blog to fetch the uploaded files
+  const loadUploadedFilesInterface = async () => {
+    let uploadedFiles = []
+    await fetch(`web3://${blogAddress}:${chainId}/getUploadedFiles?returns=((uint8,(string,string,bytes32[]))[])`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("Fetched uploaded files : ", data)
+        uploadedFiles = data[0].map((file, index) => {
+          return {
+            id: index,
+            name: file[1][0],
+            contentType: file[1][1],
+          }
+        })
+      })
+      .catch(error => {
+        console.error(error)
+      })
+
+    // Insert the uploaded files
+    const adminUploadedFiles = document.getElementById('admin-uploaded-files')
+    adminUploadedFiles.innerHTML = ''
+    uploadedFiles.forEach(file => {
+      let fileDiv = document.createElement('li')
+      fileDiv.className = 'uploaded-file'
+      fileDiv.innerHTML = `<a href="/uploads/${file.name}">${file.name}</a> <button type="button" class="admin-remove-uploaded-file" uploaded-file-index="${file.id}">Remove</button>`
+      adminUploadedFiles.appendChild(fileDiv)
+    })
+
+    // Add the event listener to remove uploaded files
+    const removeUploadedFileButtons = document.querySelectorAll('.admin-remove-uploaded-file')
+    removeUploadedFileButtons.forEach(button => {
+      button.addEventListener('click', async (event) => {
+        const uploadedFileIndex = event.target.getAttribute('uploaded-file-index')
+        if(confirm(`Are you sure you want to remove the uploaded file?`) == false) {
+          return;
+        }
+        
+        try {
+          await sendTransaction(blogAddress, chainId, "removeUploadedFile", [uploadedFileIndex]);
+        }
+        catch (error) {
+          alert(error.message)
+          return
+        }
+
+        // Refresh the uploaded files
+        loadUploadedFilesInterface()
+      })
+    })
+  }
+  loadUploadedFilesInterface()
 }
 
 

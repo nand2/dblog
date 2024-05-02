@@ -185,6 +185,10 @@ a#admin-link {
   margin-bottom: 5px;
 }
 
+#page-admin #admin-uploaded-files {
+  margin-top: 0px;
+}
+
 
 /** 
  * Blog entry edit 
