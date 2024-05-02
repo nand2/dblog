@@ -17,6 +17,7 @@ try {
     })
 }
 catch(error) {
+  console.log(error)
   alert("Failed fetching the blog contract address: " + error)
 }
 
@@ -58,7 +59,7 @@ document.querySelector('#app').innerHTML = `
     </div>
     <div id="page-admin">
       <h2 class="page-title">Admin</h2>
-      <h3>Blog entries <a href="/#/add">Add new</a></h3>
+      <h3>Blog entries <a href="/#/add">[Add new]</a></h3>
       <div id="admin-blog-entries">
         <!--<div class="blog-entry">
           2023-02-01 <a href="/#/entry/xx">My first blog entry</a> - <a href="/#/entry/xx/edit">Edit</a>
@@ -152,6 +153,7 @@ try {
     })
 }
 catch(error) {
+  console.log(error)
   alert("Error while fetching blog title, description and owner: " + error)
 }
 

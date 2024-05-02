@@ -181,8 +181,13 @@ a#admin-link {
 }
 
 #page-admin h3 a {
-  font-size: 80%;
+  font-size: 70%;
   font-weight: normal;
+}
+
+#page-admin #admin-blog-entries .edit-link {
+  font-size: 80%;
+  margin-left: 4px;
 }
 
 #page-admin #admin-editors {

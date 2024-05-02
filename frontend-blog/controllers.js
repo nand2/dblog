@@ -139,14 +139,17 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
   // If not, we will ask the user to add the burner wallet as an editor
   if(opts.burnerWalletRequiredToBeEditor && burnerWallet) {
     let editors = []
-    await fetch(`web3://${blogAddress}:${chainId}/getEditors?returns=(address[])`)
-      .then(response => response.json())
-      .then(data => {
-        editors = data[0]
-      })
-      .catch(error => {
-        throw new Error('Editors fetching failed : ' + error.message)
-      })
+    try {
+      await fetch(`web3://${blogAddress}:${chainId}/getEditors?returns=(address[])`)
+        .then(response => response.json())
+        .then(data => {
+          editors = data[0]
+        })
+    }
+    catch(error) {
+      console.log(error)
+      throw new Error('Editors fetching failed : ' + error.message)
+    }
     
     if(editors.includes(burnerWallet.address) == false) {
       alert("The burner wallet needs to be added as an editor to be able to post. We will now ask you to sign a transaction to add the burner wallet as an editor.")
@@ -251,43 +254,47 @@ export async function homeController(blogAddress, chainId) {
 
   // Call the blog to fetch the posts
   let posts = []
-  await fetch(`web3://${blogAddress}:${chainId}/getPosts?returns=((string,uint256,string)[])`)
-    .then(response => response.json())
-    .then(data => {
-      console.log("Fetched posts : ", data)
-      // The blogs are returned as a an array of array, we convert that into an array of objects
-      posts = data[0].map((post, index) => {
-        return {
-          id: index,
-          title: post[0],
-          date: post[1],
-          content: post[2],
-        }
+  try {
+    await fetch(`web3://${blogAddress}:${chainId}/getPosts?returns=((string,uint256,string)[])`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("Fetched posts : ", data)
+        // The blogs are returned as a an array of array, we convert that into an array of objects
+        posts = data[0].map((post, index) => {
+          return {
+            id: index,
+            title: post[0],
+            date: post[1],
+            content: post[2],
+          }
+        })
       })
-    })
-    .catch(error => {
-      console.error(error)
-    })
+  }
+  catch(error) {
+    console.error(error)
+    alert('Fetching posts failed : ' + error.message)
+    return
+  }
 
-    // Insert the posts
-    if(posts.length == 0) {
-      blogEntries.innerHTML = `
-        <div class="blog-entry">
-          <h2 class="title"><a href="/#/add">Add your first post</a></h2>
-        </div>
-      `;
-    }
-    posts.reverse().forEach(post => {
-      let blogEntry = document.createElement('div')
-      blogEntry.className = 'blog-entry'
-      const options = { year: 'numeric', month: 'long', day: 'numeric' };
-      const formattedDate = new Date(post.date * 1000).toLocaleDateString(undefined, options);
-      blogEntry.innerHTML = `
-        <div class="date">${formattedDate}</div>
-        <h2 class="title"><a href="/#/entry/${post.id}">${strip_tags(post.title)}</a></h2>
-      `;
-      blogEntries.appendChild(blogEntry)
-    })
+  // Insert the posts
+  if(posts.length == 0) {
+    blogEntries.innerHTML = `
+      <div class="blog-entry">
+        <h2 class="title"><a href="/#/add">Add your first post</a></h2>
+      </div>
+    `;
+  }
+  posts.reverse().forEach(post => {
+    let blogEntry = document.createElement('div')
+    blogEntry.className = 'blog-entry'
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedDate = new Date(post.date * 1000).toLocaleDateString(undefined, options);
+    blogEntry.innerHTML = `
+      <div class="date">${formattedDate}</div>
+      <h2 class="title"><a href="/#/entry/${post.id}">${strip_tags(post.title)}</a></h2>
+    `;
+    blogEntries.appendChild(blogEntry)
+  })
 }
 
 
@@ -308,20 +315,24 @@ export async function blogEntryController(blogAddress, chainId) {
 
   // Call the blog to fetch the post
   let post = null
-  await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint256,string,bytes32)`)
-    .then(response => response.json())
-    .then(data => {
-      console.log("Fetched post : ", data)
-      post = {
-        title: data[0],
-        date: data[1],
-        ethereumStateContent: data[2],
-        ethStorageContentKey: data[3],
-      }
-    })
-    .catch(error => {
-      console.error(error)
-    })
+  try {
+    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint256,string,bytes32)`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("Fetched post : ", data)
+        post = {
+          title: data[0],
+          date: data[1],
+          ethereumStateContent: data[2],
+          ethStorageContentKey: data[3],
+        }
+      })
+  }
+  catch(error) {
+    console.error(error)
+    alert('Fetching post failed : ' + error.message)
+    return
+  }
 
   // Get the content, from EthStorage or from Ethereum state
   let content = ''
@@ -332,15 +343,19 @@ export async function blogEntryController(blogAddress, chainId) {
       ethStorageChainId = 3333
     }
     // Call the EthStorage to fetch the content
-    await fetch(`web3://${blogAddress}:${ethStorageChainId}/getPostEthStorageContent/${postNumber}?returns=(string)`)
-      .then(response => response.json())
-      .then(data => {
-        console.log("Fetched blog ethstorage content : ", data)
-        content = data[0]
-      })
-      .catch(error => {
-        console.error(error)
-      })
+    try {
+      await fetch(`web3://${blogAddress}:${ethStorageChainId}/getPostEthStorageContent/${postNumber}?returns=(string)`)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched blog ethstorage content : ", data)
+          content = data[0]
+        })
+    }
+    catch(error) {
+      console.error(error)
+      alert('Fetching ethstorage content failed : ' + error.message)
+      return
+    }
   }
   else {
     content = post.ethereumStateContent;
@@ -362,45 +377,13 @@ export async function adminController(blogAddress, chainId, blogOwner) {
 
   const loadAdminInterface = async () => {
     // Call the blog to fetch the editors, posts and uploaded files
-    let editors = []
-    let posts = []
-    let uploadedFiles = []
+    let editorAndPostsAndUploadedFiles = null
     try {
       await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint256,string)[],(uint8,(string,string,bytes32[]))[])`)
         .then(response => response.json())
         .then(data => {
           console.log("Fetched editors, posts, uploadedFiles : ", data)
-
-          // Editors
-          editors = data[0]
-
-          // Posts
-          posts = data[1].map((post, index) => {
-            return {
-              id: index,
-              title: post[0],
-              date: post[1],
-              content: post[2],
-            }
-          })
-
-          // Uploaded files
-          uploadedFiles = data[2].map((file, index) => {
-            let item = {
-              id: index,
-              storageMode: fromHex(file[0], 'number'),
-              name: file[1][0],
-              contentType: file[1][1],
-              complete: true,
-            }
-            // EthStorage: Maybe the user did not complete all upload calls
-            if(item.storageMode == 1 /** EthStorage */ && file[1][2].indexOf("0x0000000000000000000000000000000000000000000000000000000000000000") != -1) {
-              item.complete = false
-            }
-            return item
-          })
-
-          console.log("Processed editors, posts, uploadedFiles : ", editors, posts, uploadedFiles)
+          editorAndPostsAndUploadedFiles = data
         })
     }
     catch(error) {
@@ -408,6 +391,39 @@ export async function adminController(blogAddress, chainId, blogOwner) {
       alert('Fetching editors, posts and uploaded files failed : ' + error.message)
       return
     }
+
+    // Split and process the data
+    let editors = []
+    let posts = []
+    let uploadedFiles = []
+    // Editors
+    editors = editorAndPostsAndUploadedFiles[0]
+    // Posts
+    posts = editorAndPostsAndUploadedFiles[1].map((post, index) => {
+      return {
+        id: index,
+        title: post[0],
+        date: post[1],
+        content: post[2],
+      }
+    })
+    // Uploaded files
+    uploadedFiles = editorAndPostsAndUploadedFiles[2].map((file, index) => {
+      let item = {
+        id: index,
+        storageMode: fromHex(file[0], 'number'),
+        name: file[1][0],
+        contentType: file[1][1],
+        complete: true,
+      }
+      // EthStorage: Maybe the user did not complete all upload calls
+      if(item.storageMode == 1 /** EthStorage */ && file[1][2].indexOf("0x0000000000000000000000000000000000000000000000000000000000000000") != -1) {
+        item.complete = false
+      }
+      return item
+    })
+
+    console.log("Processed editors, posts, uploadedFiles : ", editors, posts, uploadedFiles)
     
 
     // Insert the posts
@@ -419,7 +435,7 @@ export async function adminController(blogAddress, chainId, blogOwner) {
       const formattedDate = new Date(post.date * 1000).toISOString().split('T')[0];
       blogEntry.innerHTML = `
         <span class="date">${formattedDate}</span>
-        <a href="/#/entry/${post.id}">${strip_tags(post.title)}</a> - <a href="/#/entry/${post.id}/edit">edit</a>
+        <a href="/#/entry/${post.id}">${strip_tags(post.title)}</a> <a href="/#/entry/${post.id}/edit" class="edit-link">[edit]</a>
       `;
       blogEntries.appendChild(blogEntry)
     })
@@ -558,20 +574,24 @@ export async function entryEditController(blogAddress, chainId) {
   let post = null
   if (!newPost) {
     // Call the blog to fetch the post
-    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint256,string,bytes32)`)
-      .then(response => response.json())
-      .then(data => {
-        console.log("Fetched post : ", data)
-        post = {
-          title: data[0],
-          date: data[1],
-          ethereumStateContent: data[2],
-          ethStorageContentKey: data[3],
-        }
-      })
-      .catch(error => {
-        console.error(error)
-      })
+    try {
+      await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint256,string,bytes32)`)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched post : ", data)
+          post = {
+            title: data[0],
+            date: data[1],
+            ethereumStateContent: data[2],
+            ethStorageContentKey: data[3],
+          }
+        })
+    }
+    catch(error) {
+      console.error(error)
+      alert('Fetching post failed : ' + error.message)
+      return
+    }
 
     // Get the content, from EthStorage or from Ethereum state
     let content = ''
@@ -582,15 +602,19 @@ export async function entryEditController(blogAddress, chainId) {
         ethStorageChainId = 3333
       }
       // Call the EthStorage to fetch the content
-      await fetch(`web3://${blogAddress}:${ethStorageChainId}/getPostEthStorageContent/${postNumber}?returns=(string)`)
-        .then(response => response.json())
-        .then(data => {
-          console.log("Fetched blog ethstorage content : ", data)
-          content = data[0]
-        })
-        .catch(error => {
-          console.error(error)
-        })
+      try {
+        await fetch(`web3://${blogAddress}:${ethStorageChainId}/getPostEthStorageContent/${postNumber}?returns=(string)`)
+          .then(response => response.json())
+          .then(data => {
+            console.log("Fetched blog ethstorage content : ", data)
+            content = data[0]
+          })
+      }
+      catch(error) {
+        console.error(error)
+        alert('Fetching ethstorage content failed : ' + error.message)
+        return
+      }
     }
     else {
       content = post.ethereumStateContent;
