@@ -495,7 +495,7 @@ export async function adminController(blogAddress, chainId) {
         uploadedFiles = data[0].map((file, index) => {
           let item = {
             id: index,
-            storageMode: (typeof file[0] === 'number') ? file[0] : fromHex(file[0], Number),  // Temporary, while "0x0" vs 0 fix // fromHex(file[0], Number),
+            storageMode: fromHex(file[0], Number),
             name: file[1][0],
             contentType: file[1][1],
             complete: true,
