@@ -493,11 +493,18 @@ export async function adminController(blogAddress, chainId) {
       .then(data => {
         console.log("Fetched uploaded files : ", data)
         uploadedFiles = data[0].map((file, index) => {
-          return {
+          let item = {
             id: index,
+            storageMode: (typeof file[0] === 'number') ? file[0] : fromHex(file[0], Number),  // Temporary, while "0x0" vs 0 fix // fromHex(file[0], Number),
             name: file[1][0],
             contentType: file[1][1],
+            complete: true,
           }
+          // EthStorage: Maybe the user did not complete all upload calls
+          if(item.storageMode == 1 /** EthStorage */ && file[1][2].contains("0x0000000000000000000000000000000000000000000000000000000000000000")) {
+            item.complete = false
+          }
+          return item
         })
       })
       .catch(error => {
@@ -510,7 +517,7 @@ export async function adminController(blogAddress, chainId) {
     uploadedFiles.forEach(file => {
       let fileDiv = document.createElement('li')
       fileDiv.className = 'uploaded-file'
-      fileDiv.innerHTML = `<a href="/uploads/${file.name}">${file.name}</a> <button type="button" class="admin-remove-uploaded-file" uploaded-file-index="${file.id}">Remove</button>`
+      fileDiv.innerHTML = `<a href="/uploads/${file.name}">${file.name}</a> ${file.complete ? "" : "(incomplete)"} <button type="button" class="admin-remove-uploaded-file" uploaded-file-index="${file.id}">Remove</button>`
       adminUploadedFiles.appendChild(fileDiv)
     })
 
