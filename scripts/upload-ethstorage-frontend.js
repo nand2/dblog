@@ -145,7 +145,7 @@ console.log("EthStorage upfront payment", upfrontPayment)
 
 const fullBlobDataSize = (32 - 1) * 4096;
 let baseFeePerBlobGas = await getBaseFeePerBlobGas();
-let maxFeePerBlobGas = baseFeePerBlobGas * 4n;
+let maxFeePerBlobGas = baseFeePerBlobGas * 6n / 5n;
 
 // Prepare the args
 // Put 4 blobs max per call (we see that 6-blobs calls are taking quite some time to get mined)
@@ -258,7 +258,7 @@ for(let i = 0; i < calls.length; i++) {
     to: frontendAddress,
     value: upfrontPayment * BigInt(calls[i].blobs.length),
     data: data,
-    gas: 1000000n, // Weirdly I need this on sepolia
+    // gas: 1000000n, // Weirdly I need this on sepolia
     // Replace tx:
     // nonce: 748,
     // maxPriorityFeePerGas: 53776n * 2n,

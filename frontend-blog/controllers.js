@@ -214,7 +214,7 @@ console.log("blobs length", opts.blobs.length)
     transactionOpts.blobs = opts.blobs;
     transactionOpts.kzg = kzg;
     let block = await viemClient.getBlock();
-    transactionOpts.maxFeePerBlobGas = getBaseFeePerBlobGas(block.excessBlobGas ?? 0n) * 2n;
+    transactionOpts.maxFeePerBlobGas = getBaseFeePerBlobGas(block.excessBlobGas ?? 0n) * 6n / 5n;
   }
 console.log("transactionOpts", transactionOpts)
 
