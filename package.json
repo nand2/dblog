@@ -20,6 +20,8 @@
     "@zoltu/ethereum-types": "^9.0.4",
     "c-kzg": "^2.1.2",
     "kzg-wasm": "^0.4.0",
+    "markdown-it": "^14.1.0",
+    "markdown-it-multi-imgsize": "^0.1.1",
     "mime": "^4.0.1",
     "viem": "^2.9.21",
     "vue": "^3.4.19"

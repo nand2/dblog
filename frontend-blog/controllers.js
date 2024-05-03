@@ -1,4 +1,5 @@
-import { markdown } from './drawdown.js'
+import markdownit from 'markdown-it'
+import markdown_it_multi_imgsize_plugin from 'markdown-it-multi-imgsize'
 import { strip_tags, uint8ArrayToHexString, parseWeb3Url, getBaseFeePerBlobGas } from './utils.js'
 import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
 import { createPublicClient, createWalletClient, custom, publicActions, toBlobs, toHex, setupKzg, encodeFunctionData, stringToHex, blobsToCommitments, commitmentsToVersionedHashes, blobsToProofs, defineChain, http, formatEther, fromHex } from 'viem'
@@ -366,7 +367,8 @@ export async function blogEntryController(blogAddress, chainId) {
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
   const formattedDate = new Date(post.date * 1000).toLocaleDateString(undefined, options);
   page.querySelector('.date').innerHTML = formattedDate
-  page.querySelector('.blog-entry-content').innerHTML = markdown(strip_tags(content))
+  const md = markdownit().use(markdown_it_multi_imgsize_plugin)
+  page.querySelector('.blog-entry-content').innerHTML = md.render(strip_tags(content))
 }
 
 
@@ -636,7 +638,8 @@ export async function entryEditController(blogAddress, chainId) {
     showMarkdownButton.classList.toggle('active', !isPreviewShown)
     showPreviewButton.classList.toggle('active', isPreviewShown)
     if(isPreviewShown) {
-      page.querySelector('#content-preview').innerHTML = markdown(strip_tags(page.querySelector('#content').value))
+      const md = markdownit().use(markdown_it_multi_imgsize_plugin)
+      page.querySelector('#content-preview').innerHTML = md.render(strip_tags(page.querySelector('#content').value))
     }
   }
   const handleMarkdownButton = async (event) => {
