@@ -155,6 +155,11 @@ contract DBlogFrontendLibrary {
         }
     }
 
+    // Get the count of frontend versions
+    function frontendVersionsCount() public view returns (uint256) {
+        return frontendVersions.length;
+    }
+
     // Lock the latest frontend version
     function lockLatestFrontendVersion() public onlyFactoryOrFactoryOwner {
         FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];

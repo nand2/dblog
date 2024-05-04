@@ -135,6 +135,12 @@ const frontendABI = [
     "name":"getEthStorageUpfrontPayment",
     "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
     "stateMutability":"view","type":"function"
+  },
+  {
+    "inputs":[],
+    "name":"frontendVersionsCount",
+    "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+    "stateMutability":"view","type":"function"
   }
 ];
 const frontendContract = getContract({
@@ -215,6 +221,16 @@ fileArgsChunks.forEach((chunk, index) => {
 let calls = []
 // New frontend
 if(true) {
+  // // Lock previous frontend version, if any
+  // const frontendVersionsCount = await frontendContract.read.frontendVersionsCount()
+  // if(frontendVersionsCount > 0) {
+  //   calls.push({
+  //     methodName: 'lockLatestFrontendVersion',
+  //     args: [],
+  //     blobs: []
+  //   })
+  // }
+
   for(let i = 0; i < fileArgsChunks.length; i++) {
     let methodName = 'addEthStorageFrontendVersion'
     let args = [fileArgsChunks[i], 'Initial version']

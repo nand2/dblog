@@ -719,7 +719,7 @@ export async function entryEditController(blogAddress, chainId) {
           // We need to pay that
           let ethStorageUpfrontPayment = 0n
           try {
-            await fetch(`web3://${blogAddress}:${chainId}/getEthStorageUpfronXXXXXtPayment?returns=(uint256)`)
+            await fetch(`web3://${blogAddress}:${chainId}/getEthStorageUpfrontPayment?returns=(uint256)`)
               .then(response => response.json())
               .then(data => {
                 ethStorageUpfrontPayment = fromHex(data[0], 'bigint')
