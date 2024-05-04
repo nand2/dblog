@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/proxy/Clones.sol";
+import {FileStore, File} from "ethfs/FileStore.sol";
+
 import "./DBlogFrontend.sol";
 import "./DBlogFactory.sol";
 import "./interfaces/FileInfos.sol";
@@ -32,6 +35,9 @@ contract DBlog {
     }
     mapping(string => FileNameToIndex) uploadedFilesNameToIndex;
 
+    // SSTORE2: Own clone of the FileStore contract, to have our own namespace
+    FileStore public fileStore;
+
     // EthStorage content keys: we use a simple incrementing key
     uint256 public ethStorageLastUsedKey = 0;
     // When deleting files, we store the keys to reuse them (we don't need to pay EthStorage again)
@@ -45,13 +51,13 @@ contract DBlog {
 
     struct BlogPost {
         string title;
-        uint256 timestamp;
+        uint128 timestamp;
 
-        // Content of the blog post is either on EthStorage
-        // and we specify the content part key, or it is on
-        // ethereum state
-        string ethereumStateContent;
-        bytes32 ethStorageContentKey;
+        // Pointers to the file contents
+        // If storage mode is SSTORE2, then there will only be one address pointer to the SSTORE2 file
+        // If storage mode is EthStorage, then these are the keys to the EthStorage file parts
+        FileStorageMode storageMode;
+        bytes32 contentKey;
     }
     BlogPost[] public posts;
 
@@ -145,11 +151,20 @@ contract DBlog {
     //
 
     function addPostOnEthereumState(string memory postTitle, string memory postContent) public onlyOwnerOrEditors {
+        // Initialise the FileStore if not done yet
+        if(address(fileStore) == address(0)) {
+            fileStore = FileStore(Clones.clone(address(factory.ethsFileStore())));
+        }
+
         posts.push();
         BlogPost storage newPost = posts[posts.length - 1];
         newPost.title = postTitle;
-        newPost.timestamp = block.timestamp;
-        newPost.ethereumStateContent = postContent;
+        newPost.timestamp = uint128(block.timestamp);
+        newPost.storageMode = FileStorageMode.SSTORE2;
+        
+        // We store the content on FileStore
+        (address filePointer, ) = fileStore.createFile(string.concat("blog-entry-", Strings.toString(posts.length - 1), ".txt"), postContent);
+        newPost.contentKey = bytes32(uint256(uint160(filePointer)));
 
         emit PostCreated(posts.length - 1);
     }
@@ -162,52 +177,75 @@ contract DBlog {
         posts.push();
         BlogPost storage newPost = posts[posts.length - 1];
         newPost.title = postTitle;
-        newPost.timestamp = block.timestamp;
+        newPost.timestamp = uint128(block.timestamp);
+        newPost.storageMode = FileStorageMode.EthStorage;
 
         // We store the content on EthStorage
         ethStorageLastUsedKey++;
         bytes32 ethStorageContentKey = bytes32(ethStorageLastUsedKey);
         uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
         factory.ethStorage().putBlob{value: upfrontPayment}(ethStorageContentKey, 0, blobDataSize);
-        newPost.ethStorageContentKey = ethStorageContentKey;
+        newPost.contentKey = ethStorageContentKey;
 
         emit PostCreated(posts.length - 1);
     }
 
-    function getPost(uint256 index) public view returns (string memory postTitle, uint256 timestamp, string memory ethereumStateContent, bytes32 ethStorageContentKey) {
-        return (posts[index].title, posts[index].timestamp, posts[index].ethereumStateContent, posts[index].ethStorageContentKey);
+    function getPost(uint256 index) public view returns (string memory postTitle, uint128 timestamp, FileStorageMode storageMode, bytes32 contentKey, string memory content) {
+        require(index < posts.length, "Index out of bounds");
+
+        // Content: We only fetch the content if it is on SSTORE2
+        // For EthStorage, we need to fetch it via the EthStorage chain
+        if(posts[index].storageMode == FileStorageMode.SSTORE2) {
+            File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(posts[index].contentKey)))), (File));
+            content = file.read();
+        }
+
+        return (posts[index].title, posts[index].timestamp, posts[index].storageMode, posts[index].contentKey, content);
     }
 
     // Need to be called with the EthStorage chain
     function getPostEthStorageContent(uint256 index) public view returns (bytes memory) {
         require(index < posts.length, "Index out of bounds");
-        require(posts[index].ethStorageContentKey != 0, "Post is on Ethereum state");
+        require(posts[index].storageMode == FileStorageMode.EthStorage, "Post is not on EthStorage");
 
         return factory.ethStorage().get(
-            posts[index].ethStorageContentKey, 
+            posts[index].contentKey, 
             DecentralizedKV.DecodeType.PaddingPer31Bytes, 
             0, 
-            factory.ethStorage().size(posts[index].ethStorageContentKey));
+            factory.ethStorage().size(posts[index].contentKey));
     }
 
     function editEthereumStatePost(uint256 index, string memory postTitle, string memory postContent) public onlyOwnerOrEditors {
         require(index < posts.length, "Index out of bounds");
-        require(posts[index].ethStorageContentKey == 0, "Post is on EthStorage");
+        require(posts[index].storageMode == FileStorageMode.SSTORE2, "Post is not on Ethereum state");
 
         posts[index].title = postTitle;
-        posts[index].ethereumStateContent = postContent;
+        // Each edition has a unique file name. Finds out the filename to use
+        uint revision = 1;
+        string memory fileName;
+        while(true) {
+            fileName = string.concat("blog-entry-", Strings.toString(index), "-", Strings.toString(revision), ".txt");
+            if(fileStore.fileExists(fileName) == false) {
+                break;
+            } else {
+                revision++;
+            }
+        }
+        // We store the content on FileStore
+        (address filePointer, ) = fileStore.createFile(fileName, postContent);
+        posts[index].contentKey = bytes32(uint256(uint160(filePointer)));
 
         emit PostEdited(index);
     }
 
     function editEthStoragePost(uint256 index, string memory postTitle, uint256 blobDataSize) public payable onlyOwnerOrEditors {
         require(index < posts.length, "Index out of bounds");
-        require(posts[index].ethStorageContentKey != 0, "Post is on Ethereum state");
+        require(posts[index].storageMode == FileStorageMode.EthStorage, "Post is not on EthStorage");
 
         posts[index].title = postTitle;
         // We store the content on EthStorage
         // No payment, as we reuse a key
-        factory.ethStorage().putBlob(posts[index].ethStorageContentKey, 0, blobDataSize);
+        factory.ethStorage().putBlob(posts[index].contentKey, 0, blobDataSize);
 
         emit PostEdited(index);
     }
@@ -226,9 +264,10 @@ contract DBlog {
     //
 
     function addUploadedFileOnEthfs(string memory fileName, string memory contentType, bytes memory fileContents) public onlyOwnerOrEditors {
-        // EthFs already ensure file uniqueness
-        // This simple implementation has his drawback : the file name table is global
-        // But this is mostly done for local testing, even though it can be used on mainnet
+        // Initialise the FileStore if not done yet
+        if(address(fileStore) == address(0)) {
+            fileStore = FileStore(Clones.clone(address(factory.ethsFileStore())));
+        }
 
         uploadedFiles.push();
         FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
@@ -238,7 +277,7 @@ contract DBlog {
         newFile.fileInfos.contentType = contentType;
 
         // We store the content on ethFs
-        (address filePointer, ) = factory.ethsFileStore().createFile(fileName, string(fileContents));
+        (address filePointer, ) = fileStore.createFile(fileName, string(fileContents));
         newFile.fileInfos.contentKeys.push(bytes32(uint256(uint160(filePointer))));
 
         emit FileUploaded(fileName, contentType);

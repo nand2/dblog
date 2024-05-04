@@ -244,6 +244,54 @@ console.log("txHash", txHash)
   return txResult;
 }
 
+async function getPost(blogAddress, chainId, postNumber) {
+  let post = null
+  try {
+    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint128,uint8,bytes32,string)`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("Fetched post : ", data)
+        post = {
+          title: data[0],
+          date: data[1],
+          storageMode: data[2],
+          contentKey: data[3],
+          content: data[4],
+        }
+      })
+  }
+  catch(error) {
+    console.error(error)
+    throw new Error('Fetching post failed : ' + error.message);
+    return
+  }
+
+  // Get the content, from EthStorage or from Ethereum state
+  if(post.ethStorageContentKey == "0x1" /** EthStorage */) {
+    // Determine which EthStorage chain to use
+    let ethStorageChainId = 333
+    if(chainId != 1) {
+      ethStorageChainId = 3333
+    }
+    // Call the EthStorage to fetch the content
+    try {
+      await fetch(`web3://${blogAddress}:${ethStorageChainId}/getPostEthStorageContent/${postNumber}?returns=(string)`)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched blog ethstorage content : ", data)
+          post.content = data[0]
+        })
+    }
+    catch(error) {
+      console.error(error)
+      throw new Error('Fetching ethstorage content failed : ' + error.message)
+      return
+    }
+  }
+
+  return post;
+}
+
 
 /**
  * Home controller
@@ -317,49 +365,11 @@ export async function blogEntryController(blogAddress, chainId) {
   // Call the blog to fetch the post
   let post = null
   try {
-    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint256,string,bytes32)`)
-      .then(response => response.json())
-      .then(data => {
-        console.log("Fetched post : ", data)
-        post = {
-          title: data[0],
-          date: data[1],
-          ethereumStateContent: data[2],
-          ethStorageContentKey: data[3],
-        }
-      })
+    post = await getPost(blogAddress, chainId, postNumber);
   }
   catch(error) {
-    console.error(error)
-    alert('Fetching post failed : ' + error.message)
+    alert(error)
     return
-  }
-
-  // Get the content, from EthStorage or from Ethereum state
-  let content = ''
-  if(post.ethStorageContentKey != "0x0000000000000000000000000000000000000000000000000000000000000000") {
-    // Determine which EthStorage chain to use
-    let ethStorageChainId = 333
-    if(chainId != 1) {
-      ethStorageChainId = 3333
-    }
-    // Call the EthStorage to fetch the content
-    try {
-      await fetch(`web3://${blogAddress}:${ethStorageChainId}/getPostEthStorageContent/${postNumber}?returns=(string)`)
-        .then(response => response.json())
-        .then(data => {
-          console.log("Fetched blog ethstorage content : ", data)
-          content = data[0]
-        })
-    }
-    catch(error) {
-      console.error(error)
-      alert('Fetching ethstorage content failed : ' + error.message)
-      return
-    }
-  }
-  else {
-    content = post.ethereumStateContent;
   }
 
   // Insert the post
@@ -368,7 +378,7 @@ export async function blogEntryController(blogAddress, chainId) {
   const formattedDate = new Date(post.date * 1000).toLocaleDateString(undefined, options);
   page.querySelector('.date').innerHTML = formattedDate
   const md = markdownit().use(markdown_it_multi_imgsize_plugin)
-  page.querySelector('.blog-entry-content').innerHTML = md.render(strip_tags(content))
+  page.querySelector('.blog-entry-content').innerHTML = md.render(strip_tags(post.content))
 }
 
 
@@ -577,54 +587,16 @@ export async function entryEditController(blogAddress, chainId) {
   if (!newPost) {
     // Call the blog to fetch the post
     try {
-      await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint256,string,bytes32)`)
-        .then(response => response.json())
-        .then(data => {
-          console.log("Fetched post : ", data)
-          post = {
-            title: data[0],
-            date: data[1],
-            ethereumStateContent: data[2],
-            ethStorageContentKey: data[3],
-          }
-        })
+      post = await getPost(blogAddress, chainId, postNumber);
     }
     catch(error) {
-      console.error(error)
-      alert('Fetching post failed : ' + error.message)
+      alert(error)
       return
-    }
-
-    // Get the content, from EthStorage or from Ethereum state
-    let content = ''
-    if(post.ethStorageContentKey != "0x0000000000000000000000000000000000000000000000000000000000000000") {
-      // Determine which EthStorage chain to use
-      let ethStorageChainId = 333
-      if(chainId != 1) {
-        ethStorageChainId = 3333
-      }
-      // Call the EthStorage to fetch the content
-      try {
-        await fetch(`web3://${blogAddress}:${ethStorageChainId}/getPostEthStorageContent/${postNumber}?returns=(string)`)
-          .then(response => response.json())
-          .then(data => {
-            console.log("Fetched blog ethstorage content : ", data)
-            content = data[0]
-          })
-      }
-      catch(error) {
-        console.error(error)
-        alert('Fetching ethstorage content failed : ' + error.message)
-        return
-      }
-    }
-    else {
-      content = post.ethereumStateContent;
     }
 
     // Insert the post
     page.querySelector('#title').value = post.title
-    page.querySelector('#content').value = content
+    page.querySelector('#content').value = post.content
   }
 
 
