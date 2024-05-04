@@ -127,6 +127,11 @@ const frontendABI = [
   },
   {
     "inputs":[],
+    "name":"lockLatestFrontendVersion",
+    "outputs":[],"stateMutability":"payable","type":"function"
+  },
+  {
+    "inputs":[],
     "name":"getEthStorageUpfrontPayment",
     "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
     "stateMutability":"view","type":"function"
@@ -145,7 +150,7 @@ console.log("EthStorage upfront payment", upfrontPayment)
 
 const fullBlobDataSize = (32 - 1) * 4096;
 let baseFeePerBlobGas = await getBaseFeePerBlobGas();
-let maxFeePerBlobGas = baseFeePerBlobGas * 6n / 5n;
+let maxFeePerBlobGas = baseFeePerBlobGas * 2n;
 
 // Prepare the args
 // Put 4 blobs max per call (we see that 6-blobs calls are taking quite some time to get mined)

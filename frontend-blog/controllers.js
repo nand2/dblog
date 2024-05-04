@@ -120,6 +120,9 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
     // it seems to be issues with the presence of blobs
     // So we use our own http transport with the embedded RPC endpoints of the viem lib
     let transport = http()
+    if(chainId == 11155111) {
+      transport = http("https://ethereum-sepolia-rpc.publicnode.com")
+    }
     createWalletClientOpts = {
       account: burnerWallet,
       chain: chainId == 31337 ? anvil : chainId == 11155111 ? sepolia : mainnet,
@@ -215,7 +218,7 @@ console.log("blobs length", opts.blobs.length)
     transactionOpts.blobs = opts.blobs;
     transactionOpts.kzg = kzg;
     let block = await viemClient.getBlock();
-    transactionOpts.maxFeePerBlobGas = getBaseFeePerBlobGas(block.excessBlobGas ?? 0n) * 6n / 5n;
+    transactionOpts.maxFeePerBlobGas = getBaseFeePerBlobGas(block.excessBlobGas ?? 0n) * 2n;
   }
 console.log("transactionOpts", transactionOpts)
 
