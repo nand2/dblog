@@ -267,7 +267,7 @@ async function getPost(blogAddress, chainId, postNumber) {
   }
 
   // Get the content, from EthStorage or from Ethereum state
-  if(post.ethStorageContentKey == "0x1" /** EthStorage */) {
+  if(post.storageMode == "0x1" /** EthStorage */) {
     // Determine which EthStorage chain to use
     let ethStorageChainId = 333
     if(chainId != 1) {
@@ -304,7 +304,7 @@ export async function homeController(blogAddress, chainId) {
   // Call the blog to fetch the posts
   let posts = []
   try {
-    await fetch(`web3://${blogAddress}:${chainId}/getPosts?returns=((string,uint256,string)[])`)
+    await fetch(`web3://${blogAddress}:${chainId}/getPosts?returns=((string,uint128,uint8,bytes32)[])`)
       .then(response => response.json())
       .then(data => {
         console.log("Fetched posts : ", data)
@@ -314,7 +314,8 @@ export async function homeController(blogAddress, chainId) {
             id: index,
             title: post[0],
             date: post[1],
-            content: post[2],
+            storageMode: post[2],
+            contentKey: post[3],
           }
         })
       })
@@ -391,7 +392,7 @@ export async function adminController(blogAddress, chainId, blogOwner) {
     // Call the blog to fetch the editors, posts and uploaded files
     let editorAndPostsAndUploadedFiles = null
     try {
-      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint256,string)[],(uint8,(string,string,bytes32[]))[])`)
+      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint128,uint8,bytes32)[],(uint8,(string,string,bytes32[]))[])`)
         .then(response => response.json())
         .then(data => {
           console.log("Fetched editors, posts, uploadedFiles : ", data)
@@ -416,7 +417,8 @@ export async function adminController(blogAddress, chainId, blogOwner) {
         id: index,
         title: post[0],
         date: post[1],
-        content: post[2],
+        storageMode: post[2],
+        contentKey: post[3],
       }
     })
     // Uploaded files
