@@ -127,45 +127,43 @@ contract DBlogFrontend is IDecentralizedApp {
         // /uploads/<uploadedFile>
         if(resource.length == 2 && Strings.compare(resource[0], "uploads")) {
             string memory uploadedFileName = resource[1];
-            FileInfosWithStorageMode memory uploadedFile;
-            for(uint i = 0; i < blog.getUploadedFilesCount(); i++) {
-                uploadedFile = blog.getUploadedFile(i);
-                if(Strings.compare(uploadedFileName, uploadedFile.fileInfos.filePath)) {
-                    // web3:// chunk feature : if the file is big, we will send the file
-                    // in chunks
-                    uint chunkCount = blog.getUploadedFileContentsChunkCount(i);
+            try blog.getUploadedFileByName(uploadedFileName) returns (FileInfosWithStorageMode memory uploadedFile, uint fileIndex) {
+                // web3:// chunk feature : if the file is big, we will send the file
+                // in chunks
+                uint chunkCount = blog.getUploadedFileContentsChunkCount(fileIndex);
 
-                    // Determine the requested chunk
-                    uint chunkIndex = 0;
-                    for(uint j = 0; j < params.length; j++) {
-                        if(Strings.compare(params[j].key, "chunk")) {
-                            chunkIndex = Strings.stringToUint(params[j].value);
-                            break;
-                        }
+                // Determine the requested chunk
+                uint chunkIndex = 0;
+                for(uint j = 0; j < params.length; j++) {
+                    if(Strings.compare(params[j].key, "chunk")) {
+                        chunkIndex = Strings.stringToUint(params[j].value);
+                        break;
                     }
-                    if(chunkIndex >= chunkCount) {
-                        statusCode = 404;
-                        return (statusCode, body, headers);
-                    }
-
-                    body = string(blog.getUploadedFileContents(i, chunkIndex));
-                    statusCode = 200;
-
-                    uint headersCount = 1;
-                    if(chunkIndex < chunkCount - 1) {
-                        headersCount = 2;
-                    }
-                    headers = new KeyValue[](headersCount);
-                    headers[0].key = "Content-type";
-                    headers[0].value = uploadedFile.fileInfos.contentType;
-                    // If there is more chunk remaining, add a pointer to the next chunk
-                    if(chunkIndex < chunkCount - 1) {
-                        headers[1].key = "web3-next-chunk";
-                        headers[1].value = string.concat("/uploads/", resource[1], "?chunk=", Strings.toString(chunkIndex + 1));
-                    }
-                    
+                }
+                if(chunkIndex >= chunkCount) {
+                    statusCode = 404;
                     return (statusCode, body, headers);
                 }
+
+                body = string(blog.getUploadedFileContents(fileIndex, chunkIndex));
+                statusCode = 200;
+
+                uint headersCount = 1;
+                if(chunkIndex < chunkCount - 1) {
+                    headersCount = 2;
+                }
+                headers = new KeyValue[](headersCount);
+                headers[0].key = "Content-type";
+                headers[0].value = uploadedFile.fileInfos.contentType;
+                // If there is more chunk remaining, add a pointer to the next chunk
+                if(chunkIndex < chunkCount - 1) {
+                    headers[1].key = "web3-next-chunk";
+                    headers[1].value = string.concat("/uploads/", resource[1], "?chunk=", Strings.toString(chunkIndex + 1));
+                }
+                
+                return (statusCode, body, headers);
+            } catch {
+                // Filename not found in uploaded files. Go to the next lookups
             }
         }
         

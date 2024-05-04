@@ -26,6 +26,11 @@ contract DBlog {
 
     // Files uploaded by the author/editors
     FileInfosWithStorageMode[] uploadedFiles;
+    struct FileNameToIndex {
+        bool exists;
+        uint248 index;
+    }
+    mapping(string => FileNameToIndex) uploadedFilesNameToIndex;
 
     // EthStorage content keys: we use a simple incrementing key
     uint256 public ethStorageLastUsedKey = 0;
@@ -229,6 +234,7 @@ contract DBlog {
         FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
         newFile.storageMode = FileStorageMode.SSTORE2;
         newFile.fileInfos.filePath = fileName;
+        uploadedFilesNameToIndex[fileName] = FileNameToIndex({exists: true, index: uint248(uploadedFiles.length - 1)});
         newFile.fileInfos.contentType = contentType;
 
         // We store the content on ethFs
@@ -260,6 +266,7 @@ contract DBlog {
         FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
         newFile.storageMode = FileStorageMode.EthStorage;
         newFile.fileInfos.filePath = filePath;
+        uploadedFilesNameToIndex[filePath] = FileNameToIndex({exists: true, index: uint248(uploadedFiles.length - 1)});
         newFile.fileInfos.contentType = contentType;
 
         // We store the content on EthStorage
@@ -345,6 +352,13 @@ contract DBlog {
         return uploadedFiles[index];
     }
 
+    function getUploadedFileByName(string memory fileName) public view returns (FileInfosWithStorageMode memory uploadedFile, uint256 index) {
+        require(uploadedFilesNameToIndex[fileName].exists, "File not found");
+
+        index = uploadedFilesNameToIndex[fileName].index;
+        uploadedFile = uploadedFiles[index];
+    }
+
     function getUploadedFileContentsChunkCount(uint256 index) public view returns (uint256 chunkCount) {
         require(index < uploadedFiles.length, "Index out of bounds");
 
@@ -392,6 +406,7 @@ contract DBlog {
             }
         }
 
+        uploadedFilesNameToIndex[uploadedFile.fileInfos.filePath].exists = false;
         uploadedFile = uploadedFiles[uploadedFiles.length - 1];
         uploadedFiles.pop();
     }

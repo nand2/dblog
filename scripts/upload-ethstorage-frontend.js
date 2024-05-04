@@ -258,7 +258,7 @@ for(let i = 0; i < calls.length; i++) {
     to: frontendAddress,
     value: upfrontPayment * BigInt(calls[i].blobs.length),
     data: data,
-    // gas: 1000000n, // Weirdly I need this on sepolia
+    gas: 1000000n, // Weirdly I need this on sepolia: Bug on go-ehtereum!
     // Replace tx:
     // nonce: 748,
     // maxPriorityFeePerGas: 53776n * 2n,
