@@ -51,12 +51,21 @@ contract DBlog {
 
     struct BlogPost {
         string title;
-        uint128 timestamp;
+        uint64 timestamp;
 
-        // Pointers to the file contents
+        // For possible future evolutions: the data format of the stored content
+        // 0: Plain text
+        // Later: compression, JSON w/ metadata, ...
+        uint8 contentFormatVersion;
+
+        // "Free" data space, to be used for possible future evolutions
+        bytes20 extra;
+
+        // Storage mode of the content: SSTORE2 or EthStorage
+        FileStorageMode storageMode;
+        // Pointer to the file contents
         // If storage mode is SSTORE2, then there will only be one address pointer to the SSTORE2 file
         // If storage mode is EthStorage, then these are the keys to the EthStorage file parts
-        FileStorageMode storageMode;
         bytes32 contentKey;
     }
     BlogPost[] public posts;
@@ -150,7 +159,7 @@ contract DBlog {
     // Blog posts
     //
 
-    function addPostOnEthereumState(string memory postTitle, string memory postContent) public onlyOwnerOrEditors {
+    function addPostOnEthereumState(string memory postTitle, string memory postContent, uint8 contentFormatVersion, bytes20 extra) public onlyOwnerOrEditors {
         // Initialise the FileStore if not done yet
         if(address(fileStore) == address(0)) {
             fileStore = FileStore(Clones.clone(address(factory.ethsFileStore())));
@@ -159,7 +168,9 @@ contract DBlog {
         posts.push();
         BlogPost storage newPost = posts[posts.length - 1];
         newPost.title = postTitle;
-        newPost.timestamp = uint128(block.timestamp);
+        newPost.timestamp = uint64(block.timestamp);
+        newPost.contentFormatVersion = contentFormatVersion;
+        newPost.extra = extra;
         newPost.storageMode = FileStorageMode.SSTORE2;
         
         // We store the content on FileStore
@@ -173,11 +184,13 @@ contract DBlog {
         return factory.ethStorage().upfrontPayment();
     }
 
-    function addPostOnEthStorage(string memory postTitle, uint256 blobDataSize) public payable onlyOwnerOrEditors {
+    function addPostOnEthStorage(string memory postTitle, uint256 blobDataSize, uint8 contentFormatVersion, bytes20 extra) public payable onlyOwnerOrEditors {
         posts.push();
         BlogPost storage newPost = posts[posts.length - 1];
         newPost.title = postTitle;
-        newPost.timestamp = uint128(block.timestamp);
+        newPost.timestamp = uint64(block.timestamp);
+        newPost.contentFormatVersion = contentFormatVersion;
+        newPost.extra = extra;
         newPost.storageMode = FileStorageMode.EthStorage;
 
         // We store the content on EthStorage
@@ -190,7 +203,7 @@ contract DBlog {
         emit PostCreated(posts.length - 1);
     }
 
-    function getPost(uint256 index) public view returns (string memory postTitle, uint128 timestamp, FileStorageMode storageMode, bytes32 contentKey, string memory content) {
+    function getPost(uint256 index) public view returns (BlogPost memory blogPost, string memory content) {
         require(index < posts.length, "Index out of bounds");
 
         // Content: We only fetch the content if it is on SSTORE2
@@ -200,7 +213,7 @@ contract DBlog {
             content = file.read();
         }
 
-        return (posts[index].title, posts[index].timestamp, posts[index].storageMode, posts[index].contentKey, content);
+        return (posts[index], content);
     }
 
     // Need to be called with the EthStorage chain
@@ -215,11 +228,13 @@ contract DBlog {
             factory.ethStorage().size(posts[index].contentKey));
     }
 
-    function editEthereumStatePost(uint256 index, string memory postTitle, string memory postContent) public onlyOwnerOrEditors {
+    function editEthereumStatePost(uint256 index, string memory postTitle, string memory postContent, uint8 contentFormatVersion, bytes20 extra) public onlyOwnerOrEditors {
         require(index < posts.length, "Index out of bounds");
         require(posts[index].storageMode == FileStorageMode.SSTORE2, "Post is not on Ethereum state");
 
         posts[index].title = postTitle;
+        posts[index].contentFormatVersion = contentFormatVersion;
+        posts[index].extra = extra;
         // Each edition has a unique file name. Finds out the filename to use
         uint revision = 1;
         string memory fileName;
@@ -238,11 +253,13 @@ contract DBlog {
         emit PostEdited(index);
     }
 
-    function editEthStoragePost(uint256 index, string memory postTitle, uint256 blobDataSize) public payable onlyOwnerOrEditors {
+    function editEthStoragePost(uint256 index, string memory postTitle, uint256 blobDataSize, uint8 contentFormatVersion, bytes20 extra) public payable onlyOwnerOrEditors {
         require(index < posts.length, "Index out of bounds");
         require(posts[index].storageMode == FileStorageMode.EthStorage, "Post is not on EthStorage");
 
         posts[index].title = postTitle;
+        posts[index].contentFormatVersion = contentFormatVersion;
+        posts[index].extra = extra;
         // We store the content on EthStorage
         // No payment, as we reuse a key
         factory.ethStorage().putBlob(posts[index].contentKey, 0, blobDataSize);

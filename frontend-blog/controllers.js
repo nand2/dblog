@@ -13,25 +13,25 @@ import mime from 'mime';
 // All write functions, as we are using web3:// for read functions
 const frontendABI = [
   {
-    inputs: [{ name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }],
+    inputs: [{ name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
     name: 'addPostOnEthStorage',
     outputs: [],
     type: 'function',
   },
   {
-    inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }],
+    inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
     name: 'editEthStoragePost',
     outputs: [],
     type: 'function',
   },
   {
-    inputs: [{ name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
+    inputs: [{ name: 'title', type: 'string' }, { name: 'content', type: 'string' }, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
     name: 'addPostOnEthereumState',
     outputs: [],
     type: 'function',
   },
   {
-    inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'content', type: 'string' }],
+    inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'content', type: 'string' }, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
     name: 'editEthereumStatePost',
     outputs: [],
     type: 'function',
@@ -250,16 +250,18 @@ console.log("txHash", txHash)
 async function getPost(blogAddress, chainId, postNumber) {
   let post = null
   try {
-    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=(string,uint128,uint8,bytes32,string)`)
+    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=((string,uint64,uint8,bytes20,uint8,bytes32),string)`)
       .then(response => response.json())
       .then(data => {
         console.log("Fetched post : ", data)
         post = {
-          title: data[0],
-          date: data[1],
-          storageMode: data[2],
-          contentKey: data[3],
-          content: data[4],
+          title: data[0][0],
+          date: data[0][1],
+          contentFormatVersion: data[0][2],
+          extra: data[0][3],
+          storageMode: data[0][4],
+          contentKey: data[0][5],
+          content: data[1],
         }
       })
   }
@@ -307,7 +309,7 @@ export async function homeController(blogAddress, chainId) {
   // Call the blog to fetch the posts
   let posts = []
   try {
-    await fetch(`web3://${blogAddress}:${chainId}/getPosts?returns=((string,uint128,uint8,bytes32)[])`)
+    await fetch(`web3://${blogAddress}:${chainId}/getPosts?returns=((string,uint64,uint8,bytes20,uint8,bytes32)[])`)
       .then(response => response.json())
       .then(data => {
         console.log("Fetched posts : ", data)
@@ -317,8 +319,10 @@ export async function homeController(blogAddress, chainId) {
             id: index,
             title: post[0],
             date: post[1],
-            storageMode: post[2],
-            contentKey: post[3],
+            contentFormatVersion: post[2],
+            extra: post[3],
+            storageMode: post[4],
+            contentKey: post[5],
           }
         })
       })
@@ -395,7 +399,7 @@ export async function adminController(blogAddress, chainId, blogOwner) {
     // Call the blog to fetch the editors, posts and uploaded files
     let editorAndPostsAndUploadedFiles = null
     try {
-      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint128,uint8,bytes32)[],(uint8,(string,string,bytes32[]))[])`)
+      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint64,uint8,bytes20,uint8,bytes32)[],(uint8,(string,string,bytes32[]))[])`)
         .then(response => response.json())
         .then(data => {
           console.log("Fetched editors, posts, uploadedFiles : ", data)
@@ -420,8 +424,10 @@ export async function adminController(blogAddress, chainId, blogOwner) {
         id: index,
         title: post[0],
         date: post[1],
-        storageMode: post[2],
-        contentKey: post[3],
+        contentFormatVersion: post[2],
+        extra: post[3],
+        storageMode: post[4],
+        contentKey: post[5],
       }
     })
     // Uploaded files
@@ -959,22 +965,22 @@ console.log("txResult", txResult)
         }
 
         methodName = "addPostOnEthStorage";
-        args = [title, content.length];
+        args = [title, content.length, 0, '0x' + '00'.repeat(20)];
       }
       else {
         methodName = "editEthStoragePost";
-        args = [postNumber, title, content.length];
+        args = [postNumber, title, content.length, 0, '0x' + '00'.repeat(20)];
       }
     }
     // Other networks: Otherwise store on state
     else {
       if(newPost) {
         methodName = "addPostOnEthereumState";
-        args = [title, content];
+        args = [title, content, 0, '0x' + '00'.repeat(20)];
       }
       else {
         methodName = "editEthereumStatePost";
-        args = [postNumber, title, content];
+        args = [postNumber, title, content, 0, '0x' + '00'.repeat(20)];
       }
     }
 
