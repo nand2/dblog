@@ -399,4 +399,13 @@ contract DBlogFactory {
     function onERC1155BatchReceived(address _operator, address _from, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external returns(bytes4) {
         return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
     }
+
+
+    //
+    // Admin
+    //
+
+    function setOwner(address _owner) public onlyOwner {
+        owner = _owner;
+    }
 }
