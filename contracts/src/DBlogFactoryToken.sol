@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import { DBlogFactory } from "./DBlogFactory.sol";
 import { DBlog } from "./DBlog.sol";
 import "./library/Strings.sol";
+import "./library/Base64.sol";
 import "./interfaces/FileInfos.sol";
 
 contract DBlogFactoryToken {
@@ -20,6 +21,36 @@ contract DBlogFactoryToken {
         // We can only set the blog factory once
         require(address(blogFactory) == address(0), "Already set");
         blogFactory = _blogFactory;
+    }
+
+    function tokenWeb3Address(uint tokenId) public view returns (string memory web3Address) {
+        require(tokenId < blogFactory.getBlogCount(), "Token does not exist");
+
+        DBlog blog = blogFactory.blogs(tokenId);
+
+        uint subdomainLength = bytes(blog.subdomain()).length;
+        if(subdomainLength > 0) {
+            web3Address = string.concat("web3://", blog.subdomain(), ".", blogFactory.domain(), ".", blogFactory.topdomain());
+        }
+        else {
+            web3Address = string.concat(
+                "web3://", 
+                Strings.toHexString(address(blog.frontend())));
+
+            uint chainId = block.chainid;
+            FileStorageMode storageMode = blog.frontend().blogFrontendVersion().storageMode;
+            if(storageMode == FileStorageMode.EthStorage) {
+                if(block.chainid == 1) {
+                    chainId = 333;
+                }
+                else if(block.chainid == 11155111) {
+                    chainId = 3333;
+                }
+            }
+            if(chainId > 1) {
+                web3Address = string.concat(web3Address, ":", Strings.toString(chainId));
+            }
+        }
     }
 
     function tokenSVG(uint tokenId) public view returns (string memory) {
@@ -44,23 +75,10 @@ contract DBlogFactoryToken {
             );
         }
         else {
-            string memory addressStr = Strings.toHexString(address(blog.frontend()));
+            string memory addressStr = tokenWeb3Address(tokenId);
+            addressStr = Strings.substring(addressStr, 7, bytes(addressStr).length);
             string memory addressStrPart1 = Strings.substring(addressStr, 0, 24);
-            string memory addressStrPart2 = Strings.substring(addressStr, 24, 42);
-
-            uint chainId = block.chainid;
-            FileStorageMode storageMode = blog.frontend().blogFrontendVersion().storageMode;
-            if(storageMode == FileStorageMode.EthStorage) {
-                if(block.chainid == 1) {
-                    chainId = 333;
-                }
-                else if(block.chainid == 11155111) {
-                    chainId = 3333;
-                }
-            }
-            if(chainId > 1) {
-                addressStrPart2 = string.concat(addressStrPart2, ":", Strings.toString(chainId));
-            }
+            string memory addressStrPart2 = Strings.substring(addressStr, 24, bytes(addressStr).length);
 
             svgAddressPart = string.concat(
                 '<text x="20" y="90" font-size="15">'
@@ -106,6 +124,68 @@ contract DBlogFactoryToken {
                     'DB'
                 '</text>'
             '</svg>'
+        );
+    }
+
+    function tokenURI(uint tokenId) public view returns (string memory) {
+        require(tokenId < blogFactory.getBlogCount(), "Token does not exist");
+
+        DBlog blog = blogFactory.blogs(tokenId);
+
+        string memory svg = tokenSVG(tokenId);
+        string memory web3Address = tokenWeb3Address(tokenId);
+        string memory subdomain = blog.subdomain();
+        uint subdomainLength = bytes(subdomain).length;
+        string memory extraAttrs = "";
+        if(subdomainLength > 0) {
+            // Determine character set
+            string memory characterSet = "";
+            bool isLetterCharacterSet = true;
+            bool isNumberCharacterSet = true;
+            for(uint i = 0; i < subdomainLength; i++) {
+                bytes1 char = bytes(subdomain)[i];
+                if(uint8(char) < 97 || uint8(char) > 122) {
+                    isLetterCharacterSet = false;
+                    break;
+                }
+                if(uint8(char) < 48 || uint8(char) > 57) {
+                    isNumberCharacterSet = false;
+                    break;
+                }
+            }
+            if(isLetterCharacterSet) {
+                characterSet = "letter";
+            }
+            else if(isNumberCharacterSet) {
+                characterSet = "digit";
+            }
+            else {
+                characterSet = "mixed";
+            }
+        
+            extraAttrs = string.concat(
+                ', {'
+                    '"trait_type": "Subdomain length", '
+                    '"value": ', Strings.toString(subdomainLength),
+                '}, {'
+                    '"trait_type": "Character set", '
+                    '"value": "', characterSet, '"'
+                '}'
+            );
+        }
+
+        return string.concat(
+            '{'
+                '"id": "', Strings.toString(tokenId), '", '
+                '"name": "', web3Address, '", '
+                '"description": "A blog using the web3:// protocol (ERC-4804, ERC-6860)", '
+                '"attributes": [{'
+                    '"trait_type": "Has subdomain", '
+                    '"value": ', (subdomainLength > 0 ? 'true' : 'false'), ''
+                '}', extraAttrs, '], '
+                '"image": "data:image/svg+xml;base64,', Base64.encode(bytes(svg)),'", '
+                '"external_url": "', web3Address, '"'
+            '}'
         );
     }
 }

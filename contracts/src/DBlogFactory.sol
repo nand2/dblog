@@ -448,7 +448,15 @@ contract DBlogFactory is ERC721A {
         }
     }
 
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(tokenId < blogs.length, "Token does not exist");
+
+        return factoryToken.tokenURI(tokenId);
+    }
+
     function tokenSVG(uint tokenId) public view returns (string memory) {
+        require(tokenId < blogs.length, "Token does not exist");
+
         return factoryToken.tokenSVG(tokenId);
     }
 
