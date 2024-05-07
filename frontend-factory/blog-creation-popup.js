@@ -68,22 +68,34 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
   // Form validation
   //
 
+  const titleField = element.querySelector('#title')
+  const descriptionField = element.querySelector('#description')
+  const subdomainField = element.querySelector('#subdomain')
   const errorMessageDiv = element.querySelector('#error-message')
   const submitButton = element.querySelector('button[type="submit"]')
+  const cancelButton = element.querySelector('#cancel')
 
   // On submit, create a new blog by calling the createBlog method of the BlogFactory contract
   element.querySelector('form').addEventListener('submit', async event => {
     event.preventDefault()
+    titleField.disabled = true
+    descriptionField.disabled = true
+    subdomainField.disabled = true
+    cancelButton.disabled = true
     submitButton.disabled = true
     submitButton.innerHTML = 'Creating...'
     errorMessageDiv.innerHTML = '';
-    const title = element.querySelector('#title').value
-    const description = element.querySelector('#description').value
-    const subdomain = element.querySelector('#subdomain').value
+    const title = titleField.value
+    const description = descriptionField.value
+    const subdomain = subdomainField.value
 
     const stopWithError = (message) => {
       errorMessageDiv.innerHTML = message
       errorMessageDiv.style.display = 'block'
+      titleField.disabled = false
+      descriptionField.disabled = false
+      subdomainField.disabled = false
+      cancelButton.disabled = false
       submitButton.disabled = false
       submitButton.innerHTML = 'Create'
     }
@@ -259,6 +271,10 @@ console.log("frontendUseEthStorageChain", frontendUseEthStorageChain)
     element.querySelector('#new-blog-address').textContent = newBlogFrontendAddress
 
     // Hide step 1 and show step 2
+    titleField.disabled = false
+    descriptionField.disabled = false
+    subdomainField.disabled = false
+    cancelButton.disabled = false
     submitButton.disabled = false
     submitButton.innerHTML = 'Create'
     element.querySelector('#step-1').style.display = 'none'
