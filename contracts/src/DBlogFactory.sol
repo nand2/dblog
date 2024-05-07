@@ -55,6 +55,9 @@ contract DBlogFactory {
     // - Set a new blog frontend version as default (but each individual blog can override this)
     address public owner;
 
+    // For possible future extensions : a listing of extension contracts
+    address[] public extensions;
+
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -408,4 +411,13 @@ contract DBlogFactory {
     function setOwner(address _owner) public onlyOwner {
         owner = _owner;
     }
+
+    function addExtension(address _extension) public onlyOwner {
+        extensions.push(_extension);
+    }
+
+    function getExtensions() public view returns (address[] memory) {
+        return extensions;
+    }
+
 }

@@ -45,6 +45,10 @@ contract DBlog {
 
     uint256 public constant ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK = 4;
 
+    // Flags for possible extensions?
+    bytes32 public flags;
+
+
     event PostCreated(uint indexed postId);
     event PostEdited(uint indexed postId);
     event FileUploaded(string filename, string contentType);
@@ -477,5 +481,14 @@ contract DBlog {
 
     function frontendVersion() public view returns (FrontendFilesSet memory, bool, uint256) {
         return (frontend.blogFrontendVersion(), frontend.useNonDefaultFrontend(), frontend.overridenFrontendIndex());
+    }
+
+
+    //
+    // Extension for the future
+    // 
+
+    function setFlags(bytes32 _flags) public onlyOwner {
+        flags = _flags;
     }
 }
