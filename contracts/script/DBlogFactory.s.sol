@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
 import {DBlogFactory} from "../src/DBlogFactory.sol";
+import {DBlogFactoryToken} from "../src/DBlogFactoryToken.sol";
 import {DBlogFactoryFrontend} from "../src/DBlogFactoryFrontend.sol";
 import {DBlogFrontendLibrary} from "../src/DBlogFrontendLibrary.sol";
 import {FileInfos} from "../src/interfaces/FileInfos.sol";
@@ -40,16 +41,18 @@ contract DBlogFactoryScript is Script {
 
     function run() public {
         // Environment variables
-        string memory targetChainString = vm.envString("TARGET_CHAIN");
         TargetChain targetChain = TargetChain.LOCAL;
-        if(keccak256(abi.encodePacked(targetChainString)) == keccak256(abi.encodePacked("local"))) {
-            targetChain = TargetChain.LOCAL;
-        } else if(keccak256(abi.encodePacked(targetChainString)) == keccak256(abi.encodePacked("sepolia"))) {
-            targetChain = TargetChain.SEPOLIA;
-        } else if(keccak256(abi.encodePacked(targetChainString)) == keccak256(abi.encodePacked("holesky"))) {
-            targetChain = TargetChain.HOLESKY;
-        } else if(keccak256(abi.encodePacked(targetChainString)) == keccak256(abi.encodePacked("mainnet"))) {
-            targetChain = TargetChain.MAINNET;
+        {
+            string memory targetChainString = vm.envString("TARGET_CHAIN");
+            if(keccak256(abi.encodePacked(vm.envString("TARGET_CHAIN"))) == keccak256(abi.encodePacked("local"))) {
+                targetChain = TargetChain.LOCAL;
+            } else if(keccak256(abi.encodePacked(vm.envString("TARGET_CHAIN"))) == keccak256(abi.encodePacked("sepolia"))) {
+                targetChain = TargetChain.SEPOLIA;
+            } else if(keccak256(abi.encodePacked(vm.envString("TARGET_CHAIN"))) == keccak256(abi.encodePacked("holesky"))) {
+                targetChain = TargetChain.HOLESKY;
+            } else if(keccak256(abi.encodePacked(vm.envString("TARGET_CHAIN"))) == keccak256(abi.encodePacked("mainnet"))) {
+                targetChain = TargetChain.MAINNET;
+            }
         }
         string memory domain = vm.envString("DOMAIN");
 
@@ -62,6 +65,11 @@ contract DBlogFactoryScript is Script {
         // Get ETHFS filestore
         FileStore store = getFileStore(targetChain);
         console.log("FileStore: ", vm.toString(address(store)));
+        // Add the IBM font
+        if(targetChain == TargetChain.LOCAL) {
+            bytes memory fileContents = vm.readFileBinary("assets/IBMPlexMono-Regular.woff2.base64");
+            (address fontFilePointer, ) = store.createFile("IBMPlexMono-Regular.woff2", string(fileContents));
+        }
 
         // Get EthStorage
         TestEthStorageContractKZG ethStorage = getEthStorage(targetChain);
@@ -71,6 +79,9 @@ contract DBlogFactoryScript is Script {
             // Create the factory frontend
             DBlogFactoryFrontend factoryFrontend = new DBlogFactoryFrontend();
 
+            // Create the factory token
+            DBlogFactoryToken factoryToken = new DBlogFactoryToken();
+
             // Create the dblog frontend library
             DBlogFrontendLibrary blogFrontendLibrary = new DBlogFrontendLibrary();
 
@@ -79,9 +90,23 @@ contract DBlogFactoryScript is Script {
             DBlogFrontend blogFrontendImplementation = new DBlogFrontend();
 
             // Deploying the blog factory
-            factory = new DBlogFactory("eth", domain, factoryFrontend, blogImplementation, blogFrontendImplementation, blogFrontendLibrary, nameWrapper, ethRegistrarController, baseRegistrar, store, ethStorage);
+            factory = new DBlogFactory(DBlogFactory.ConstructorParams({
+                topdomain: "eth",
+                domain: domain,
+                factoryFrontend: factoryFrontend,
+                factoryToken: factoryToken,
+                blogImplementation: blogImplementation,
+                blogFrontendImplementation: blogFrontendImplementation,
+                blogFrontendLibrary: blogFrontendLibrary,
+                ensNameWrapper: nameWrapper,
+                ensEthRegistrarController: ethRegistrarController,
+                ensBaseRegistrar: baseRegistrar,
+                ethfsFileStore: store,
+                ethStorage: ethStorage
+            }));
 
             console.log("DBlogFactory: ", address(factory));
+            console.log("DBlogFactoryToken: ", address(factoryToken));
             console.log("DBlogFactoryFrontend: ", address(factoryFrontend));
             console.log("DBlogFrontendLibrary: ", address(blogFrontendLibrary));
             console.log("DBlogImplementation: ", address(blogImplementation));

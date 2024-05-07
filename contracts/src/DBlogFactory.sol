@@ -18,10 +18,12 @@ import "./DBlogFactoryFrontend.sol";
 import "./DBlog.sol";
 import "./DBlogFrontend.sol";
 import "./DBlogFrontendLibrary.sol";
+import "./DBlogFactoryToken.sol";
 import "./library/Strings.sol";
 
-contract DBlogFactory is ERC721A("web3://dblog.eth", "DBLOG") {
+contract DBlogFactory is ERC721A {
     DBlogFactoryFrontend public immutable factoryFrontend;
+    DBlogFactoryToken public immutable factoryToken;
 
     DBlog public immutable blogImplementation;
     DBlogFrontend public immutable blogFrontendImplementation;
@@ -43,7 +45,7 @@ contract DBlogFactory is ERC721A("web3://dblog.eth", "DBLOG") {
     uint constant private COIN_TYPE_ETH = 60;
 
     // EthFs contract
-    FileStore public ethsFileStore;
+    FileStore public ethFsFileStore;
 
     // EthStorage contract
     TestEthStorageContractKZG public ethStorage;
@@ -73,32 +75,49 @@ contract DBlogFactory is ERC721A("web3://dblog.eth", "DBLOG") {
      * @param _topdomain eth
      * @param _domain dblog
      * @param _factoryFrontend The frontend of the factory, handling the web3://dblog.eth requests
+     * @param _factoryToken Methods for handling the thumbnail generation and tokenURI()
      * @param _blogImplementation The implementation of the blog contract, to be cloned
      * @param _blogFrontendImplementation The implementation of the blog frontend contract, to be cloned
      * @param _blogFrontendLibrary The library containing the blog frontend versions
      */
-    constructor(string memory _topdomain, string memory _domain, DBlogFactoryFrontend _factoryFrontend, DBlog _blogImplementation, DBlogFrontend _blogFrontendImplementation, DBlogFrontendLibrary _blogFrontendLibrary, NameWrapper _ensNameWrapper, ETHRegistrarController __ensEthRegistrarController, BaseRegistrarImplementation _ensBaseRegistrar, FileStore _ethfsFileStore, TestEthStorageContractKZG _ethStorage) {
+    struct ConstructorParams {
+        string topdomain;
+        string domain;
+        DBlogFactoryFrontend factoryFrontend;
+        DBlogFactoryToken factoryToken;
+        DBlog blogImplementation;
+        DBlogFrontend blogFrontendImplementation;
+        DBlogFrontendLibrary blogFrontendLibrary;
+        NameWrapper ensNameWrapper;
+        ETHRegistrarController ensEthRegistrarController;
+        BaseRegistrarImplementation ensBaseRegistrar;
+        FileStore ethfsFileStore;
+        TestEthStorageContractKZG ethStorage;
+    }
+    constructor(ConstructorParams memory _params) ERC721A("web3://dblog.eth", "DBLOG") {
         owner = msg.sender;
 
-        topdomain = _topdomain;
-        domain = _domain;
+        topdomain = _params.topdomain;
+        domain = _params.domain;
 
-        factoryFrontend = _factoryFrontend;
-        blogImplementation = _blogImplementation;
-        blogFrontendImplementation = _blogFrontendImplementation;
-        blogFrontendLibrary = _blogFrontendLibrary;
+        factoryFrontend = _params.factoryFrontend;
+        factoryToken = _params.factoryToken;
+        blogImplementation = _params.blogImplementation;
+        blogFrontendImplementation = _params.blogFrontendImplementation;
+        blogFrontendLibrary = _params.blogFrontendLibrary;
 
         // Adding some backlinks
         factoryFrontend.setBlogFactory(this);
+        factoryToken.setBlogFactory(this);
         blogFrontendLibrary.setBlogFactory(this);
 
-        ensNameWrapper = _ensNameWrapper;
-        ensEthRegistrarController = __ensEthRegistrarController;
-        ensBaseRegistrar = _ensBaseRegistrar;
+        ensNameWrapper = _params.ensNameWrapper;
+        ensEthRegistrarController = _params.ensEthRegistrarController;
+        ensBaseRegistrar = _params.ensBaseRegistrar;
 
-        ethsFileStore = _ethfsFileStore;
+        ethFsFileStore = _params.ethfsFileStore;
 
-        ethStorage = _ethStorage;
+        ethStorage = _params.ethStorage;
     }
 
     /**
@@ -427,6 +446,10 @@ contract DBlogFactory is ERC721A("web3://dblog.eth", "DBLOG") {
             DBlog blog = blogs[startTokenId + i];
             blog.clearEditors();
         }
+    }
+
+    function tokenSVG(uint tokenId) public view returns (string memory) {
+        return factoryToken.tokenSVG(tokenId);
     }
 
 

@@ -170,7 +170,7 @@ contract DBlog {
     function addPostOnEthereumState(string memory postTitle, string memory postContent, uint8 contentFormatVersion, bytes20 extra) public onlyOwnerOrEditors {
         // Initialise the FileStore if not done yet
         if(address(fileStore) == address(0)) {
-            fileStore = FileStore(Clones.clone(address(factory.ethsFileStore())));
+            fileStore = FileStore(Clones.clone(address(factory.ethFsFileStore())));
         }
 
         posts.push();
@@ -291,7 +291,7 @@ contract DBlog {
     function addUploadedFileOnEthfs(string memory fileName, string memory contentType, bytes memory fileContents) public onlyOwnerOrEditors {
         // Initialise the FileStore if not done yet
         if(address(fileStore) == address(0)) {
-            fileStore = FileStore(Clones.clone(address(factory.ethsFileStore())));
+            fileStore = FileStore(Clones.clone(address(factory.ethFsFileStore())));
         }
 
         uploadedFiles.push();
