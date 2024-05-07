@@ -11,6 +11,8 @@ import {IPriceOracle} from "ens-contracts/ethregistrar/IPriceOracle.sol";
 import {FileStore, File} from "ethfs/FileStore.sol";
 // EthStorage
 import {TestEthStorageContractKZG} from "storage-contracts-v1/TestEthStorageContractKZG.sol";
+// ERC721A
+import {ERC721A} from "ERC721A/ERC721A.sol";
 
 import "./DBlogFactoryFrontend.sol";
 import "./DBlog.sol";
@@ -18,7 +20,7 @@ import "./DBlogFrontend.sol";
 import "./DBlogFrontendLibrary.sol";
 import "./library/Strings.sol";
 
-contract DBlogFactory {
+contract DBlogFactory is ERC721A("web3://dblog.eth", "DBLOG") {
     DBlogFactoryFrontend public immutable factoryFrontend;
 
     DBlog public immutable blogImplementation;
@@ -27,6 +29,7 @@ contract DBlogFactory {
     DBlogFrontendLibrary public immutable blogFrontendLibrary;
 
     DBlog[] public blogs;
+    mapping(DBlog => uint) public blogToIndex;
     event BlogCreated(uint indexed blogId, address blog, address blogFrontend);
 
     NameWrapper public ensNameWrapper;
@@ -110,8 +113,12 @@ contract DBlogFactory {
         DBlog newBlog = DBlog(Clones.clone(address(blogImplementation)));
         DBlogFrontend newBlogFrontend = DBlogFrontend(Clones.clone(address(blogFrontendImplementation)));
 
-        newBlog.initialize(this, msg.sender, newBlogFrontend, subdomain, title, description);
+        newBlog.initialize(this, newBlogFrontend, subdomain, title, description);
         blogs.push(newBlog);
+        blogToIndex[newBlog] = blogs.length - 1;
+
+        // Mint an ERC721 token. TokenId will match blogs index
+        _mint(msg.sender, 1);
 
         // Subdomain requested?
         if(bytes(subdomain).length > 0) {
@@ -267,11 +274,12 @@ contract DBlogFactory {
     // ENS : Custom resolver
     //
 
-    function supportsInterface(bytes4 interfaceID) public pure returns (bool) {
-        return interfaceID == 0x01ffc9a7 || 
-            interfaceID == 0x3b3b57de || // ENS EIP-137 addr(bytes32)
-            interfaceID == 0xf1cb7e06 || // ENS EIP-2304 addr(bytes32, uint256)
-            interfaceID == 0x59d1d43c; // ENS EIP-634 text()
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+        return interfaceId == 0x01ffc9a7 || 
+            interfaceId == 0x3b3b57de || // ENS EIP-137 addr(bytes32)
+            interfaceId == 0xf1cb7e06 || // ENS EIP-2304 addr(bytes32, uint256)
+            interfaceId == 0x59d1d43c ||  // ENS EIP-634 text()
+            ERC721A.supportsInterface(interfaceId);
     }
 
     // EIP-137 : Addr()
@@ -401,6 +409,24 @@ contract DBlogFactory {
 
     function onERC1155BatchReceived(address _operator, address _from, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external returns(bytes4) {
         return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
+    }
+
+
+    //
+    // ERC721
+    //
+
+    function _afterTokenTransfers(
+        address from,
+        address to,
+        uint256 startTokenId,
+        uint256 quantity
+    ) internal override {
+        // When blogs are transfered, clear the editor list
+        for(uint i = 0; i < quantity; i++) {
+            DBlog blog = blogs[startTokenId + i];
+            blog.clearEditors();
+        }
     }
 
 

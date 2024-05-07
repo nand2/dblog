@@ -6,7 +6,7 @@ broadcast = "contracts/broadcast"
 libs = ["contracts/lib"]
 script = "contracts/script"
 cache_path = "contracts/cache"
-remappings = ["solady/=contracts/lib/ethfs/packages/contracts/lib/solady/src/", "ethfs/=contracts/lib/ethfs/packages/contracts/src/", "ens-contracts/=contracts/lib/ens-contracts/contracts/", "@openzeppelin/contracts/=contracts/lib/openzeppelin-contracts/contracts/", "@ensdomains/buffer/=contracts/lib/buffer/", "@openzeppelin/contracts-upgradeable/=contracts/lib/openzeppelin-contracts-upgradeable/contracts/"]
+remappings = ["solady/=contracts/lib/ethfs/packages/contracts/lib/solady/src/", "ethfs/=contracts/lib/ethfs/packages/contracts/src/", "ens-contracts/=contracts/lib/ens-contracts/contracts/", "@openzeppelin/contracts/=contracts/lib/openzeppelin-contracts/contracts/", "@ensdomains/buffer/=contracts/lib/buffer/", "@openzeppelin/contracts-upgradeable/=contracts/lib/openzeppelin-contracts-upgradeable/contracts/", "ERC721A=contracts/lib/ERC721A/contracts/"]
 
 solc = "0.8.24"
 evm_version = "cancun"

@@ -14,8 +14,6 @@ contract DBlog {
     // Link to the frontend of this blog, answering the web3:// calls
     DBlogFrontend public frontend;
 
-    // The owner of the DBlog
-    address public owner;
     // Editors of the blog
     address[] public editors;
 
@@ -74,8 +72,13 @@ contract DBlog {
     }
     BlogPost[] public posts;
 
+    modifier onlyFactory() {
+        require(msg.sender == address(factory), "Not factory");
+        _;
+    }
+
     modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
+        require(msg.sender == owner(), "Not owner");
         _;
     }
 
@@ -87,17 +90,15 @@ contract DBlog {
                 break;
             }
         }
-        require(msg.sender == owner || isEditor, "Not owner or editor");
+        require(msg.sender == owner() || isEditor, "Not owner or editor");
         _;
     }
 
     // Because we will clone this contract, we initialize it with this instead of the constructor
-    function initialize(DBlogFactory _factory, address _owner, DBlogFrontend _frontend, string memory _subdomain, string memory _title, string memory _description) public {
+    function initialize(DBlogFactory _factory, DBlogFrontend _frontend, string memory _subdomain, string memory _title, string memory _description) public {
         require(address(factory) == address(0), "Already initialized");
 
         factory = _factory;
-
-        owner = _owner;
 
         frontend = _frontend;
         frontend.initialize(this);
@@ -112,12 +113,8 @@ contract DBlog {
         }
     }
 
-    // To not overwhelm RPC clients (rate limits), pack as much infos as we can in a single call
-    function getTitleAndDescriptionAndOwner() public view returns (string memory, string memory, address) {
-        return (title, description, owner);
-    }
-    function getEditorsAndPostsAndUploadedFiles() public view returns (address[] memory, BlogPost[] memory, FileInfosWithStorageMode[] memory) {
-        return (editors, posts, uploadedFiles);
+    function owner() public view returns (address) {
+        return factory.ownerOf(factory.blogToIndex(this));
     }
 
     function setTitle(string memory _title) public onlyOwner {
@@ -155,6 +152,13 @@ contract DBlog {
                 editors.pop();
                 break;
             }
+        }
+    }
+
+    function clearEditors() public onlyFactory {
+        // Remove all editors from the array
+        while(editors.length > 0) {
+            editors.pop();
         }
     }
 
@@ -473,6 +477,20 @@ contract DBlog {
 
 
     //
+    // Some calls with infos packed as much as possible in order to not overwhelm RPC clients
+    // for web3:// calls
+    //
+
+    function getTitleAndDescriptionAndOwner() public view returns (string memory, string memory, address) {
+        return (title, description, owner());
+    }
+
+    function getEditorsAndPostsAndUploadedFiles() public view returns (address[] memory, BlogPost[] memory, FileInfosWithStorageMode[] memory) {
+        return (editors, posts, uploadedFiles);
+    }
+
+
+    //
     // Blog frontend : expose data to be called in web3://
     // That is the current limitation of the resourceRequest mode : if you want to 
     // expose structured data in JSON like in auto mode, you have to manually serialize it
@@ -488,7 +506,7 @@ contract DBlog {
     // Extension for the future
     // 
 
-    function setFlags(bytes32 _flags) public onlyOwner {
-        flags = _flags;
-    }
+    // function setFlags(bytes32 _flags) public onlyOwner {
+    //     flags = _flags;
+    // }
 }
