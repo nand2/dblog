@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import { DBlogFactory } from "./DBlogFactory.sol";
 import { DBlog } from "./DBlog.sol";
 import "./library/Strings.sol";
+import "./interfaces/FileInfos.sol";
 
 contract DBlogFactoryToken {
     DBlogFactory public blogFactory;
@@ -39,6 +40,32 @@ contract DBlogFactoryToken {
                 '<text x="20" y="53" font-size="25">',
                     '<tspan x="20" dy="1em" font-size="', Strings.toString(subdomainFontSize), '">', blog.subdomain(), '</tspan>',
                     '<tspan x="20" dy="1.2em" opacity="0.6">', blogFactory.domain(), '.', blogFactory.topdomain(), '</tspan>',
+                '</text>'
+            );
+        }
+        else {
+            string memory addressStr = Strings.toHexString(address(blog.frontend()));
+            string memory addressStrPart1 = Strings.substring(addressStr, 0, 24);
+            string memory addressStrPart2 = Strings.substring(addressStr, 24, 42);
+
+            uint chainId = block.chainid;
+            FileStorageMode storageMode = blog.frontend().blogFrontendVersion().storageMode;
+            if(storageMode == FileStorageMode.EthStorage) {
+                if(block.chainid == 1) {
+                    chainId = 333;
+                }
+                else if(block.chainid == 11155111) {
+                    chainId = 3333;
+                }
+            }
+            if(chainId > 1) {
+                addressStrPart2 = string.concat(addressStrPart2, ":", Strings.toString(chainId));
+            }
+
+            svgAddressPart = string.concat(
+                '<text x="20" y="90" font-size="15">'
+                    '<tspan x="20" dy="-1.2em">', addressStrPart1, '</tspan>'
+                    '<tspan x="20" dy="1.2em">', addressStrPart2, '</tspan>'
                 '</text>'
             );
         }
