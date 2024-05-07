@@ -38,7 +38,7 @@ contract DBlogFactoryToken {
 
             svgAddressPart = string.concat(
                 '<text x="20" y="53" font-size="25">',
-                    '<tspan x="20" dy="1em" font-size="', Strings.toString(subdomainFontSize), '">', blog.subdomain(), '</tspan>',
+                    '<tspan x="20" dy="1em" font-size="', Strings.toString(subdomainFontSize), '">', blog.subdomain(), '.</tspan>',
                     '<tspan x="20" dy="1.2em" opacity="0.6">', blogFactory.domain(), '.', blogFactory.topdomain(), '</tspan>',
                 '</text>'
             );
@@ -92,6 +92,7 @@ contract DBlogFactoryToken {
                 '<text x="20" y="45" font-size="30">'
                     'web3://'
                 '</text>',
+                // Samples:
                 // '<text x="20" y="90" font-size="15">'
                 //     '<tspan x="20" dy="-1.2em">0x1613beB3B2C4f22Ee086B2</tspan>'
                 //     '<tspan x="20" dy="1.2em">b38C1476A3cE7f78E8:333</tspan>'
