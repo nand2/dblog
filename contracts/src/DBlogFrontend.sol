@@ -20,8 +20,8 @@ contract DBlogFrontend is IDecentralizedApp {
     // By default the frontend version used is chosen by the DblogFactory owner
     // But you can choose to override it and use a specific version
     // Useful if you don't want the new default frontend update to be applied to your blog
-    bool useNonDefaultFrontend;
-    uint overridenFrontendIndex;
+    bool public useNonDefaultFrontend;
+    uint public overridenFrontendIndex;
 
 
     modifier onlyBlogOwner() {
@@ -110,13 +110,8 @@ contract DBlogFrontend is IDecentralizedApp {
         // blogAddress.json : it exposes the addess of the blog
         if(resource.length == 1 && Strings.compare(resource[0], "blogAddress.json")) {
             uint chainid = block.chainid;
-            // Special case: Sepolia chain id 11155111 is > 65k, which breaks URL parsing in EVM browser
-            // As a temporary measure, we will test Sepolia with a fake chain id of 11155
-            // if(chainid == 11155111) {
-            //     chainid = 11155;
-            // }
             // Manual JSON serialization, safe with the vars we encode
-            body = string.concat("{\"address\":\"", Strings.toHexString(address(blog)), "\", \"chainId\":", Strings.toString(chainid), "}");
+            body = string.concat("{\"address\":\"", Strings.toHexString(address(blog)), "\", \"frontendAddress\":\"", Strings.toHexString(address(this)), "\", \"chainId\":", Strings.toString(chainid), "}");
             statusCode = 200;
             headers = new KeyValue[](1);
             headers[0].key = "Content-type";

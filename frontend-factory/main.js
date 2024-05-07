@@ -81,15 +81,9 @@ document.querySelector('#app').innerHTML = `
             <p>
               ➔ Your DBlog is a standalone smart contract, located on Ethereum at address <span id="new-blog-address"></span>
             </p>
-            <p id="created-blog-infos-ens">
-              ➔ You can use your own .eth domain by pointing it to the address of the smart contract
+            <p>
+              ➔ You can use your own .eth domain for it, see instructions in your blog admin page
             </p>
-            <p id="created-blog-infos-ens-ethstorage">
-              ➔ You can use your own .eth domain by putting a <i>contentcontract</i> TXT field to your domain with the following value: <i id="created-blog-infos-ens-ethstorage-txt-field"></i>
-            </p>
-            <!--<p>
-              ➔ Your DBlog smart contract is a immutable proxy to the reference DBlog smart contract located on Ethereum at address <span id="blog-implementation-address"></span>
-            </p>-->
           </div>
           <div>
             <!--<button id="copy-link">Copy link</button>-->

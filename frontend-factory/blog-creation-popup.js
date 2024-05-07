@@ -227,7 +227,6 @@ console.log("txResult", txResult)
 
     // Chain id addition
     let frontendUseEthStorageChain = false
-    let ethStorageEnsTXTField = "";
     if(subdomain) {
       // With the subdomain, there is a TXT record pointing to ethStorage chain
       if(chainId > 1) {
@@ -241,12 +240,10 @@ console.log("txResult", txResult)
       if(chainId == 1) {
         frontendUseEthStorageChain = true;
         targetChainId = 333;
-        ethStorageEnsTXTField = `es:${newBlogFrontendAddress}`
       }
       else if(chainId == 11155111) {
         frontendUseEthStorageChain = true;
         targetChainId = 3333;
-        ethStorageEnsTXTField = `es-t:${newBlogFrontendAddress}`
       }
       newBlogFrontendWeb3Address += `:${targetChainId}`
     }
@@ -255,15 +252,11 @@ console.log("newBlogAddress", newBlogAddress)
 console.log("newBlogFrontendAddress", newBlogFrontendAddress)
 console.log("newBlogFrontendWeb3Address", newBlogFrontendWeb3Address)
 console.log("frontendUseEthStorageChain", frontendUseEthStorageChain)
-console.log("ethStorageEnsTXTField", ethStorageEnsTXTField)
 
     // Inject it in the UI
     element.querySelector('#created-blog-address a').href = newBlogFrontendWeb3Address + "/"
     element.querySelector('#created-blog-address a').textContent = newBlogFrontendWeb3Address
     element.querySelector('#new-blog-address').textContent = newBlogFrontendAddress
-    element.querySelector('#created-blog-infos-ens').style.display = frontendUseEthStorageChain == false ? 'block' : 'none'
-    element.querySelector('#created-blog-infos-ens-ethstorage').style.display = frontendUseEthStorageChain ? 'block' : 'none'
-    element.querySelector('#created-blog-infos-ens-ethstorage-txt-field').textContent = ethStorageEnsTXTField
 
     // Hide step 1 and show step 2
     submitButton.disabled = false

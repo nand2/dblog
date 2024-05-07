@@ -466,4 +466,16 @@ contract DBlog {
         uploadedFile = uploadedFiles[uploadedFiles.length - 1];
         uploadedFiles.pop();
     }
+
+
+    //
+    // Blog frontend : expose data to be called in web3://
+    // That is the current limitation of the resourceRequest mode : if you want to 
+    // expose structured data in JSON like in auto mode, you have to manually serialize it
+    // Should be a good idea of a new extension of the resourceRequest mode
+    //
+
+    function frontendVersion() public view returns (FrontendFilesSet memory, bool, uint256) {
+        return (frontend.blogFrontendVersion(), frontend.useNonDefaultFrontend(), frontend.overridenFrontendIndex());
+    }
 }

@@ -6,13 +6,15 @@ import { strip_tags } from './utils.js'
 // Calling ourselves (so via a relative web3:// address) to fetch the address
 // of the blog smart contract
 let blogAddress = null
+let frontendAddress = null
 let chainId = null
 try {
   await fetch(`/blogAddress.json`)
     .then(response => response.json())
     .then(data => {
-      console.log("Fetched blog address : ", data.address, data.chainId)
+      console.log("Fetched blog address : ", data.address, data.frontendAddress, data.chainId)
       blogAddress = data.address
+      frontendAddress = data.frontendAddress
       chainId = data.chainId
     })
 }
@@ -59,29 +61,61 @@ document.querySelector('#app').innerHTML = `
     </div>
     <div id="page-admin">
       <h2 class="page-title">Admin</h2>
-      <h3>Blog entries <a href="/#/add">[Add new]</a></h3>
-      <div id="admin-blog-entries">
-        <!--<div class="blog-entry">
-          2023-02-01 <a href="/#/entry/xx">My first blog entry</a> - <a href="/#/entry/xx/edit">Edit</a>
-        </div>-->
-      </div>
-      <h3>Editors</h3>
-      <div id="admin-editors">
-        <!--<div class="editor">
-          <span>0x1234...5678</span> (blog owner)
+      <div id="admin-cols">
+        <div class="col">
+          <h3>Blog entries <a href="/#/add">[Add new]</a></h3>
+          <div id="admin-blog-entries">
+            <!--<div class="blog-entry">
+              2023-02-01 <a href="/#/entry/xx">My first blog entry</a> - <a href="/#/entry/xx/edit">Edit</a>
+            </div>-->
+          </div>
+          <h3>Editors</h3>
+          <div id="admin-editors">
+            <!--<div class="editor">
+              <span>0x1234...5678</span> (blog owner)
+            </div>
+            <div class="editor">
+              <span>0x1234...5678</span> <button type="button" class="admin-remove-editor">Remove</button>
+            </div>-->
+          </div>
+          <form id="admin-editor-add">
+            <input type="text" id="admin-new-editor-address" placeholder="New editor ethereum address">
+            <button type="submit" id="admin-add-editor">Add editor</button>
+          </form>
+          <h3>Uploaded files</h3>
+          <div id="admin-uploaded-files">
+            <ul>
+              <!--<li><a href="/...">File name</a> <button type="button" class="admin-remove-file">Remove</button></li>-->
+            </ul>
+          </div>
         </div>
-        <div class="editor">
-          <span>0x1234...5678</span> <button type="button" class="admin-remove-editor">Remove</button>
-        </div>-->
+        <div class="col">
+          <h3>Blog contract addresses</h3>
+          <div>
+            Frontend: <code id="admin-blog-frontend-address"></code>
+          </div>
+          <div>
+            Data: <code id="admin-blog-address"></code>
+          </div>
+          <h3>Using a custom .eth domain</h3>
+          <div id="admin-ens-ethereum-chain">
+            <div style="margin-bottom:5px">
+              To use your blog with a custom .eth domain, you need to point your domain to the following address :
+            </div>
+            <div>
+              <code id="admin-ens-address"></code>
+            </div>
+          </div>
+          <div id="admin-ens-other-chain">
+            <div style="margin-bottom:5px">
+              To use your blog with a custom .eth domain, you need to add a TXT record to your ENS domain with a key of <code>contentcontract</code> and the following value :
+            </div>
+            <div>
+              <code id="admin-ens-custom-txt"></code>
+            </div>
+          </div>
+        </div>
       </div>
-      <form id="admin-editor-add">
-        <input type="text" id="admin-new-editor-address" placeholder="New editor ethereum address">
-        <button type="submit" id="admin-add-editor">Add editor</button>
-      </form>
-      <h3>Uploaded files</h3>
-      <ul id="admin-uploaded-files">
-        <!--<li><a href="/...">File name</a> <button type="button" class="admin-remove-file">Remove</button></li>-->
-      </ul>
     </div>
     <div id="page-entry-edit">
       <h2 class="page-title">New blog post</h2>
@@ -158,4 +192,4 @@ catch(error) {
 }
 
 // Setup the routing
-setupRouting(blogAddress, chainId, blogOwner)
+setupRouting(frontendAddress, blogAddress, chainId, blogOwner)

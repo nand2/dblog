@@ -336,9 +336,7 @@ export async function homeController(blogAddress, chainId) {
   // Insert the posts
   if(posts.length == 0) {
     blogEntries.innerHTML = `
-      <div class="blog-entry">
-        <h2 class="title"><a href="/#/add">Add your first post</a></h2>
-      </div>
+      <div class="no-entries">No blog entries yet</div>
     `;
   }
   posts.reverse().forEach(post => {
@@ -393,7 +391,7 @@ export async function blogEntryController(blogAddress, chainId) {
 /**
  * Admin page controller
  */
-export async function adminController(blogAddress, chainId, blogOwner) { 
+export async function adminController(blogAddress, chainId, frontendAddress, blogOwner) { 
 
   const loadAdminInterface = async () => {
     // Call the blog to fetch the editors, posts and uploaded files
@@ -452,6 +450,11 @@ export async function adminController(blogAddress, chainId, blogOwner) {
     // Insert the posts
     const blogEntries = document.getElementById('admin-blog-entries')
     blogEntries.innerHTML = ''
+    if(posts.length == 0) {
+      blogEntries.innerHTML = `
+        <div class="no-entries">No blog entries yet</div>
+      `;
+    }
     posts.reverse().forEach(post => {
       let blogEntry = document.createElement('div')
       blogEntry.className = 'blog-entry'
@@ -491,6 +494,7 @@ export async function adminController(blogAddress, chainId, blogOwner) {
           await sendTransaction(blogAddress, chainId, "removeEditor", [addressToRemove]);
         }
         catch (error) {
+          console.error(error)
           alert(error.message)
           return
         }
@@ -530,12 +534,21 @@ export async function adminController(blogAddress, chainId, blogOwner) {
     // Insert the uploaded files
     const adminUploadedFiles = document.getElementById('admin-uploaded-files')
     adminUploadedFiles.innerHTML = ''
-    uploadedFiles.forEach(file => {
-      let fileDiv = document.createElement('li')
-      fileDiv.className = 'uploaded-file'
-      fileDiv.innerHTML = `<a href="/uploads/${file.name}">${file.name}</a> ${file.complete ? "" : "(incomplete)"} <button type="button" class="admin-remove-uploaded-file" uploaded-file-index="${file.id}">Remove</button>`
-      adminUploadedFiles.appendChild(fileDiv)
-    })
+    if(uploadedFiles.length == 0) {
+      adminUploadedFiles.innerHTML = `
+        <div class="no-entries">No uploaded files yet</div>
+      `;
+    }
+    else {
+      let ul = document.createElement('ul')
+      adminUploadedFiles.appendChild(ul)
+      uploadedFiles.forEach(file => {
+        let fileDiv = document.createElement('li')
+        fileDiv.className = 'uploaded-file'
+        fileDiv.innerHTML = `<a href="/uploads/${file.name}">${file.name}</a> ${file.complete ? "" : "(incomplete)"} <button type="button" class="admin-remove-uploaded-file" uploaded-file-index="${file.id}">Remove</button>`
+        ul.appendChild(fileDiv)
+      })
+    }
 
     // Add the event listener to remove uploaded files
     const removeUploadedFileButtons = document.querySelectorAll('.admin-remove-uploaded-file')
@@ -550,6 +563,7 @@ export async function adminController(blogAddress, chainId, blogOwner) {
           await sendTransaction(blogAddress, chainId, "removeUploadedFile", [uploadedFileIndex]);
         }
         catch (error) {
+          console.error(error)
           alert(error.message)
           return
         }
@@ -558,6 +572,52 @@ export async function adminController(blogAddress, chainId, blogOwner) {
         loadAdminInterface()
       })
     })
+
+
+    // Show the contract addresses
+    const adminBlogAddress = document.getElementById('admin-blog-address');
+    adminBlogAddress.innerHTML = blogAddress;
+    const adminBlogFrontendAddress = document.getElementById('admin-blog-frontend-address');
+    adminBlogFrontendAddress.innerHTML = frontendAddress;
+
+
+    // Instructions to use your own ENS domain
+    // First determine if the frontend is ethStorage or Ethereum
+    let storageMode = null
+    try {
+      await fetch(`web3://${blogAddress}:${chainId}/frontendVersion?returns=((uint8,(string,string,bytes32[])[],string,bool),bool,uint256)`)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched frontend version : ", data)
+          storageMode = fromHex(data[0][0], 'number')
+        })
+    }
+    catch(error) {
+      console.error(error)
+      alert('Fetching storage mode failed : ' + error.message)
+      return
+    }
+    // Show the correct instructions depending of the storage mode
+    const adminEnsEthereumChain = document.getElementById('admin-ens-ethereum-chain')
+    const adminEnsEthOtherChain = document.getElementById('admin-ens-other-chain')
+    adminEnsEthereumChain.style.display = 'none'
+    adminEnsEthOtherChain.style.display = 'none'
+    if(storageMode == 0 /** Ethereum */) {
+      adminEnsEthereumChain.style.display = 'block'
+      // Insert the frontend address to use for custom ENS domain use
+      const adminEnsAddress = document.getElementById('admin-ens-address')
+      adminEnsAddress.innerHTML = frontendAddress
+    }
+    else if(storageMode == 1 /** EthStorage */) {
+      adminEnsEthOtherChain.style.display = 'block'
+      // Insert the TXT record to use for custom ENS domain use
+      const adminEnsCustomTxt = document.getElementById('admin-ens-custom-txt')
+      let chainShortName = 'es'
+      if(chainId == 11155111) {
+        chainShortName = 'es-t'
+      }
+      adminEnsCustomTxt.innerHTML = `${chainShortName}:${frontendAddress}`
+    }
   }
   // Initial load
   loadAdminInterface()
