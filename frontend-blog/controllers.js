@@ -472,12 +472,12 @@ export async function adminController(blogAddress, chainId, frontendAddress, blo
     adminEditors.innerHTML = ''
     let ownerDiv = document.createElement('div')
     ownerDiv.className = 'editor'
-    ownerDiv.innerHTML = `<span>${blogOwner}</span> (blog owner)`
+    ownerDiv.innerHTML = `<code>${blogOwner}</code> (blog owner)`
     adminEditors.appendChild(ownerDiv)
     editors.forEach(editor => {
       let editorDiv = document.createElement('div')
       editorDiv.className = 'editor'
-      editorDiv.innerHTML = `<span>${editor}</span> <button type="button" class="admin-remove-editor" editor-address="${editor}">Remove</button>`
+      editorDiv.innerHTML = `<code>${editor}</code> <button type="button" class="admin-remove-editor" editor-address="${editor}">Remove</button>`
       adminEditors.appendChild(editorDiv)
     })
 

@@ -172,6 +172,12 @@ a#admin-link {
   height: auto;
 }
 
+@media (max-width: 768px) {
+  .blog-entry-content img {
+    width: 100%;
+  }
+}
+
 
 /** 
  *Admin page 
@@ -197,6 +203,13 @@ a#admin-link {
 
 #page-admin #admin-cols .col {
   flex: 0 50%;
+}
+
+@media (max-width: 768px) {
+  #page-admin #admin-cols {
+    flex-direction: column;
+    gap: 0;
+  }
 }
 
 #page-admin #admin-blog-entries .edit-link {
@@ -231,11 +244,23 @@ a#admin-link {
   display: flex;
   gap: 1em;
 }
+@media (max-width: 768px) {
+  #page-entry-edit form .form-row {
+    flex-direction: column;
+    gap: 0.2em;
+  }
+}
 
 #page-entry-edit form label {
   flex: 0 0 100px;
   text-align: right;
   margin-top: 0.25em;
+}
+@media (max-width: 768px) {
+  #page-entry-edit form label {
+    flex: 0 0 100%;
+    text-align: left;
+  }
 }
 
 #page-entry-edit form input, #page-entry-edit form textarea {
@@ -310,4 +335,9 @@ a#admin-link {
   display: flex;
   margin-left: 120px;
   gap: 1em;
+}
+@media (max-width: 768px) {
+  #page-entry-edit form .buttons {
+    margin-left: 0;
+  }
 }
