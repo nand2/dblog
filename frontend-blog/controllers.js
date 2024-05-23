@@ -678,8 +678,10 @@ export async function entryEditController(blogAddress, chainId) {
   const applyPreviewShownState = () => {
     page.querySelector('#content-textarea').style.display = isPreviewShown ? 'none' : 'flex'
     page.querySelector('#content-preview').style.display = isPreviewShown ? 'block' : 'none'
-    showMarkdownButton.classList.toggle('active', !isPreviewShown)
-    showPreviewButton.classList.toggle('active', isPreviewShown)
+    // showMarkdownButton.classList.toggle('secondary', isPreviewShown)
+    // showPreviewButton.classList.toggle('secondary', !isPreviewShown)
+    showMarkdownButton.disabled = !isPreviewShown
+    showPreviewButton.disabled = isPreviewShown
     if(isPreviewShown) {
       const md = markdownit().use(markdown_it_multi_imgsize_plugin)
       page.querySelector('#content-preview').innerHTML = md.render(strip_tags(page.querySelector('#content').value))

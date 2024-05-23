@@ -23,11 +23,11 @@ await fetch(`/blogFactoryAddress.json`)
 document.querySelector('#app').innerHTML = `
   <div>
     <img src="${logo}" class="logo vanilla" alt="DBlog logo" />
-    <h1>DBlog</h1>
+    <h1>DBlog.eth</h1>
     <button id="create-your-own">Create your DBlog</button>
 
     <p class="read-the-docs">
-      Decentralized <a href="web3://w3url.eth/">web3://</a> blogs with <a href="web3://eth-store.eth/">EthStorage</a>
+      Unstoppable decentralized <a href="web3://w3url.eth/">web3://</a> blogs
     </p>
     
     <div id="blogs">
@@ -69,7 +69,7 @@ document.querySelector('#app').innerHTML = `
               Error message
             </div>
             <button type="submit">Create</button>
-            <button type="button" id="cancel">Cancel</button>
+            <button type="button" id="cancel"class="secondary">Cancel</button>
           </form>
         </div>
         <div id="step-2">
@@ -79,7 +79,10 @@ document.querySelector('#app').innerHTML = `
           </div>
           <div id="created-blog-infos">
             <p>
-              ➔ Your DBlog is a standalone smart contract, located on Ethereum at address <span id="new-blog-address"></span>
+              ➔ Your DBlog will appear as a NFT in your wallet. The owner of the NFT is the owner of the blog.
+            </p>
+            <p>
+              ➔ Your DBlog is made of several standalone smart contracts. Your frontend contract is located on Ethereum at address <code id="new-blog-address"></code>
             </p>
             <p>
               ➔ You can use your own .eth domain for it, see instructions in your blog admin page

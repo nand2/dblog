@@ -1,16 +1,55 @@
 :root {
+  --color-root-bg: #fff;
+
+  --color-popup-bg: var(--color-root-bg);
+  --color-panel-bg: #ccc;
+
+  --color-heading: #333;
+  --color-divider: #cdcdcd;
+  --color-text: #333;
+  --color-text-muted: #666;
+  --color-link: #337ab7;
+  --color-link-hover: #2b6aa1;
+
+  --color-button-bg: #aaa;
+  --color-button-secondary-bg: #ccc;
+  --color-button: var(--color-text);
+  --color-button-disabled: #888;
+  --color-button-hover-border: #888;
+
+  --color-input-bg: #fff;
+  --color-button-hover-border: #888;
+
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--color-text);
+  background-color: var(--color-root-bg);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-root-bg: #242424;
+
+    --color-panel-bg: #1a1a1a;
+
+    --color-heading: #dfdfdf;
+    --color-divider: #8b8b8b;
+    --color-text: #fafafa;
+    --color-text-muted: #888;
+    --color-link: #646cff;
+    --color-link-hover: #535bf2;
+
+    --color-button-bg: #1a1a1a;
+    --color-button-secondary-bg: #1e1e1e;
+    --color-button-hover-border: #646cff;
+
+    --color-input-bg: #1a1a1a;
+    --color-button-hover-border: #646cff;
+  }
 }
 
 /** 
@@ -20,12 +59,11 @@
 @media (prefers-color-scheme: dark) {pre {color: rgba(255, 255, 255, 0.87)}}
 
 a {
-  /* font-weight: 500; */
-  color: #646cff;
+  color: var(--color-link);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--color-link-hover);
 }
 
 body {
@@ -40,8 +78,8 @@ form input, form textarea {
   padding: 0.5em;
   border-radius: 8px;
   border: 1px solid #00000033;
-  background-color: #1a1a1a;
-  color: #fff;
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
   transition: border-color 0.25s;
 }
 
@@ -75,7 +113,35 @@ h2.page-title {
 }
 
 .no-entries {
-  color: #888;
+  color: var(--color-text-muted);
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.5em 1em;
+  font-size: 1em;
+  font-family: inherit;
+  background-color: var(--color-button-bg);
+  color: var(--color-button);
+  transition: border-color 0.25s;
+}
+button[disabled] {
+  cursor: default;
+  color: var(--color-button-disabled);
+}
+button:not([disabled]) {
+  cursor: pointer;
+}
+button:not([disabled]):hover {
+  border-color: var(--color-button-hover-border);
+}
+button:not([disabled]):focus,
+button:not([disabled]):focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+button.secondary {
+  background-color: var(--color-button-secondary-bg);
 }
 
 
@@ -88,13 +154,13 @@ h2.page-title {
 }
 
 #blog-title a {
-  color: #fff;
+  color: var(--color-heading);
   text-decoration: none;
   font-weight: bold;
 }
 
 #blog-subtitle {
-  color: #888;
+  color: var(--color-text-muted);
   margin-top: 0.2em;
   margin-bottom: 0em;
   font-size: 1.2em;
@@ -103,7 +169,7 @@ h2.page-title {
 hr#main-separator {
   margin: 3em 0;
   border: none;
-  border-top: 4px solid #888;
+  border-top: 4px solid var(--color-divider);
 }
 
 a#admin-link {
@@ -151,7 +217,7 @@ a#admin-link {
 
 #page-entry hr {
   border: none;
-  border-top: 2px solid #888;
+  border-top: 2px solid var(--color-divider);
 }
 
 #page-entry .sub-hr {
@@ -277,13 +343,6 @@ a#admin-link {
   line-height: 1.4em;
 }
 
-#page-entry-edit form button {
-  cursor: pointer;
-  border: none;
-  border-radius: 8px;
-  padding: 0.5em 1em;
-}
-
 #page-entry-edit form .editor-toolbar {
   display: flex; 
   gap: 0.5em;
@@ -291,7 +350,6 @@ a#admin-link {
 }
 
 #page-entry-edit form .editor-toolbar button.active {
-  background-color: #1a1a1a;
   cursor: default;
 }
 

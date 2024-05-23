@@ -128,7 +128,7 @@ document.querySelector('#app').innerHTML = `
           <label for="content">Content</label>
           <div style="flex: 1;">
             <div class="editor-toolbar">
-              <button type="input" id="button-markdown" class="active">Markdown</button>
+              <button type="input" id="button-markdown" disabled="disabled">Markdown</button>
               <button type="input" id="button-preview">Preview</button>
               <button type="input" id="button-insert-image">Insert image</button>
             </div>
