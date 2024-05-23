@@ -207,6 +207,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp {
         return frontendVersions[defaultFrontendIndex];
     }
 
+    // web3:// protocol
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
         TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();

@@ -14,7 +14,13 @@ if [ "$SECTION" != "all" ] && [ "$SECTION" != "contracts" ] && [ "$SECTION" != "
   exit 1
 fi
 # Domain name: If empty, default to "dblog"
-DOMAIN=${3:-dblog}
+DEFAULT_DOMAIN="dblog"
+# dblog lost on sepolia...
+if [ "$TARGET_CHAIN" == "sepolia" ]; then
+  DOMAIN="eblog"
+fi
+DOMAIN=${3:-$DEFAULT_DOMAIN}
+
 
 # Setup cleanup
 function cleanup {

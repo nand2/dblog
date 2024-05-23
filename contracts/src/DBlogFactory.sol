@@ -45,7 +45,7 @@ contract DBlogFactory is ERC721A {
     uint constant private COIN_TYPE_ETH = 60;
 
     // EthFs contract
-    FileStore public ethFsFileStore;
+    FileStore public immutable ethFsFileStore;
 
     // EthStorage contract
     TestEthStorageContractKZG public ethStorage;
@@ -297,7 +297,7 @@ contract DBlogFactory is ERC721A {
         return interfaceId == 0x01ffc9a7 || 
             interfaceId == 0x3b3b57de || // ENS EIP-137 addr(bytes32)
             interfaceId == 0xf1cb7e06 || // ENS EIP-2304 addr(bytes32, uint256)
-            interfaceId == 0x59d1d43c ||  // ENS EIP-634 text()
+            interfaceId == 0x59d1d43c || // ENS EIP-634 text()
             ERC721A.supportsInterface(interfaceId);
     }
 

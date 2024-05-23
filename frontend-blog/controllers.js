@@ -105,7 +105,7 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
 
   // Check presence of EIP-1193 provider
   if (burnerWallet == null && !window.ethereum) {
-    stopWithError('No Ethereum provider found')
+    throw new Error('No Ethereum provider found')
     return
   }
 
@@ -1003,7 +1003,8 @@ console.log("txResult", txResult)
     // Ethereum mainnet or sepolia: Store on EthStorage
     if(chainId == 1 || chainId == 11155111) {
       // Ensure max content size to fit in blob
-      blobs = toBlobs({ data: stringToHex(content) });
+      let contentHexData = stringToHex(content);
+      blobs = toBlobs({ data: contentHexData });
       if(blobs.length > 1) {
         stopWithError('Blog post entry too big (must be less than 126976 chars)')
         return
@@ -1023,13 +1024,12 @@ console.log("txResult", txResult)
           stopWithError('EthStorage upfront fee fetching failed : ' + error.message)
           return
         }
-
         methodName = "addPostOnEthStorage";
-        args = [title, content.length, 0, '0x' + '00'.repeat(20)];
+        args = [title, (contentHexData.length - 2) / 2, 0, '0x' + '00'.repeat(20)];
       }
       else {
         methodName = "editEthStoragePost";
-        args = [postNumber, title, content.length, 0, '0x' + '00'.repeat(20)];
+        args = [postNumber, title, (contentHexData.length - 2) / 2, 0, '0x' + '00'.repeat(20)];
       }
     }
     // Other networks: Otherwise store on state
