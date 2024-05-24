@@ -907,7 +907,7 @@ console.log("txResult", txResult)
         markdownEditor.dispatch({ changes: { 
           from: markdownEditor.state.selection.main.from, 
           to: markdownEditor.state.selection.main.from, 
-          insert: `![Image desc](${imageUrl})` 
+          insert: `![Image description](${imageUrl})` 
         }})
 
         revertFormState()

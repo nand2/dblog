@@ -243,7 +243,11 @@ a#admin-link {
   color: #888;
 }
 
-/** Blog entry content, also reused in edit page preview */
+/** Markdown blog entry content, also reused in edit page preview. Aiming to look like github */
+
+.blog-entry-content h1, .blog-entry-content h2 {
+  border-bottom: 1px solid var(--color-divider);
+}
 
 .blog-entry-content img {
   max-width: 100%;
@@ -254,6 +258,43 @@ a#admin-link {
   .blog-entry-content img {
     width: 100%;
   }
+}
+
+.blog-entry-content blockquote {
+  color: var(--color-text-muted);
+  border-left: .25em solid var(--color-divider);
+  padding: 0 1em;
+  margin: 0;
+}
+
+.blog-entry-content code {
+  background-color: var(--color-panel-bg);
+  padding: .2em .4em;
+  border-radius: 6px;
+}
+
+.blog-entry-content pre {
+  padding: 16px;
+  background-color: var(--color-panel-bg);
+}
+
+.blog-entry-content pre code {
+  padding: 0;
+}
+
+.blog-entry-content table {
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+.blog-entry-content table tr:nth-child(2n) {
+  background-color: var(--color-panel-bg);
+}
+
+.blog-entry-content table th, 
+.blog-entry-content table td {
+  padding: 6px 13px;
+  border: 1px solid var(--color-divider);
 }
 
 
