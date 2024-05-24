@@ -18,7 +18,8 @@
   --color-button-hover-border: #888;
 
   --color-input-bg: #fff;
-  --color-button-hover-border: #888;
+  --color-input-border: #00000066;
+  --color-input-focus-outline: rgb(201, 201, 201);
 
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -48,7 +49,7 @@
     --color-button-hover-border: #646cff;
 
     --color-input-bg: #1a1a1a;
-    --color-button-hover-border: #646cff;
+    --color-input-focus-outline: rgb(116, 116, 116);
   }
 }
 
@@ -77,10 +78,48 @@ body {
 form input, form textarea {
   padding: 0.5em;
   border-radius: 8px;
-  border: 1px solid #00000033;
+  border: 1px solid var(--color-input-border);
   background-color: var(--color-input-bg);
   color: var(--color-text);
   transition: border-color 0.25s;
+}
+
+form input:focus-visible, orm textarea:focus-visible {
+  outline: 1px solid var(--color-input-focus-outline);
+}
+
+.cm-editor {
+  border: 1px solid var(--color-input-border);
+  /* background-color: var(--color-input-bg);
+  color: var(--color-text); */
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.5em 1em;
+  font-size: 1em;
+  font-family: inherit;
+  background-color: var(--color-button-bg);
+  color: var(--color-button);
+  transition: border-color 0.25s;
+}
+button[disabled] {
+  cursor: default;
+  color: var(--color-button-disabled);
+}
+button:not([disabled]) {
+  cursor: pointer;
+}
+button:not([disabled]):hover {
+  border-color: var(--color-button-hover-border);
+}
+button:not([disabled]):focus,
+button:not([disabled]):focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+button.secondary {
+  background-color: var(--color-button-secondary-bg);
 }
 
 
@@ -116,33 +155,6 @@ h2.page-title {
   color: var(--color-text-muted);
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.5em 1em;
-  font-size: 1em;
-  font-family: inherit;
-  background-color: var(--color-button-bg);
-  color: var(--color-button);
-  transition: border-color 0.25s;
-}
-button[disabled] {
-  cursor: default;
-  color: var(--color-button-disabled);
-}
-button:not([disabled]) {
-  cursor: pointer;
-}
-button:not([disabled]):hover {
-  border-color: var(--color-button-hover-border);
-}
-button:not([disabled]):focus,
-button:not([disabled]):focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-button.secondary {
-  background-color: var(--color-button-secondary-bg);
-}
 
 
 /** 
@@ -333,16 +345,6 @@ a#admin-link {
   flex: 1;
 }
 
-#page-entry-edit form input:focus-visible, #page-entry-edit form textarea:focus-visible {
-  outline: 2px solid rgb(116, 116, 116);
-}
-
-#page-entry-edit form textarea {
-  resize: vertical;
-  min-height: 300px;
-  line-height: 1.4em;
-}
-
 #page-entry-edit form .editor-toolbar {
   display: flex; 
   gap: 0.5em;
@@ -358,13 +360,19 @@ a#admin-link {
   margin-left: auto;
 }
 
-#page-entry-edit form #content-textarea {
+#page-entry-edit form #content-area {
   display: flex;
+  min-height: 300px;
+  max-height: 600px;
+}
+
+#page-entry-edit form #content-area .cm-editor {
+  flex: 1;
 }
 
 #page-entry-edit form #content-preview {
   display: none;
-  min-height: 312px;
+  min-height: 300px;
 }
 
 #page-entry-edit form #burner-address-area {

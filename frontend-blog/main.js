@@ -132,8 +132,8 @@ document.querySelector('#app').innerHTML = `
               <button type="input" id="button-preview">Preview</button>
               <button type="input" id="button-insert-image">Insert image</button>
             </div>
-            <div id="content-textarea">
-              <textarea id="content" name="content"></textarea>
+            <div id="content-area">
+              <!-- Markdown editor goes here -->
             </div>
             <div id="content-preview" class="blog-entry-content">
             </div>

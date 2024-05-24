@@ -7,6 +7,10 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia, mainnet, anvil } from 'viem/chains'
 import { loadKZG } from 'kzg-wasm'
 import mime from 'mime';
+import { basicSetup, EditorView } from "codemirror"
+import { markdown } from "@codemirror/lang-markdown"
+import { EditorState, Compartment } from "@codemirror/state"
+import { oneDark } from '@codemirror/theme-one-dark';
 
 
 // Frontent contract ABI
@@ -631,15 +635,49 @@ export async function entryEditController(blogAddress, chainId) {
   const page = document.getElementById('page-entry-edit');
   
   const titleField = page.querySelector('#title');
+  const contentArea = page.querySelector('#content-area');
+  const contentPreview = page.querySelector('#content-preview');
   const insertImageButton = page.querySelector('#button-insert-image')
-  const contentField = page.querySelector('#content');
   const burnerAddressPrivateKeyField = page.querySelector('#burner-address-private-key');
   const generateBurnerAddressButton = page.querySelector('#generate-burner-address');
   const submitButton = page.querySelector('button[type="submit"]');
 
+  // Initialize the markdown editor
+  let markdownEditorTheme = (isDark) => {
+    return isDark ? oneDark : EditorView.baseTheme({
+      "&.cm-focused": {
+        outline: "none",
+      },
+    })
+  }
+  let markdownEditorExtensions = () => [
+    basicSetup, 
+    markdown(),
+    markdownEditorThemeCompartment.of(markdownEditorTheme(window.matchMedia('(prefers-color-scheme: dark)').matches)),
+    markdownEditorReadonlyCompartment.of(EditorState.readOnly.of(false))
+  ]
+  let markdownEditorReadonlyCompartment = new Compartment()
+  let markdownEditorThemeCompartment = new Compartment()
+  let markdownEditor = EditorView.findFromDOM(contentArea)
+  if(markdownEditor == null) {
+    markdownEditor = new EditorView({
+      doc: "",
+      extensions: markdownEditorExtensions(),
+      parent: contentArea
+    })
+    // Setup light/dark mode switch listener
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+      markdownEditor.dispatch({
+        effects: markdownEditorThemeCompartment.reconfigure(
+          markdownEditorTheme(event.matches)
+        )
+      });
+    })
+  }
+
   // Reinit fields
   titleField.value = ''
-  contentField.value = ''
+  markdownEditor.setState(EditorState.create({doc: '', extensions: markdownEditorExtensions()}))
   burnerAddressPrivateKeyField.value = ''
 
   // Determine if we are adding or editing by checking if the URL start with /add
@@ -667,7 +705,7 @@ export async function entryEditController(blogAddress, chainId) {
 
     // Insert the post
     page.querySelector('#title').value = post.title
-    page.querySelector('#content').value = post.content
+    markdownEditor.setState(EditorState.create({doc: post.content, extensions: markdownEditorExtensions()}))
   }
 
 
@@ -676,15 +714,15 @@ export async function entryEditController(blogAddress, chainId) {
   let showMarkdownButton = page.querySelector('#button-markdown')
   let showPreviewButton = page.querySelector('#button-preview')
   const applyPreviewShownState = () => {
-    page.querySelector('#content-textarea').style.display = isPreviewShown ? 'none' : 'flex'
-    page.querySelector('#content-preview').style.display = isPreviewShown ? 'block' : 'none'
+    contentArea.style.display = isPreviewShown ? 'none' : 'flex'
+    contentPreview.style.display = isPreviewShown ? 'block' : 'none'
     // showMarkdownButton.classList.toggle('secondary', isPreviewShown)
     // showPreviewButton.classList.toggle('secondary', !isPreviewShown)
     showMarkdownButton.disabled = !isPreviewShown
     showPreviewButton.disabled = isPreviewShown
     if(isPreviewShown) {
       const md = markdownit().use(markdown_it_multi_imgsize_plugin)
-      page.querySelector('#content-preview').innerHTML = md.render(strip_tags(page.querySelector('#content').value))
+      contentPreview.innerHTML = md.render(strip_tags(markdownEditor.state.doc.toString()))
     }
   }
   const handleMarkdownButton = async (event) => {
@@ -864,11 +902,12 @@ console.log("txResult", txResult)
 
 
         const imageUrl = "/uploads/" + file.name;
-        const content = page.querySelector('#content')
-        const cursorPosition = content.selectionStart
-        const contentBefore = content.value.substring(0, cursorPosition)
-        const contentAfter = content.value.substring(cursorPosition)
-        content.value = contentBefore + `![Image](${imageUrl})` + contentAfter
+        markdownEditor.state.selection.main.from
+        markdownEditor.dispatch({ changes: { 
+          from: markdownEditor.state.selection.main.from, 
+          to: markdownEditor.state.selection.main.from, 
+          insert: `![Image desc](${imageUrl})` 
+        }})
 
         revertFormState()
       };
@@ -956,7 +995,9 @@ console.log("txResult", txResult)
   const revertFormState = () => {
     titleField.disabled = false;
     insertImageButton.disabled = false;
-    contentField.disabled = false;
+    markdownEditor.dispatch({
+      effects: markdownEditorReadonlyCompartment.reconfigure(EditorState.readOnly.of(false))
+    })
     burnerAddressPrivateKeyField.disabled = false;
     generateBurnerAddressButton.disabled = false;
     submitButton.disabled = false
@@ -974,7 +1015,9 @@ console.log("txResult", txResult)
 
     titleField.disabled = true;
     insertImageButton.disabled = true;
-    contentField.disabled = true;
+    markdownEditor.dispatch({
+      effects: markdownEditorReadonlyCompartment.reconfigure(EditorState.readOnly.of(true))
+    })
     burnerAddressPrivateKeyField.disabled = true;
     generateBurnerAddressButton.disabled = true;
     submitButton.disabled = true;
@@ -983,7 +1026,7 @@ console.log("txResult", txResult)
     errorMessageDiv.style.display = 'none';
 
     const title = titleField.value;
-    const content = contentField.value;
+    const content = markdownEditor.state.doc.toString();
     const burnerAddressPrivateKey = burnerAddressPrivateKeyField.value
     let postNumber = form.querySelector('#post-number').value;
     const newPost = postNumber == '';

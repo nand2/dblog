@@ -12,6 +12,8 @@
     "preview-blog": "vite preview frontend-blog"
   },
   "dependencies": {
+    "@codemirror/lang-markdown": "^6.2.5",
+    "@codemirror/theme-one-dark": "^6.1.2",
     "@fortawesome/fontawesome-svg-core": "^6.5.1",
     "@fortawesome/free-regular-svg-icons": "^6.5.1",
     "@fortawesome/free-solid-svg-icons": "^6.5.1",
@@ -19,6 +21,7 @@
     "@zoltu/ethereum-abi-encoder": "^5.0.4",
     "@zoltu/ethereum-types": "^9.0.4",
     "c-kzg": "^2.1.2",
+    "codemirror": "^6.0.1",
     "kzg-wasm": "^0.4.0",
     "markdown-it": "^14.1.0",
     "markdown-it-multi-imgsize": "^0.1.1",
