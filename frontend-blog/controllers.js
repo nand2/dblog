@@ -653,6 +653,7 @@ export async function entryEditController(blogAddress, chainId) {
   let markdownEditorExtensions = () => [
     basicSetup, 
     markdown(),
+    EditorView.lineWrapping,
     markdownEditorThemeCompartment.of(markdownEditorTheme(window.matchMedia('(prefers-color-scheme: dark)').matches)),
     markdownEditorReadonlyCompartment.of(EditorState.readOnly.of(false))
   ]
