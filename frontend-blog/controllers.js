@@ -7,10 +7,10 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia, mainnet, anvil } from 'viem/chains'
 import { loadKZG } from 'kzg-wasm'
 import mime from 'mime';
-import { basicSetup, EditorView } from "codemirror"
-import { markdown } from "@codemirror/lang-markdown"
-import { EditorState, Compartment } from "@codemirror/state"
-import { oneDark } from '@codemirror/theme-one-dark';
+import { basicSetup as codeMirrorBasicSetup, EditorView } from "codemirror"
+import { markdown as codeMirrorMarkdown } from "@codemirror/lang-markdown"
+import { EditorState, Compartment as codeMirrorCompartment } from "@codemirror/state"
+import { oneDark as codeMirrorOneDarkTheme } from '@codemirror/theme-one-dark';
 
 
 // Frontent contract ABI
@@ -642,23 +642,40 @@ export async function entryEditController(blogAddress, chainId) {
   const generateBurnerAddressButton = page.querySelector('#generate-burner-address');
   const submitButton = page.querySelector('button[type="submit"]');
 
+  // Initialize the markdown engine
+  const markdownitEngine = markdownit().use(markdown_it_multi_imgsize_plugin)
   // Initialize the markdown editor
   let markdownEditorTheme = (isDark) => {
-    return isDark ? oneDark : EditorView.baseTheme({
+    return isDark ? codeMirrorOneDarkTheme : EditorView.baseTheme({
       "&.cm-focused": {
         outline: "none",
       },
     })
   }
+  let markdownEditorUpdateListenerExtension = EditorView.updateListener.of((update) => {
+    if (update.docChanged) {
+      contentPreview.innerHTML = markdownitEngine.render(strip_tags(markdownEditor.state.doc.toString()))
+    }
+  });
   let markdownEditorExtensions = () => [
-    basicSetup, 
-    markdown(),
+    codeMirrorBasicSetup, 
+    codeMirrorMarkdown(),
     EditorView.lineWrapping,
+    // Theme, ready to be switched from light to dark
     markdownEditorThemeCompartment.of(markdownEditorTheme(window.matchMedia('(prefers-color-scheme: dark)').matches)),
-    markdownEditorReadonlyCompartment.of(EditorState.readOnly.of(false))
+    // Theme override for both light and dark
+    EditorView.theme({
+      "&": {
+        fontSize: "16px",
+      },
+    }),
+    // Readonly state, ready to be modified
+    markdownEditorReadonlyCompartment.of(EditorState.readOnly.of(false)),
+    // Update listener: Update the preview
+    markdownEditorUpdateListenerExtension
   ]
-  let markdownEditorReadonlyCompartment = new Compartment()
-  let markdownEditorThemeCompartment = new Compartment()
+  let markdownEditorReadonlyCompartment = new codeMirrorCompartment()
+  let markdownEditorThemeCompartment = new codeMirrorCompartment()
   let markdownEditor = EditorView.findFromDOM(contentArea)
   if(markdownEditor == null) {
     markdownEditor = new EditorView({
@@ -722,8 +739,7 @@ export async function entryEditController(blogAddress, chainId) {
     showMarkdownButton.disabled = !isPreviewShown
     showPreviewButton.disabled = isPreviewShown
     if(isPreviewShown) {
-      const md = markdownit().use(markdown_it_multi_imgsize_plugin)
-      contentPreview.innerHTML = md.render(strip_tags(markdownEditor.state.doc.toString()))
+      contentPreview.innerHTML = markdownitEngine.render(strip_tags(markdownEditor.state.doc.toString()))
     }
   }
   const handleMarkdownButton = async (event) => {

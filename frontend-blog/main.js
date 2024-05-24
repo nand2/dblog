@@ -132,10 +132,12 @@ document.querySelector('#app').innerHTML = `
               <button type="input" id="button-preview">Preview</button>
               <button type="input" id="button-insert-image">Insert image</button>
             </div>
-            <div id="content-area">
-              <!-- Markdown editor goes here -->
-            </div>
-            <div id="content-preview" class="blog-entry-content">
+            <div id="content-area-preview">
+              <div id="content-area">
+                <!-- Markdown editor goes here -->
+              </div>
+              <div id="content-preview" class="blog-entry-content">
+              </div>
             </div>
           </div>
         </div>
