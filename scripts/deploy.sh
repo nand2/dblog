@@ -155,22 +155,30 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "frontend-factory" ]; then
   echo ""
   echo "Compressing factory frontend..."
   mkdir -p dist/frontend-factory/assets
-  # Compress the index.html file
-  FACTORY_FRONTEND_HTML_FILE=index.html
-  FACTORY_FRONTEND_COMPRESSED_HTML_FILE=${DOMAIN}-factory-${TIMESTAMP}-index.html.gz
-  gzip -c frontend-factory/dist/${FACTORY_FRONTEND_HTML_FILE} > dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_HTML_FILE}
-  # Find out the name of the CSS file in the asset folder and compress it
-  FACTORY_FRONTEND_CSS_FILE=$(ls frontend-factory/dist/assets | grep "css")
-  FACTORY_FRONTEND_COMPRESSED_CSS_FILE=${DOMAIN}-factory-${TIMESTAMP}-${FACTORY_FRONTEND_CSS_FILE}.gz
-  gzip -c frontend-factory/dist/assets/${FACTORY_FRONTEND_CSS_FILE} > dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_CSS_FILE}
-  # Find out the name of the JS file in the asset folder and compress it
-  FACTORY_FRONTEND_JS_FILE=$(ls frontend-factory/dist/assets | grep "js")
-  FACTORY_FRONTEND_COMPRESSED_JS_FILE=${DOMAIN}-factory-${TIMESTAMP}-${FACTORY_FRONTEND_JS_FILE}.gz
-  gzip -c frontend-factory/dist/assets/${FACTORY_FRONTEND_JS_FILE} > dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_JS_FILE}
-  # Find out the name of the svg file in the asset folder and compress it
-  FACTORY_FRONTEND_SVG_FILE=$(ls frontend-factory/dist/assets | grep "svg")
-  FACTORY_FRONTEND_COMPRESSED_SVG_FILE=${DOMAIN}-factory-${TIMESTAMP}-${FACTORY_FRONTEND_SVG_FILE}.gz
-  gzip -c frontend-factory/dist/assets/${FACTORY_FRONTEND_SVG_FILE} > dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_SVG_FILE}
+
+  # For each file in frontend-factory/dist (except blogFactoryAddress.json), compress it, and
+  # add it to a list to be given to the SSTORE2 or EthStorage contract
+  SSTORE2_FILE_ARGS_SIG=""
+  ETHSTORAGE_FILE_ARGS=""
+  for FULL_FILE in $(find frontend-factory/dist -type f | grep -v "blogFactoryAddress.json"); do
+    # Remove the frontend-factory/dist/ prefix
+    FILE=$(echo $FULL_FILE | sed "s|frontend-factory/dist/||")
+    # If the file starts with "assets/", then remove it from file
+    SUBFOLDER=$(echo $FILE | grep -o "assets/" || true)
+    if [ ! -z "$SUBFOLDER" ]; then
+      FILE=$(echo $FILE | sed "s|assets/||")
+    fi
+    # Prepare the final compressed file name
+    COMPRESSED_FILE_NAME=${DOMAIN}-factory-${TIMESTAMP}-${FILE}.gz
+    
+    # Compress the file
+    gzip -c $FULL_FILE > dist/frontend-factory/${SUBFOLDER}/${COMPRESSED_FILE_NAME}
+
+    # For SSTORE2 (we will ABI-encode it)
+    SSTORE2_FILE_ARGS_SIG="${SSTORE2_FILE_ARGS_SIG}(${FILE},${COMPRESSED_FILE_NAME},$(get_file_mime_type $FULL_FILE),${SUBFOLDER:-''}),"
+    # For Ethstorage
+    ETHSTORAGE_FILE_ARGS="${ETHSTORAGE_FILE_ARGS} ${SUBFOLDER}${FILE}:dist/frontend-factory/${SUBFOLDER}${COMPRESSED_FILE_NAME}"
+  done
 
   # Fetch the address of the DBlogFactoryFrontend
   DBLOGFACTORY_FRONTEND_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/${CHAIN_ID}/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFactoryFrontend")][0].contractAddress')
@@ -183,10 +191,7 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "frontend-factory" ]; then
     echo "  EthStorage mode..."
     node --env-file=.env scripts/upload-ethstorage-frontend.js \
       $TARGET_CHAIN $DBLOGFACTORY_FRONTEND_ADDRESS \
-      ${FACTORY_FRONTEND_HTML_FILE}:dist/frontend-factory/${FACTORY_FRONTEND_COMPRESSED_HTML_FILE} \
-      assets/${FACTORY_FRONTEND_CSS_FILE}:dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_CSS_FILE} \
-      assets/${FACTORY_FRONTEND_JS_FILE}:dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_JS_FILE} \
-      assets/${FACTORY_FRONTEND_SVG_FILE}:dist/frontend-factory/assets/${FACTORY_FRONTEND_COMPRESSED_SVG_FILE}
+      $ETHSTORAGE_FILE_ARGS
   # SSTORE2 frontend
   else
     echo "  SSTORE2 mode..."
@@ -195,13 +200,8 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "frontend-factory" ]; then
     COMPRESSED_FILES_BASE_PATH=dist/frontend-factory/
 
     # ABI encode the file arguments
-    FILE_ARGS_SIG=""
-    FILE_ARGS_SIG="${FILE_ARGS_SIG}(${FACTORY_FRONTEND_HTML_FILE},${FACTORY_FRONTEND_COMPRESSED_HTML_FILE},$(get_file_mime_type ${FILES_BASE_PATH}${FACTORY_FRONTEND_HTML_FILE}),''),"
-    FILE_ARGS_SIG="${FILE_ARGS_SIG}(${FACTORY_FRONTEND_CSS_FILE},${FACTORY_FRONTEND_COMPRESSED_CSS_FILE},$(get_file_mime_type ${FILES_BASE_PATH}assets/${FACTORY_FRONTEND_CSS_FILE}),assets/),"
-    FILE_ARGS_SIG="${FILE_ARGS_SIG}(${FACTORY_FRONTEND_JS_FILE},${FACTORY_FRONTEND_COMPRESSED_JS_FILE},$(get_file_mime_type ${FILES_BASE_PATH}assets/${FACTORY_FRONTEND_JS_FILE}),assets/),"
-    FILE_ARGS_SIG="${FILE_ARGS_SIG}(${FACTORY_FRONTEND_SVG_FILE},${FACTORY_FRONTEND_COMPRESSED_SVG_FILE},$(get_file_mime_type ${FILES_BASE_PATH}assets/${FACTORY_FRONTEND_SVG_FILE}),assets/),"
-    FILE_ARGS_SIG="[${FILE_ARGS_SIG}]"
-    FILE_ARGS=$(cast abi-encode "x((string,string,string,string)[])" "${FILE_ARGS_SIG}")
+    SSTORE2_FILE_ARGS_SIG="[${SSTORE2_FILE_ARGS_SIG}]"
+    FILE_ARGS=$(cast abi-encode "x((string,string,string,string)[])" "${SSTORE2_FILE_ARGS_SIG}")
 
     IFRONTEND_LIBRARY_CONTRACT_ADDRESS=$DBLOGFACTORY_FRONTEND_ADDRESS \
     FILE_ARGS=$FILE_ARGS \
@@ -224,24 +224,30 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "frontend-blog" ]; then
   echo ""
   echo "Compressing blog frontend..."
   mkdir -p dist/frontend-blog/assets
-  # Compress the index.html file
-  BLOG_FRONTEND_HTML_FILE=index.html
-  BLOG_FRONTEND_COMPRESSED_HTML_FILE=${DOMAIN}-${TIMESTAMP}-index.html.gz
-  gzip -c frontend-blog/dist/${BLOG_FRONTEND_HTML_FILE} > dist/frontend-blog/${BLOG_FRONTEND_COMPRESSED_HTML_FILE}
-  # Find out the name of the CSS file in the asset folder and compress it
-  BLOG_FRONTEND_CSS_FILE=$(ls frontend-blog/dist/assets | grep "css")
-  BLOG_FRONTEND_COMPRESSED_CSS_FILE=${DOMAIN}-${TIMESTAMP}-${BLOG_FRONTEND_CSS_FILE}.gz
-  gzip -c frontend-blog/dist/assets/${BLOG_FRONTEND_CSS_FILE} > dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_CSS_FILE}
-  # Find out the name of the biggest JS file in the asset folder and compress it
-  # (there should only be one, but sometimes the bundler put a unused tiny bit on another file, 
-  # which need to be debugged)
-  BLOG_FRONTEND_JS_FILE=$(ls -S frontend-blog/dist/assets | grep "js" | head -n 1)
-  BLOG_FRONTEND_COMPRESSED_JS_FILE=${DOMAIN}-${TIMESTAMP}-${BLOG_FRONTEND_JS_FILE}.gz
-  gzip -c frontend-blog/dist/assets/${BLOG_FRONTEND_JS_FILE} > dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_JS_FILE}
-  # Find out the name of the wasm file in the asset folder and compress it
-  BLOG_FRONTEND_WASM_FILE=$(ls frontend-blog/dist/assets | grep "wasm")
-  BLOG_FRONTEND_COMPRESSED_WASM_FILE=${DOMAIN}-${TIMESTAMP}-${BLOG_FRONTEND_WASM_FILE}.gz
-  gzip -c frontend-blog/dist/assets/${BLOG_FRONTEND_WASM_FILE} > dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_WASM_FILE}
+
+  # For each file in frontend-blog/dist (except blogAddress.json), compress it, and
+  # add it to a list to be given to the SSTORE2 or EthStorage contract
+  SSTORE2_FILE_ARGS_SIG=""
+  ETHSTORAGE_FILE_ARGS=""
+  for FULL_FILE in $(find frontend-blog/dist -type f | grep -v "blogAddress.json"); do
+    # Remove the frontend-blog/dist/ prefix
+    FILE=$(echo $FULL_FILE | sed "s|frontend-blog/dist/||")
+    # If the file starts with "assets/", then remove it from file
+    SUBFOLDER=$(echo $FILE | grep -o "assets/" || true)
+    if [ ! -z "$SUBFOLDER" ]; then
+      FILE=$(echo $FILE | sed "s|assets/||")
+    fi
+    # Prepare the final compressed file name
+    COMPRESSED_FILE_NAME=${DOMAIN}-blog-${TIMESTAMP}-${FILE}.gz
+    
+    # Compress the file
+    gzip -c $FULL_FILE > dist/frontend-blog/${SUBFOLDER}/${COMPRESSED_FILE_NAME}
+
+    # For SSTORE2 (we will ABI-encode it)
+    SSTORE2_FILE_ARGS_SIG="${SSTORE2_FILE_ARGS_SIG}(${FILE},${COMPRESSED_FILE_NAME},$(get_file_mime_type $FULL_FILE),${SUBFOLDER:-''}),"
+    # For Ethstorage
+    ETHSTORAGE_FILE_ARGS="${ETHSTORAGE_FILE_ARGS} ${SUBFOLDER}${FILE}:dist/frontend-blog/${SUBFOLDER}${COMPRESSED_FILE_NAME}"
+  done
 
   # Fetch the address of the DBlogFrontendLibrary
   DBLOGFRONTEND_LIBRARY_ADDRESS=$(cat contracts/broadcast/DBlogFactory.s.sol/${CHAIN_ID}/run-latest.json | jq -r '[.transactions[] | select(.contractName == "DBlogFrontendLibrary")][0].contractAddress')
@@ -255,10 +261,7 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "frontend-blog" ]; then
     echo "  EthStorage mode..."
     node --env-file=.env scripts/upload-ethstorage-frontend.js \
       $TARGET_CHAIN $DBLOGFRONTEND_LIBRARY_ADDRESS \
-      ${BLOG_FRONTEND_HTML_FILE}:dist/frontend-blog/${BLOG_FRONTEND_COMPRESSED_HTML_FILE} \
-      assets/${BLOG_FRONTEND_CSS_FILE}:dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_CSS_FILE} \
-      assets/${BLOG_FRONTEND_JS_FILE}:dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_JS_FILE} \
-      assets/${BLOG_FRONTEND_WASM_FILE}:dist/frontend-blog/assets/${BLOG_FRONTEND_COMPRESSED_WASM_FILE}
+      $ETHSTORAGE_FILE_ARGS
   # SSTORE2 frontend
   else
     echo "  SSTORE2 mode..."
@@ -267,13 +270,8 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "frontend-blog" ]; then
     COMPRESSED_FILES_BASE_PATH=dist/frontend-blog/
 
     # ABI encode the file arguments
-    FILE_ARGS_SIG=""
-    FILE_ARGS_SIG="${FILE_ARGS_SIG}(${BLOG_FRONTEND_HTML_FILE},${BLOG_FRONTEND_COMPRESSED_HTML_FILE},$(get_file_mime_type ${FILES_BASE_PATH}${BLOG_FRONTEND_HTML_FILE}),''),"
-    FILE_ARGS_SIG="${FILE_ARGS_SIG}(${BLOG_FRONTEND_CSS_FILE},${BLOG_FRONTEND_COMPRESSED_CSS_FILE},$(get_file_mime_type ${FILES_BASE_PATH}assets/${BLOG_FRONTEND_CSS_FILE}),assets/),"
-    FILE_ARGS_SIG="${FILE_ARGS_SIG}(${BLOG_FRONTEND_JS_FILE},${BLOG_FRONTEND_COMPRESSED_JS_FILE},$(get_file_mime_type ${FILES_BASE_PATH}assets/${BLOG_FRONTEND_JS_FILE}),assets/),"
-    FILE_ARGS_SIG="${FILE_ARGS_SIG}(${BLOG_FRONTEND_WASM_FILE},${BLOG_FRONTEND_COMPRESSED_WASM_FILE},$(get_file_mime_type ${FILES_BASE_PATH}assets/${BLOG_FRONTEND_WASM_FILE}),assets/),"
-    FILE_ARGS_SIG="[${FILE_ARGS_SIG}]"
-    FILE_ARGS=$(cast abi-encode "x((string,string,string,string)[])" "${FILE_ARGS_SIG}")
+    SSTORE2_FILE_ARGS_SIG="[${SSTORE2_FILE_ARGS_SIG}]"
+    FILE_ARGS=$(cast abi-encode "x((string,string,string,string)[])" "${SSTORE2_FILE_ARGS_SIG}")
 
     IFRONTEND_LIBRARY_CONTRACT_ADDRESS=$DBLOGFRONTEND_LIBRARY_ADDRESS \
     FILE_ARGS=$FILE_ARGS \
