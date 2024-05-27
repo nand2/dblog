@@ -25,7 +25,7 @@ catch(error) {
 
 
 document.querySelector('#app').innerHTML = `
-  <div>
+  <div id="app-wrapper">
     <h1 id="blog-title">
       <a href="/#/">
         <!--My blog title-->

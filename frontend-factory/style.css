@@ -72,12 +72,15 @@ body {
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
-  padding: 2rem;
   text-align: center;
 }
 
+#app-wrapper {
+  padding: 2rem;
+}
+
 @media (max-width: 768px) {
-  #app {
+  #app-wrapper {
     padding-top: 4rem;
   }
 }
@@ -115,6 +118,11 @@ h1 {
   background-color: var(--color-panel-bg);
   box-shadow: 0 0 1em #00000033;
   transition: transform 0.25s;
+}
+@media (max-width: 768px) {
+  #blogs {
+    grid-template-columns: 1fr;
+  }
 }
 
 .blog {

@@ -21,7 +21,7 @@ await fetch(`/blogFactoryAddress.json`)
 
 
 document.querySelector('#app').innerHTML = `
-  <div>
+  <div id="app-wrapper">
     <img src="${logo}" class="logo vanilla" alt="DBlog logo" />
     <h1>DBlog.eth</h1>
     <button id="create-your-own">Create your DBlog</button>
