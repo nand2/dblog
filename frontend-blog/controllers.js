@@ -1,11 +1,10 @@
-import markdownit from 'markdown-it'
+const { default: markdownit } = await import('markdown-it')
 import markdown_it_multi_imgsize_plugin from 'markdown-it-multi-imgsize'
+const { loadKZG } = await import('kzg-wasm')
 import { strip_tags, uint8ArrayToHexString, parseWeb3Url, getBaseFeePerBlobGas } from './utils.js'
-import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
 import { createPublicClient, createWalletClient, custom, publicActions, toBlobs, toHex, setupKzg, encodeFunctionData, stringToHex, blobsToCommitments, commitmentsToVersionedHashes, blobsToProofs, defineChain, http, formatEther, fromHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia, mainnet, anvil } from 'viem/chains'
-import { loadKZG } from 'kzg-wasm'
 import mime from 'mime';
 import { basicSetup as codeMirrorBasicSetup, EditorView } from "codemirror"
 import { markdown as codeMirrorMarkdown } from "@codemirror/lang-markdown"
