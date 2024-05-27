@@ -387,8 +387,8 @@ export async function blogEntryController(blogAddress, chainId) {
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
   const formattedDate = new Date(post.date * 1000).toLocaleDateString(undefined, options);
   page.querySelector('.date').innerHTML = formattedDate
-  const md = markdownit().use(markdown_it_multi_imgsize_plugin)
-  page.querySelector('.blog-entry-content').innerHTML = md.render(strip_tags(post.content))
+  const markdownitEngine = markdownit().use(markdown_it_multi_imgsize_plugin)
+  page.querySelector('.blog-entry-content').innerHTML = markdownitEngine.render(post.content)
 }
 
 
@@ -654,7 +654,7 @@ export async function entryEditController(blogAddress, chainId) {
   }
   let markdownEditorUpdateListenerExtension = EditorView.updateListener.of((update) => {
     if (update.docChanged) {
-      contentPreview.innerHTML = markdownitEngine.render(strip_tags(markdownEditor.state.doc.toString()))
+      contentPreview.innerHTML = markdownitEngine.render(markdownEditor.state.doc.toString())
     }
   });
   let markdownEditorExtensions = () => [
@@ -724,6 +724,7 @@ export async function entryEditController(blogAddress, chainId) {
     // Insert the post
     page.querySelector('#title').value = post.title
     markdownEditor.setState(EditorState.create({doc: post.content, extensions: markdownEditorExtensions()}))
+    contentPreview.innerHTML = markdownitEngine.render(markdownEditor.state.doc.toString())
   }
 
 
@@ -739,7 +740,7 @@ export async function entryEditController(blogAddress, chainId) {
     showMarkdownButton.disabled = !isPreviewShown
     showPreviewButton.disabled = isPreviewShown
     if(isPreviewShown) {
-      contentPreview.innerHTML = markdownitEngine.render(strip_tags(markdownEditor.state.doc.toString()))
+      contentPreview.innerHTML = markdownitEngine.render(markdownEditor.state.doc.toString())
     }
   }
   const handleMarkdownButton = async (event) => {
