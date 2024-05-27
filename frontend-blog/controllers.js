@@ -641,6 +641,9 @@ export async function entryEditController(blogAddress, chainId) {
   const burnerAddressPrivateKeyField = page.querySelector('#burner-address-private-key');
   const generateBurnerAddressButton = page.querySelector('#generate-burner-address');
   const submitButton = page.querySelector('button[type="submit"]');
+  const notificationToast = page.querySelector('#notification-toast');
+  const notificationToastText = page.querySelector('#notification-toast-text');
+
 
   // Initialize the markdown engine
   const markdownitEngine = markdownit().use(markdown_it_multi_imgsize_plugin)
@@ -761,6 +764,26 @@ export async function entryEditController(blogAddress, chainId) {
     showPreviewButton.addEventListener('click', handlePreviewButton)
     showPreviewButton.setAttribute('data-event-listener-added', 'true')
   }
+
+
+  // Notification toast
+  // Reinit toast
+  notificationToast.style.display = 'none'
+  notificationToastText.innerHTML = ''
+  // Function to show toast, auto-hide after 5 seconds with a transition effect
+  const showToast = (message) => {
+    notificationToastText.innerHTML = message
+    notificationToast.style.display = 'block'
+    notificationToast.style.opacity = 1
+    setTimeout(() => {
+      notificationToast.style.opacity = 0
+      setTimeout(() => {
+        notificationToast.style.display = 'none'
+        notificationToast.style.opacity = 1
+      }, 500)
+    }, 5000)
+  }
+
 
   // Insert image button
   const handleInsertImageButton = async (event) => {
@@ -920,12 +943,21 @@ console.log("txResult", txResult)
 
 
         const imageUrl = "/uploads/" + file.name;
-        markdownEditor.state.selection.main.from
-        markdownEditor.dispatch({ changes: { 
-          from: markdownEditor.state.selection.main.from, 
-          to: markdownEditor.state.selection.main.from, 
-          insert: `![Image description](${imageUrl})` 
-        }})
+        const textToInsert = `![Image description](${imageUrl})`;
+        markdownEditor.dispatch({ 
+          changes: { 
+            from: markdownEditor.state.selection.main.from, 
+            to: markdownEditor.state.selection.main.from, 
+            insert: textToInsert,
+          },
+          selection: { 
+            anchor: markdownEditor.state.selection.main.from, 
+            head: markdownEditor.state.selection.main.from + textToInsert.length,
+          },
+          scrollIntoView: true,
+        })
+
+        showToast('The image has been uploaded and inserted at the cursor position');
 
         revertFormState()
       };

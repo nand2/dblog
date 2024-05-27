@@ -493,3 +493,17 @@ a#admin-link {
     margin-left: 0;
   }
 }
+
+#page-entry-edit #notification-toast {
+  display: none;
+  opacity: 1;
+  transition: opacity 0.5s;
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  margin: 1em;
+  padding: 0.5em 1em;
+  background-color: rgb(13, 202, 240);
+  color: black;
+  border-radius: 6px;
+}

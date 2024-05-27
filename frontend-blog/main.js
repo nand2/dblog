@@ -164,6 +164,9 @@ document.querySelector('#app').innerHTML = `
           <button type="submit">Save</button>
         </div>
       </form>
+      <div id="notification-toast">
+        <span id="notification-toast-text">Notification</span>
+      </div>
     </div>
     <div id="page-404">
       <h2>404</h2>
