@@ -141,6 +141,33 @@ const frontendABI = [
     "name":"frontendVersionsCount",
     "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
     "stateMutability":"view","type":"function"
+  },
+  {
+    "inputs":[],
+    "name":"getDefaultFrontend",
+    "outputs":[
+      {
+        "components":[
+          {"internalType":"enum FileStorageMode","name":"storageMode","type":"uint8"},
+          {
+            "components":[
+              {"internalType":"string","name":"filePath","type":"string"},
+              {"internalType":"string","name":"contentType","type":"string"},
+              {"internalType":"bytes32[]","name":"contentKeys","type":"bytes32[]"}
+            ],
+            "internalType":"struct FileInfos[]",
+            "name":"files",
+            "type":"tuple[]"
+          },
+          {"internalType":"string","name":"infos","type":"string"},
+          {"internalType":"bool","name":"locked","type":"bool"}
+        ],
+        "internalType":"struct FrontendFilesSet",
+        "name":"",
+        "type":"tuple"
+      }
+    ],
+    "stateMutability":"view","type":"function"
   }
 ];
 const frontendContract = getContract({
