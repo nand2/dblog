@@ -941,7 +941,7 @@ console.log("txResult", txResult)
         }
 
 
-        const imageUrl = "/uploads/" + file.name;
+        const imageUrl = "/uploads/" + file.name.replace(/ /g, "%20");
         const textToInsert = `![Image description](${imageUrl})`;
         markdownEditor.dispatch({ 
           changes: { 
