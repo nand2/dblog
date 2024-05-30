@@ -16,26 +16,14 @@ import { oneDark as codeMirrorOneDarkTheme } from '@codemirror/theme-one-dark';
 // All write functions, as we are using web3:// for read functions
 const frontendABI = [
   {
-    inputs: [{ name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
-    name: 'addPostOnEthStorage',
+    inputs: [{ name: 'title', type: 'string' }, { name: 'storageBackendName', type: 'string'}, { name: 'data', type: 'bytes' }, { name: 'dataLength', type: 'uint256'}, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
+    name: 'addPost',
     outputs: [],
     type: 'function',
   },
   {
-    inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'blobDataSize', type: 'uint256' }, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
-    name: 'editEthStoragePost',
-    outputs: [],
-    type: 'function',
-  },
-  {
-    inputs: [{ name: 'title', type: 'string' }, { name: 'content', type: 'string' }, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
-    name: 'addPostOnEthereumState',
-    outputs: [],
-    type: 'function',
-  },
-  {
-    inputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'content', type: 'string' }, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
-    name: 'editEthereumStatePost',
+    inputs: [{name: 'index', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'storageBackendName', type: 'string'}, { name: 'data', type: 'bytes' }, { name: 'dataLength', type: 'uint256'}, { name: 'contentFormatVersion', type: 'uint8' }, { name: 'extra', type: 'bytes20' }],
+    name: 'editPost',
     outputs: [],
     type: 'function',
   },
@@ -52,20 +40,14 @@ const frontendABI = [
     type: 'function',
   },
   {
-    inputs: [{ name: 'fileName', type: 'string' }, { name: 'contentType', type: 'string' }, { name: 'blobsCount', type: 'uint256' }, { name: 'blobDataSizes', type: 'uint256[]' }],
-    name: 'addUploadedFileOnEthStorage',
+    inputs: [{ name: 'fileName', type: 'string' }, { name: 'contentType', type: 'string' }, { name: 'storageBackendName', type: 'string'}, { name: 'data', type: 'bytes' }, { name: 'dataLength', type: 'uint256'}],
+    name: 'addUploadedFile',
     outputs: [],
     type: 'function',
   },
   {
-    inputs: [{ name: 'fileName', type: 'string' }, { name: 'blobDataSizes', type: 'uint256[]' }],
-    name: 'completeUploadedFileOnEthStorage',
-    outputs: [],
-    type: 'function',
-  },
-  {
-    inputs: [{ name: 'filePath', type: 'string' }, { name: 'contentType', type: 'string' }, { name: 'fileContents', type: 'bytes' }],
-    name: 'addUploadedFileOnEthfs',
+    inputs: [{ name: 'fileName', type: 'string' }, { name: 'data', type: 'bytes' }],
+    name: 'appendToUploadedFile',
     outputs: [],
     type: 'function',
   },
@@ -904,9 +886,27 @@ export async function entryEditController(blogAddress, chainId) {
         }
         // Other networks: Otherwise store on state
         else {
-          let methodName = "addUploadedFileOnEthfs";
-          let args = [file.name, mimeType, toHex(new Uint8Array(fileContent))];
-          calls.push({ methodName: methodName, args: args, value: 0n, blobs: [] });
+          // Convert the fileContent to chunks of 10 x 0x6000-1 bytes (size of a full SSTORE2 chunk)
+          let chunkSize = 10 * (0x6000 - 1);
+          let fileContentUint8Array = new Uint8Array(fileContent)
+          let fileContentChunks = []
+          for(let i = 0; i < fileContentUint8Array.length; i += chunkSize) {
+            fileContentChunks.push(fileContentUint8Array.slice(i, i + chunkSize))
+          }
+
+          // Show a summary of what is going to happen to the user, let him confirm
+          if(confirm('You are about to upload an image in ' + fileContentChunks.length + ' separate transactions. \n\n Do you want to continue?') == false) {
+            revertFormState()
+            return
+          }
+
+          // Prepare the calls for each chunk
+          for(let i = 0; i < fileContentChunks.length; i++) {
+            let methodName = i == 0 ? "addUploadedFile" : "appendToUploadedFile";
+            let args = i == 0 ? 
+              [file.name, mimeType, "SSTORE2", toHex(fileContentChunks[i]), fileContentUint8Array.length] : [file.name, toHex(fileContentChunks[i])];
+            calls.push({ methodName: methodName, args: args, value: 0n, blobs: [] });
+          }
         }
 
         // Fetch the burner private key
@@ -1128,13 +1128,14 @@ console.log("txResult", txResult)
     }
     // Other networks: Otherwise store on state
     else {
+      let contentHexData = stringToHex(content);
       if(newPost) {
-        methodName = "addPostOnEthereumState";
-        args = [title, content, 0, '0x' + '00'.repeat(20)];
+        methodName = "addPost";
+        args = [title, "SSTORE2", contentHexData, (contentHexData.length - 2) / 2, 0, '0x' + '00'.repeat(20)];
       }
       else {
-        methodName = "editEthereumStatePost";
-        args = [postNumber, title, content, 0, '0x' + '00'.repeat(20)];
+        methodName = "editPost";
+        args = [postNumber, title, "SSTORE2", contentHexData, (contentHexData.length - 2) / 2, 0, '0x' + '00'.repeat(20)];
       }
     }
 

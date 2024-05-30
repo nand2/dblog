@@ -41,3 +41,22 @@ struct FileInfosWithStorageMode {
 
     FileInfos fileInfos;
 }
+
+// Temporary, to be renamed to FileInfos once legacy FileInfos is removed
+struct FileInfos2 {
+    // The path of the file, without root slash. E.g. "images/logo.png"
+    string filePath;
+    // The content type of the file, e.g. "image/png"
+    string contentType;
+
+    // Pointers to the file contents on a storage backend
+    uint contentKey;
+}
+
+// When we want to store the storage backend of individual files
+struct FileInfosWithStorageBackend {
+    // Storage backend of the file
+    uint16 storageBackendIndex;
+
+    FileInfos2 fileInfos;
+}

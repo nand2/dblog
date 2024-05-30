@@ -22,7 +22,7 @@ fi
 DEFAULT_DOMAIN="dblog"
 # dblog lost on sepolia...
 if [ "$TARGET_CHAIN" == "sepolia" ]; then
-  DOMAIN="eblog"
+  DOMAIN="gblog"
 fi
 DOMAIN=${3:-$DEFAULT_DOMAIN}
 

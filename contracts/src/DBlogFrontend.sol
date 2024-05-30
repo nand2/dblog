@@ -122,10 +122,7 @@ contract DBlogFrontend is IDecentralizedApp {
         // /uploads/<uploadedFile>
         if(resource.length == 2 && Strings.compare(resource[0], "uploads")) {
             string memory uploadedFileName = resource[1];
-            try blog.getUploadedFileByName(uploadedFileName) returns (FileInfosWithStorageMode memory uploadedFile, uint fileIndex) {
-                // web3:// chunk feature : if the file is big, we will send the file
-                // in chunks
-                uint chunkCount = blog.getUploadedFileContentsChunkCount(fileIndex);
+            try blog.getUploadedFileByName(uploadedFileName) returns (FileInfosWithStorageBackend memory uploadedFile, uint fileIndex) {
 
                 // Determine the requested chunk
                 uint chunkIndex = 0;
@@ -135,25 +132,24 @@ contract DBlogFrontend is IDecentralizedApp {
                         break;
                     }
                 }
-                if(chunkIndex >= chunkCount) {
-                    statusCode = 404;
-                    return (statusCode, body, headers);
-                }
 
-                body = string(blog.getUploadedFileContents(fileIndex, chunkIndex));
+                // web3:// chunk feature : if the file is big, we will send the file
+                // in chunks
+                (bytes memory data, uint nextChunkId) = blog.getUploadedFileContents(fileIndex, chunkIndex);
+                body = string(data);
                 statusCode = 200;
 
                 uint headersCount = 1;
-                if(chunkIndex < chunkCount - 1) {
+                if(nextChunkId > 0) {
                     headersCount = 2;
                 }
                 headers = new KeyValue[](headersCount);
                 headers[0].key = "Content-type";
                 headers[0].value = uploadedFile.fileInfos.contentType;
                 // If there is more chunk remaining, add a pointer to the next chunk
-                if(chunkIndex < chunkCount - 1) {
+                if(nextChunkId > 0) {
                     headers[1].key = "web3-next-chunk";
-                    headers[1].value = string.concat("/uploads/", resource[1], "?chunk=", Strings.toString(chunkIndex + 1));
+                    headers[1].value = string.concat("/uploads/", resource[1], "?chunk=", Strings.toString(nextChunkId));
                 }
                 
                 return (statusCode, body, headers);

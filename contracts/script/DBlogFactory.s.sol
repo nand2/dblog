@@ -9,6 +9,7 @@ import {DBlogFrontendLibrary} from "../src/DBlogFrontendLibrary.sol";
 import {FileInfos} from "../src/interfaces/FileInfos.sol";
 import {DBlogFrontend} from "../src/DBlogFrontend.sol";
 import {DBlog} from "../src/DBlog.sol";
+import {StorageBackendSSTORE2} from "../src/StorageBackendSSTORE2.sol";
 
 // EthFS
 import {FileStore, File} from "ethfs/FileStore.sol";
@@ -125,6 +126,12 @@ contract DBlogFactoryScript is Script {
                 web3FactoryAddress = string.concat(web3FactoryAddress, ":", vm.toString(block.chainid));
             }
             console.log("web3:// factory: ", web3FactoryAddress);
+        }
+
+        // Add the SSTORE2 storage backend
+        {
+            StorageBackendSSTORE2 storageBackend = new StorageBackendSSTORE2();
+            factory.addStorageBackend(storageBackend);
         }
 
         // Set the ENS resolver of dblog.eth to the contract

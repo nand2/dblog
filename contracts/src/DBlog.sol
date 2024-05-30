@@ -7,6 +7,7 @@ import {FileStore, File} from "ethfs/FileStore.sol";
 import "./DBlogFrontend.sol";
 import "./DBlogFactory.sol";
 import "./interfaces/FileInfos.sol";
+import "./interfaces/IStorageBackend.sol";
 
 contract DBlog {
     // Link to our creator, handling all the blogs
@@ -26,7 +27,7 @@ contract DBlog {
     string public description;
 
     // Files uploaded by the author/editors
-    FileInfosWithStorageMode[] uploadedFiles;
+    FileInfosWithStorageBackend[] uploadedFiles;
     struct FileNameToIndex {
         bool exists;
         uint248 index;
@@ -40,8 +41,6 @@ contract DBlog {
     uint256 public ethStorageLastUsedKey = 0;
     // When deleting files, we store the keys to reuse them (we don't need to pay EthStorage again)
     bytes32[] public reusableEthStorageKeys;
-
-    uint256 public constant ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK = 4;
 
     // Flags for possible extensions?
     bytes32 public flags;
@@ -63,12 +62,10 @@ contract DBlog {
         // "Free" data space, to be used for possible future evolutions
         bytes20 extra;
 
-        // Storage mode of the content: SSTORE2 or EthStorage
-        FileStorageMode storageMode;
-        // Pointer to the file contents
-        // If storage mode is SSTORE2, then there will only be one address pointer to the SSTORE2 file
-        // If storage mode is EthStorage, then these are the keys to the EthStorage file parts
-        bytes32 contentKey;
+        // The storage backend used for the content
+        uint16 storageBackendIndex;
+        // Pointer to the file contents on the selected backend
+        uint contentKey;
     }
     BlogPost[] public posts;
 
@@ -167,113 +164,146 @@ contract DBlog {
     // Blog posts
     //
 
-    function addPostOnEthereumState(string memory postTitle, string memory postContent, uint8 contentFormatVersion, bytes20 extra) public onlyOwnerOrEditors {
-        // Initialise the FileStore if not done yet
-        if(address(fileStore) == address(0)) {
-            fileStore = FileStore(Clones.clone(address(factory.ethFsFileStore())));
-        }
-
+    function addPost(string memory postTitle, string memory storageBackendName, bytes memory data, uint dataLength, uint8 contentFormatVersion, bytes20 extra) public onlyOwnerOrEditors {
         posts.push();
         BlogPost storage newPost = posts[posts.length - 1];
         newPost.title = postTitle;
         newPost.timestamp = uint64(block.timestamp);
         newPost.contentFormatVersion = contentFormatVersion;
         newPost.extra = extra;
-        newPost.storageMode = FileStorageMode.SSTORE2;
-        
-        // We store the content on FileStore
-        (address filePointer, ) = fileStore.createFile(string.concat("blog-entry-", Strings.toString(posts.length - 1), ".txt"), postContent);
-        newPost.contentKey = bytes32(uint256(uint160(filePointer)));
+        // getStorageBackendIndexByName() will revert if not found
+        newPost.storageBackendIndex = factory.getStorageBackendIndexByName(storageBackendName);
+
+        // We store the content on the storage backend
+        // We store all at once (we assume blog posts themselves won't require multiple tx)
+        newPost.contentKey = factory.storageBackends(newPost.storageBackendIndex).create(data, dataLength);
 
         emit PostCreated(posts.length - 1);
     }
+
+    // function addPostOnEthereumState(string memory postTitle, string memory postContent, uint8 contentFormatVersion, bytes20 extra) public onlyOwnerOrEditors {
+    //     // Initialise the FileStore if not done yet
+    //     if(address(fileStore) == address(0)) {
+    //         fileStore = FileStore(Clones.clone(address(factory.ethFsFileStore())));
+    //     }
+
+    //     posts.push();
+    //     BlogPost storage newPost = posts[posts.length - 1];
+    //     newPost.title = postTitle;
+    //     newPost.timestamp = uint64(block.timestamp);
+    //     newPost.contentFormatVersion = contentFormatVersion;
+    //     newPost.extra = extra;
+    //     newPost.storageMode = FileStorageMode.SSTORE2;
+        
+    //     // We store the content on FileStore
+    //     (address filePointer, ) = fileStore.createFile(string.concat("blog-entry-", Strings.toString(posts.length - 1), ".txt"), postContent);
+    //     newPost.contentKey = bytes32(uint256(uint160(filePointer)));
+
+    //     emit PostCreated(posts.length - 1);
+    // }
 
     function getEthStorageUpfrontPayment() external view returns (uint256) {
         return factory.ethStorage().upfrontPayment();
     }
 
-    function addPostOnEthStorage(string memory postTitle, uint256 blobDataSize, uint8 contentFormatVersion, bytes20 extra) public payable onlyOwnerOrEditors {
-        posts.push();
-        BlogPost storage newPost = posts[posts.length - 1];
-        newPost.title = postTitle;
-        newPost.timestamp = uint64(block.timestamp);
-        newPost.contentFormatVersion = contentFormatVersion;
-        newPost.extra = extra;
-        newPost.storageMode = FileStorageMode.EthStorage;
+    // function addPostOnEthStorage(string memory postTitle, uint256 blobDataSize, uint8 contentFormatVersion, bytes20 extra) public payable onlyOwnerOrEditors {
+    //     posts.push();
+    //     BlogPost storage newPost = posts[posts.length - 1];
+    //     newPost.title = postTitle;
+    //     newPost.timestamp = uint64(block.timestamp);
+    //     newPost.contentFormatVersion = contentFormatVersion;
+    //     newPost.extra = extra;
+    //     newPost.storageMode = FileStorageMode.EthStorage;
 
-        // We store the content on EthStorage
-        ethStorageLastUsedKey++;
-        bytes32 ethStorageContentKey = bytes32(ethStorageLastUsedKey);
-        uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
-        factory.ethStorage().putBlob{value: upfrontPayment}(ethStorageContentKey, 0, blobDataSize);
-        newPost.contentKey = ethStorageContentKey;
+    //     // We store the content on EthStorage
+    //     ethStorageLastUsedKey++;
+    //     bytes32 ethStorageContentKey = bytes32(ethStorageLastUsedKey);
+    //     uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+    //     factory.ethStorage().putBlob{value: upfrontPayment}(ethStorageContentKey, 0, blobDataSize);
+    //     newPost.contentKey = ethStorageContentKey;
 
-        emit PostCreated(posts.length - 1);
-    }
+    //     emit PostCreated(posts.length - 1);
+    // }
 
-    function getPost(uint256 index) public view returns (BlogPost memory blogPost, string memory content) {
+    function getPost(uint256 index) public view returns (BlogPost memory, string memory) {
         require(index < posts.length, "Index out of bounds");
 
-        // Content: We only fetch the content if it is on SSTORE2
         // For EthStorage, we need to fetch it via the EthStorage chain
-        if(posts[index].storageMode == FileStorageMode.SSTORE2) {
-            File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(posts[index].contentKey)))), (File));
-            content = file.read();
-        }
+        uint nextChunkId;
+        bytes memory content;
+        (content, nextChunkId) = factory.storageBackends(posts[index].storageBackendIndex).read(address(this), posts[index].contentKey, 0);
+        
+        // We don't expect to be a nextChunkId for blog content, as the blog post themselves should not
+        // be too big. We expect nextChunkId for media files.
 
-        return (posts[index], content);
+        return (posts[index], string(content));
     }
 
-    // Need to be called with the EthStorage chain
-    function getPostEthStorageContent(uint256 index) public view returns (bytes memory) {
-        require(index < posts.length, "Index out of bounds");
-        require(posts[index].storageMode == FileStorageMode.EthStorage, "Post is not on EthStorage");
+    // // Need to be called with the EthStorage chain
+    // function getPostEthStorageContent(uint256 index) public view returns (bytes memory) {
+    //     require(index < posts.length, "Index out of bounds");
+    //     require(posts[index].storageMode == FileStorageMode.EthStorage, "Post is not on EthStorage");
 
-        return factory.ethStorage().get(
-            posts[index].contentKey, 
-            DecentralizedKV.DecodeType.PaddingPer31Bytes, 
-            0, 
-            factory.ethStorage().size(posts[index].contentKey));
-    }
+    //     return factory.ethStorage().get(
+    //         posts[index].contentKey, 
+    //         DecentralizedKV.DecodeType.PaddingPer31Bytes, 
+    //         0, 
+    //         factory.ethStorage().size(posts[index].contentKey));
+    // }
 
-    function editEthereumStatePost(uint256 index, string memory postTitle, string memory postContent, uint8 contentFormatVersion, bytes20 extra) public onlyOwnerOrEditors {
+    function editPost(uint256 index, string memory postTitle, string memory storageBackendName, bytes memory data, uint dataLength, uint8 contentFormatVersion, bytes20 extra) public onlyOwnerOrEditors {
         require(index < posts.length, "Index out of bounds");
-        require(posts[index].storageMode == FileStorageMode.SSTORE2, "Post is not on Ethereum state");
+        // getStorageBackendIndexByName() will revert if not found
+        posts[index].storageBackendIndex = factory.getStorageBackendIndexByName(storageBackendName);
 
         posts[index].title = postTitle;
         posts[index].contentFormatVersion = contentFormatVersion;
         posts[index].extra = extra;
-        // Each edition has a unique file name. Finds out the filename to use
-        uint revision = 1;
-        string memory fileName;
-        while(true) {
-            fileName = string.concat("blog-entry-", Strings.toString(index), "-", Strings.toString(revision), ".txt");
-            if(fileStore.fileExists(fileName) == false) {
-                break;
-            } else {
-                revision++;
-            }
-        }
-        // We store the content on FileStore
-        (address filePointer, ) = fileStore.createFile(fileName, postContent);
-        posts[index].contentKey = bytes32(uint256(uint160(filePointer)));
+        // We store the content on the storage backend
+        // We store all at once (we assume blog posts themselves won't require multiple tx)
+        posts[index].contentKey = factory.storageBackends(posts[index].storageBackendIndex).create(data, dataLength);
 
         emit PostEdited(index);
     }
 
-    function editEthStoragePost(uint256 index, string memory postTitle, uint256 blobDataSize, uint8 contentFormatVersion, bytes20 extra) public payable onlyOwnerOrEditors {
-        require(index < posts.length, "Index out of bounds");
-        require(posts[index].storageMode == FileStorageMode.EthStorage, "Post is not on EthStorage");
+    // function editEthereumStatePost(uint256 index, string memory postTitle, string memory postContent, uint8 contentFormatVersion, bytes20 extra) public onlyOwnerOrEditors {
+    //     require(index < posts.length, "Index out of bounds");
+    //     require(posts[index].storageMode == FileStorageMode.SSTORE2, "Post is not on Ethereum state");
 
-        posts[index].title = postTitle;
-        posts[index].contentFormatVersion = contentFormatVersion;
-        posts[index].extra = extra;
-        // We store the content on EthStorage
-        // No payment, as we reuse a key
-        factory.ethStorage().putBlob(posts[index].contentKey, 0, blobDataSize);
+    //     posts[index].title = postTitle;
+    //     posts[index].contentFormatVersion = contentFormatVersion;
+    //     posts[index].extra = extra;
+    //     // Each edition has a unique file name. Finds out the filename to use
+    //     uint revision = 1;
+    //     string memory fileName;
+    //     while(true) {
+    //         fileName = string.concat("blog-entry-", Strings.toString(index), "-", Strings.toString(revision), ".txt");
+    //         if(fileStore.fileExists(fileName) == false) {
+    //             break;
+    //         } else {
+    //             revision++;
+    //         }
+    //     }
+    //     // We store the content on FileStore
+    //     (address filePointer, ) = fileStore.createFile(fileName, postContent);
+    //     posts[index].contentKey = bytes32(uint256(uint160(filePointer)));
 
-        emit PostEdited(index);
-    }
+    //     emit PostEdited(index);
+    // }
+
+    // function editEthStoragePost(uint256 index, string memory postTitle, uint256 blobDataSize, uint8 contentFormatVersion, bytes20 extra) public payable onlyOwnerOrEditors {
+    //     require(index < posts.length, "Index out of bounds");
+    //     require(posts[index].storageMode == FileStorageMode.EthStorage, "Post is not on EthStorage");
+
+    //     posts[index].title = postTitle;
+    //     posts[index].contentFormatVersion = contentFormatVersion;
+    //     posts[index].extra = extra;
+    //     // We store the content on EthStorage
+    //     // No payment, as we reuse a key
+    //     factory.ethStorage().putBlob(posts[index].contentKey, 0, blobDataSize);
+
+    //     emit PostEdited(index);
+    // }
 
     function getPostCount() public view returns (uint256) {
         return posts.length;
@@ -288,25 +318,52 @@ contract DBlog {
     // Uploaded files for the blog posts
     //
 
-    function addUploadedFileOnEthfs(string memory fileName, string memory contentType, bytes memory fileContents) public onlyOwnerOrEditors {
-        // Initialise the FileStore if not done yet
-        if(address(fileStore) == address(0)) {
-            fileStore = FileStore(Clones.clone(address(factory.ethFsFileStore())));
-        }
-
+    function addUploadedFile(string memory fileName, string memory contentType, string memory storageBackendName, bytes memory data, uint dataLength) public onlyOwnerOrEditors {
         uploadedFiles.push();
-        FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
-        newFile.storageMode = FileStorageMode.SSTORE2;
+        FileInfosWithStorageBackend storage newFile = uploadedFiles[uploadedFiles.length - 1];
+        // getStorageBackendIndexByName() will revert if not found
+        newFile.storageBackendIndex = factory.getStorageBackendIndexByName(storageBackendName);
         newFile.fileInfos.filePath = fileName;
         uploadedFilesNameToIndex[fileName] = FileNameToIndex({exists: true, index: uint248(uploadedFiles.length - 1)});
         newFile.fileInfos.contentType = contentType;
 
-        // We store the content on ethFs
-        (address filePointer, ) = fileStore.createFile(fileName, string(fileContents));
-        newFile.fileInfos.contentKeys.push(bytes32(uint256(uint160(filePointer))));
+        // We store the content on the storage backend
+        // Only a portion of the data may have been sent, in which case we will need to append
+        // with appendToUploadedFile()
+        newFile.fileInfos.contentKey = factory.storageBackends(newFile.storageBackendIndex).create(data, dataLength);
 
         emit FileUploaded(fileName, contentType);
     }
+
+    function appendToUploadedFile(string memory fileName, bytes memory data) public onlyOwnerOrEditors {
+        require(uploadedFilesNameToIndex[fileName].exists, "File not found");
+
+        uint index = uploadedFilesNameToIndex[fileName].index;
+        FileInfosWithStorageBackend storage uploadedFile = uploadedFiles[index];
+
+        factory.storageBackends(uploadedFile.storageBackendIndex).append(uploadedFile.fileInfos.contentKey, data);
+    }
+
+
+    // function addUploadedFileOnEthfs(string memory fileName, string memory contentType, bytes memory fileContents) public onlyOwnerOrEditors {
+    //     // Initialise the FileStore if not done yet
+    //     if(address(fileStore) == address(0)) {
+    //         fileStore = FileStore(Clones.clone(address(factory.ethFsFileStore())));
+    //     }
+
+    //     uploadedFiles.push();
+    //     FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
+    //     newFile.storageMode = FileStorageMode.SSTORE2;
+    //     newFile.fileInfos.filePath = fileName;
+    //     uploadedFilesNameToIndex[fileName] = FileNameToIndex({exists: true, index: uint248(uploadedFiles.length - 1)});
+    //     newFile.fileInfos.contentType = contentType;
+
+    //     // We store the content on ethFs
+    //     (address filePointer, ) = fileStore.createFile(fileName, string(fileContents));
+    //     newFile.fileInfos.contentKeys.push(bytes32(uint256(uint160(filePointer))));
+
+    //     emit FileUploaded(fileName, contentType);
+    // }
 
     /**
      * Adding a file on EthStorage can be done in multiple calls: this one, and several 
@@ -316,93 +373,93 @@ contract DBlog {
      * @param blobsCount The number of blobs that will be uploaded, in this call and optional several other completeUploadedFileOnEthStorage() calls
      * @param blobDataSizes The size of each blob that will be uploaded in this call.
      */
-    function addUploadedFileOnEthStorage(string memory filePath, string memory contentType, uint256 blobsCount, uint256[] memory blobDataSizes) public payable onlyOwnerOrEditors {
-        require(Strings.compare(filePath, "") == false, "File path must be set");
-        require(Strings.compare(contentType, "") == false, "Content type must be set");
-        require(blobDataSizes.length > 0, "At least one blob");
-        require(blobsCount >= blobDataSizes.length, "Total blob count must be at least the blobDataSizes length");
-        // Ensure file name is unique
-        for(uint i = 0; i < uploadedFiles.length; i++) {
-            require(keccak256(abi.encodePacked(uploadedFiles[i].fileInfos.filePath)) != keccak256(abi.encodePacked(filePath)), "File already uploaded");
-        }
+    // function addUploadedFileOnEthStorage(string memory filePath, string memory contentType, uint256 blobsCount, uint256[] memory blobDataSizes) public payable onlyOwnerOrEditors {
+    //     require(Strings.compare(filePath, "") == false, "File path must be set");
+    //     require(Strings.compare(contentType, "") == false, "Content type must be set");
+    //     require(blobDataSizes.length > 0, "At least one blob");
+    //     require(blobsCount >= blobDataSizes.length, "Total blob count must be at least the blobDataSizes length");
+    //     // Ensure file name is unique
+    //     for(uint i = 0; i < uploadedFiles.length; i++) {
+    //         require(keccak256(abi.encodePacked(uploadedFiles[i].fileInfos.filePath)) != keccak256(abi.encodePacked(filePath)), "File already uploaded");
+    //     }
 
-        uploadedFiles.push();
-        FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
-        newFile.storageMode = FileStorageMode.EthStorage;
-        newFile.fileInfos.filePath = filePath;
-        uploadedFilesNameToIndex[filePath] = FileNameToIndex({exists: true, index: uint248(uploadedFiles.length - 1)});
-        newFile.fileInfos.contentType = contentType;
+    //     uploadedFiles.push();
+    //     FileInfosWithStorageMode storage newFile = uploadedFiles[uploadedFiles.length - 1];
+    //     newFile.storageMode = FileStorageMode.EthStorage;
+    //     newFile.fileInfos.filePath = filePath;
+    //     uploadedFilesNameToIndex[filePath] = FileNameToIndex({exists: true, index: uint248(uploadedFiles.length - 1)});
+    //     newFile.fileInfos.contentType = contentType;
 
-        // We store the content on EthStorage
-        bytes32[] memory ethStorageKeys = new bytes32[](blobsCount);
-        uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
-        uint256 fundsUsed = 0;
-        for(uint i = 0; i < blobDataSizes.length; i++) {
-            uint payment = 0;
+    //     // We store the content on EthStorage
+    //     bytes32[] memory ethStorageKeys = new bytes32[](blobsCount);
+    //     uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+    //     uint256 fundsUsed = 0;
+    //     for(uint i = 0; i < blobDataSizes.length; i++) {
+    //         uint payment = 0;
 
-            if(reusableEthStorageKeys.length > 0) {
-                ethStorageKeys[i] = reusableEthStorageKeys[reusableEthStorageKeys.length - 1];
-                reusableEthStorageKeys.pop();
-            } else {
-                ethStorageLastUsedKey++;
-                ethStorageKeys[i] = bytes32(ethStorageLastUsedKey);
-                payment = upfrontPayment;
-            }
+    //         if(reusableEthStorageKeys.length > 0) {
+    //             ethStorageKeys[i] = reusableEthStorageKeys[reusableEthStorageKeys.length - 1];
+    //             reusableEthStorageKeys.pop();
+    //         } else {
+    //             ethStorageLastUsedKey++;
+    //             ethStorageKeys[i] = bytes32(ethStorageLastUsedKey);
+    //             payment = upfrontPayment;
+    //         }
 
-            factory.ethStorage().putBlob{value: payment}(ethStorageKeys[i], i, blobDataSizes
-            [i]);
-            fundsUsed += payment;
-        }
-        newFile.fileInfos.contentKeys = ethStorageKeys;
+    //         factory.ethStorage().putBlob{value: payment}(ethStorageKeys[i], i, blobDataSizes
+    //         [i]);
+    //         fundsUsed += payment;
+    //     }
+    //     newFile.fileInfos.contentKeys = ethStorageKeys;
 
-        emit FileUploaded(filePath, contentType);
+    //     emit FileUploaded(filePath, contentType);
 
-        // Send back remaining funds sent by the caller
-        if(msg.value - fundsUsed > 0) {
-            payable(msg.sender).transfer(msg.value - fundsUsed);
-        }
-    }
+    //     // Send back remaining funds sent by the caller
+    //     if(msg.value - fundsUsed > 0) {
+    //         payable(msg.sender).transfer(msg.value - fundsUsed);
+    //     }
+    // }
 
     /**
      * Complete the upload of a file on EthStorage. This function can be called multiple times.
      */
-    function completeUploadedFileOnEthStorage(string memory filePath, uint256[] memory blobDataSizes) public payable onlyOwnerOrEditors {
+    // function completeUploadedFileOnEthStorage(string memory filePath, uint256[] memory blobDataSizes) public payable onlyOwnerOrEditors {
         
-        uint uploadedFileIndex;
-        bool found = false;
-        for(uint i = 0; i < uploadedFiles.length; i++) {
-            if(Strings.compare(uploadedFiles[i].fileInfos.filePath, filePath)) {
-                uploadedFileIndex = i;
-                found = true;
-                break;
-            }
-        }
-        require(found, "File not found");
-        FileInfosWithStorageMode storage uploadedFile = uploadedFiles[uploadedFileIndex];
+    //     uint uploadedFileIndex;
+    //     bool found = false;
+    //     for(uint i = 0; i < uploadedFiles.length; i++) {
+    //         if(Strings.compare(uploadedFiles[i].fileInfos.filePath, filePath)) {
+    //             uploadedFileIndex = i;
+    //             found = true;
+    //             break;
+    //         }
+    //     }
+    //     require(found, "File not found");
+    //     FileInfosWithStorageMode storage uploadedFile = uploadedFiles[uploadedFileIndex];
 
-        require(uploadedFile.storageMode == FileStorageMode.EthStorage, "File is not on EthStorage");
+    //     require(uploadedFile.storageMode == FileStorageMode.EthStorage, "File is not on EthStorage");
 
-        // Determine the position of the last blob which was not uploaded yet
-        uint contentKeyStartingIndex = 0;
-        for(uint i = 0; i < uploadedFile.fileInfos.contentKeys.length; i++) {
-            if(uploadedFile.fileInfos.contentKeys[i] == 0) {
-                contentKeyStartingIndex = i;
-                break;
-            }
-        }
-        require(contentKeyStartingIndex > 0, "All blobs already uploaded");
-        require(contentKeyStartingIndex + blobDataSizes.length <= uploadedFile.fileInfos.contentKeys.length, "Too many blobs");
+    //     // Determine the position of the last blob which was not uploaded yet
+    //     uint contentKeyStartingIndex = 0;
+    //     for(uint i = 0; i < uploadedFile.fileInfos.contentKeys.length; i++) {
+    //         if(uploadedFile.fileInfos.contentKeys[i] == 0) {
+    //             contentKeyStartingIndex = i;
+    //             break;
+    //         }
+    //     }
+    //     require(contentKeyStartingIndex > 0, "All blobs already uploaded");
+    //     require(contentKeyStartingIndex + blobDataSizes.length <= uploadedFile.fileInfos.contentKeys.length, "Too many blobs");
 
-        // We store the content on EthStorage
-        uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
-        for(uint i = 0; i < blobDataSizes.length; i++) {
-            ethStorageLastUsedKey++;
-            uploadedFile.fileInfos.contentKeys[contentKeyStartingIndex + i] = bytes32(ethStorageLastUsedKey);
-            factory.ethStorage().putBlob{value: upfrontPayment}(uploadedFile.fileInfos.contentKeys[contentKeyStartingIndex + i], i, blobDataSizes[i]);
-        }
-    }
+    //     // We store the content on EthStorage
+    //     uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+    //     for(uint i = 0; i < blobDataSizes.length; i++) {
+    //         ethStorageLastUsedKey++;
+    //         uploadedFile.fileInfos.contentKeys[contentKeyStartingIndex + i] = bytes32(ethStorageLastUsedKey);
+    //         factory.ethStorage().putBlob{value: upfrontPayment}(uploadedFile.fileInfos.contentKeys[contentKeyStartingIndex + i], i, blobDataSizes[i]);
+    //     }
+    // }
 
-    function getUploadedFiles() public view returns (FileInfosWithStorageMode[] memory) {
+    function getUploadedFiles() public view returns (FileInfosWithStorageBackend[] memory) {
         return uploadedFiles;
     }
 
@@ -410,65 +467,54 @@ contract DBlog {
         return uploadedFiles.length;
     }
 
-    function getUploadedFile(uint256 index) public view returns (FileInfosWithStorageMode memory) {
+    function getUploadedFile(uint256 index) public view returns (FileInfosWithStorageBackend memory) {
         require(index < uploadedFiles.length, "Index out of bounds");
 
         return uploadedFiles[index];
     }
 
-    function getUploadedFileByName(string memory fileName) public view returns (FileInfosWithStorageMode memory uploadedFile, uint256 index) {
+    function getUploadedFileByName(string memory fileName) public view returns (FileInfosWithStorageBackend memory uploadedFile, uint256 index) {
         require(uploadedFilesNameToIndex[fileName].exists, "File not found");
 
         index = uploadedFilesNameToIndex[fileName].index;
         uploadedFile = uploadedFiles[index];
     }
 
-    function getUploadedFileContentsChunkCount(uint256 index) public view returns (uint256 chunkCount) {
+    function getUploadedFileContents(uint256 index, uint256 startingChunkId) public view returns (bytes memory contents, uint nextChunkId) {
         require(index < uploadedFiles.length, "Index out of bounds");
 
-        FileInfosWithStorageMode memory uploadedFile = uploadedFiles[index];
+        FileInfosWithStorageBackend memory uploadedFile = uploadedFiles[index];
+        IStorageBackend storageBackend = factory.storageBackends(uploadedFile.storageBackendIndex);
+        (contents, nextChunkId) = storageBackend.read(address(this), uploadedFile.fileInfos.contentKey, startingChunkId);
 
-        if(uploadedFile.storageMode == FileStorageMode.SSTORE2) {
-            chunkCount = 1;
-        }
-        else if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
-            chunkCount = uploadedFile.fileInfos.contentKeys.length / ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK;
-            if(uploadedFile.fileInfos.contentKeys.length % ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK > 0) {
-                chunkCount++;
-            }
-        }
-    }
 
-    function getUploadedFileContents(uint256 index, uint256 chunkId) public view returns (bytes memory contents) {
-        require(index < uploadedFiles.length, "Index out of bounds");
+        // TestEthStorageContractKZG ethStorage = factory.ethStorage();
+        
 
-        TestEthStorageContractKZG ethStorage = factory.ethStorage();
-        FileInfosWithStorageMode memory uploadedFile = uploadedFiles[index];
-
-        if(uploadedFile.storageMode == FileStorageMode.SSTORE2) {
-            File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(uploadedFile.fileInfos.contentKeys[0])))), (File));
-            contents = bytes(file.read());
-        }
-        else if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
-            bytes memory content;
-            for(uint j = chunkId * ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK; j < (chunkId + 1) * ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK && j < uploadedFile.fileInfos.contentKeys.length; j++) {
-                content = bytes.concat(content, ethStorage.get(uploadedFile.fileInfos.contentKeys[j], DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, ethStorage.size(uploadedFile.fileInfos.contentKeys[j])));
-            }
-            contents = content;
-        }
+        // if(uploadedFile.storageMode == FileStorageMode.SSTORE2) {
+        //     File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(uploadedFile.fileInfos.contentKeys[0])))), (File));
+        //     contents = bytes(file.read());
+        // }
+        // else if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
+        //     bytes memory content;
+        //     for(uint j = chunkId * ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK; j < (chunkId + 1) * ETHSTORAGE_BLOBS_PER_WEB3_PROTOCOL_CHUNK && j < uploadedFile.fileInfos.contentKeys.length; j++) {
+        //         content = bytes.concat(content, ethStorage.get(uploadedFile.fileInfos.contentKeys[j], DecentralizedKV.DecodeType.PaddingPer31Bytes, 0, ethStorage.size(uploadedFile.fileInfos.contentKeys[j])));
+        //     }
+        //     contents = content;
+        // }
     }
 
     function removeUploadedFile(uint256 index) public onlyOwnerOrEditors {
         require(index < uploadedFiles.length, "Index out of bounds");
 
-        FileInfosWithStorageMode storage uploadedFile = uploadedFiles[index];
+        FileInfosWithStorageBackend storage uploadedFile = uploadedFiles[index];
 
-        if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
-            // Store the keys to reuse them
-            for(uint i = 0; i < uploadedFile.fileInfos.contentKeys.length; i++) {
-                reusableEthStorageKeys.push(uploadedFile.fileInfos.contentKeys[i]);
-            }
-        }
+        // if(uploadedFile.storageMode == FileStorageMode.EthStorage) {
+        //     // Store the keys to reuse them
+        //     for(uint i = 0; i < uploadedFile.fileInfos.contentKeys.length; i++) {
+        //         reusableEthStorageKeys.push(uploadedFile.fileInfos.contentKeys[i]);
+        //     }
+        // }
 
         uploadedFilesNameToIndex[uploadedFile.fileInfos.filePath].exists = false;
         uploadedFile = uploadedFiles[uploadedFiles.length - 1];
@@ -485,7 +531,7 @@ contract DBlog {
         return (title, description, owner());
     }
 
-    function getEditorsAndPostsAndUploadedFiles() public view returns (address[] memory, BlogPost[] memory, FileInfosWithStorageMode[] memory) {
+    function getEditorsAndPostsAndUploadedFiles() public view returns (address[] memory, BlogPost[] memory, FileInfosWithStorageBackend[] memory) {
         return (editors, posts, uploadedFiles);
     }
 

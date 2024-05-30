@@ -20,6 +20,7 @@ import "./DBlogFrontend.sol";
 import "./DBlogFrontendLibrary.sol";
 import "./DBlogFactoryToken.sol";
 import "./library/Strings.sol";
+import "./interfaces/IStorageBackend.sol";
 
 contract DBlogFactory is ERC721A {
     DBlogFactoryFrontend public immutable factoryFrontend;
@@ -43,6 +44,9 @@ contract DBlogFactory is ERC721A {
     // EIP-2304 ENS resolver events
     event AddressChanged(bytes32 indexed node, uint coinType, bytes newAddress);
     uint constant private COIN_TYPE_ETH = 60;
+
+    // Storage backends
+    IStorageBackend[] public storageBackends;
 
     // EthFs contract
     FileStore public immutable ethFsFileStore;
@@ -428,6 +432,35 @@ contract DBlogFactory is ERC721A {
 
     function onERC1155BatchReceived(address _operator, address _from, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external returns(bytes4) {
         return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
+    }
+
+
+    //
+    // Storage backends
+    //
+
+    function addStorageBackend(IStorageBackend storageBackend) public onlyOwner {
+        // Make sure it is not inserted yet
+        // Make sure name is unique
+        for(uint i = 0; i < storageBackends.length; i++) {
+            require(address(storageBackends[i]) != address(storageBackend), "Storage backend already added");
+            require(Strings.compare(storageBackends[i].backendName(), storageBackend.backendName()) == false, "Storage backend name already used");
+        }
+
+        storageBackends.push(storageBackend);
+    }
+
+    function getStorageBackendIndexByName(string memory name) public view returns (uint16 index) {
+        bool found = false;
+        for(uint16 i = 0; i < storageBackends.length; i++) {
+            if(Strings.compare(storageBackends[i].backendName(), name)) {
+                index = i;
+                found = true;
+            }
+        }
+        require(found, "Storage backend not found");
+
+        return index;
     }
 
 
