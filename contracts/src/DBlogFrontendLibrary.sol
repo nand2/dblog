@@ -12,7 +12,7 @@ import "./DBlogFactory.sol";
 contract DBlogFrontendLibrary is IFrontendLibrary {
     DBlogFactory public blogFactory;
 
-    FrontendFilesSet[] public frontendVersions;
+    FrontendFilesSet2[] public frontendVersions;
     uint256 public defaultFrontendIndex;
 
     uint256 public ethStorageLastUsedKey = 0;
@@ -40,17 +40,33 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         return blogFactory.ethFsFileStore();
     }
 
-    function addSStore2FrontendVersion(FileInfos[] memory files, string memory _infos) public onlyFactoryOrFactoryOwner {
+    function getStorageBackendIndexByName(string memory name) public view returns (uint16 index) {
+        return blogFactory.getStorageBackendIndexByName(name);
+    }
+    
+    function getStorageBackend(uint16 index) public view returns (IStorageBackend storageBackend) {
+        return blogFactory.storageBackends(index);
+    }
+
+    function createFile(string memory path, string memory contentType, uint16 storageBackendIndex, bytes memory data, uint dataLength) public onlyFactoryOrFactoryOwner returns (FileInfos2 memory) {
+        IStorageBackend storageBackend = blogFactory.storageBackends(storageBackendIndex);
+        uint contentKey = storageBackend.create(data, dataLength);
+        return FileInfos2({
+            filePath: path,
+            contentType: contentType,
+            contentKey: contentKey
+        });
+    }
+
+    function addFrontendVersion(uint16 storageBackendIndex, FileInfos2[] memory files, string memory _infos) public onlyFactoryOrFactoryOwner {
         // Previous frontend version must be locked
         if(frontendVersions.length > 0) {
             require(frontendVersions[frontendVersions.length - 1].locked, "Previous frontend version must be locked");
         }
 
-        // Weird insertion into frontendVersions due to :
-        // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
         frontendVersions.push();
-        FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
-        newFrontend.storageMode = FileStorageMode.SSTORE2;
+        FrontendFilesSet2 storage newFrontend = frontendVersions[frontendVersions.length - 1];
+        newFrontend.storageBackendIndex = storageBackendIndex;
         for(uint i = 0; i < files.length; i++) {
             newFrontend.files.push(files[i]);
         }
@@ -58,14 +74,41 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         defaultFrontendIndex = frontendVersions.length - 1;
     }
 
-    function addFilesToCurrentSStore2FrontendVersion(FileInfos[] memory files) public onlyFactoryOrFactoryOwner {
-        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
+    function addFilesToCurrentFrontendVersion(FileInfos2[] memory files) public onlyFactoryOrFactoryOwner {
+        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Frontend version is locked");
-        require(frontend.storageMode == FileStorageMode.SSTORE2, "Not SSTORE2 mode");
 
         for(uint i = 0; i < files.length; i++) {
             frontend.files.push(files[i]);
         }
+    }
+
+    function addSStore2FrontendVersion(FileInfos[] memory files, string memory _infos) public onlyFactoryOrFactoryOwner {
+        // // Previous frontend version must be locked
+        // if(frontendVersions.length > 0) {
+        //     require(frontendVersions[frontendVersions.length - 1].locked, "Previous frontend version must be locked");
+        // }
+
+        // // Weird insertion into frontendVersions due to :
+        // // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
+        // frontendVersions.push();
+        // FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
+        // newFrontend.storageMode = FileStorageMode.SSTORE2;
+        // for(uint i = 0; i < files.length; i++) {
+        //     newFrontend.files.push(files[i]);
+        // }
+        // newFrontend.infos = _infos;
+        // defaultFrontendIndex = frontendVersions.length - 1;
+    }
+
+    function addFilesToCurrentSStore2FrontendVersion(FileInfos[] memory files) public onlyFactoryOrFactoryOwner {
+        // FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
+        // require(!frontend.locked, "Frontend version is locked");
+        // require(frontend.storageMode == FileStorageMode.SSTORE2, "Not SSTORE2 mode");
+
+        // for(uint i = 0; i < files.length; i++) {
+        //     frontend.files.push(files[i]);
+        // }
     }
 
 
@@ -75,75 +118,75 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
 
 
     function addEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files, string memory _infos) public payable onlyFactoryOrFactoryOwner {
-        TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
-        uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+        // TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
+        // uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
 
-        // Previous frontend version must be locked
-        if(frontendVersions.length > 0) {
-            require(frontendVersions[frontendVersions.length - 1].locked, "Previous frontend version must be locked");
-        }
+        // // Previous frontend version must be locked
+        // if(frontendVersions.length > 0) {
+        //     require(frontendVersions[frontendVersions.length - 1].locked, "Previous frontend version must be locked");
+        // }
 
-        // Weird insertion into frontendVersions due to :
-        // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
-        frontendVersions.push();
-        FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
-        newFrontend.storageMode = FileStorageMode.EthStorage;
-        for(uint i = 0; i < files.length; i++) {
-            bytes32[] memory ethStorageKeys = new bytes32[](files[i].blobIndexes.length);
-            for(uint j = 0; j < files[i].blobIndexes.length; j++) {
-                ethStorageLastUsedKey++;
-                ethStorageKeys[j] = bytes32(ethStorageLastUsedKey);
-                // Upload part of the file
-                // ethStorageKeys[j] is a key we choose, and it will be mixed with msg.sender
-                ethStorage.putBlob{value: upfrontPayment}(ethStorageKeys[j], files[i].blobIndexes[j], files[i].blobDataSizes[j]);
-            }
-            newFrontend.files.push(FileInfos({
-                filePath: files[i].filePath,
-                contentType: files[i].contentType,
-                contentKeys: ethStorageKeys
-            }));
-        }
-        newFrontend.infos = _infos;
-        defaultFrontendIndex = frontendVersions.length - 1;
+        // // Weird insertion into frontendVersions due to :
+        // // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
+        // frontendVersions.push();
+        // FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
+        // newFrontend.storageMode = FileStorageMode.EthStorage;
+        // for(uint i = 0; i < files.length; i++) {
+        //     bytes32[] memory ethStorageKeys = new bytes32[](files[i].blobIndexes.length);
+        //     for(uint j = 0; j < files[i].blobIndexes.length; j++) {
+        //         ethStorageLastUsedKey++;
+        //         ethStorageKeys[j] = bytes32(ethStorageLastUsedKey);
+        //         // Upload part of the file
+        //         // ethStorageKeys[j] is a key we choose, and it will be mixed with msg.sender
+        //         ethStorage.putBlob{value: upfrontPayment}(ethStorageKeys[j], files[i].blobIndexes[j], files[i].blobDataSizes[j]);
+        //     }
+        //     newFrontend.files.push(FileInfos({
+        //         filePath: files[i].filePath,
+        //         contentType: files[i].contentType,
+        //         contentKeys: ethStorageKeys
+        //     }));
+        // }
+        // newFrontend.infos = _infos;
+        // defaultFrontendIndex = frontendVersions.length - 1;
     }
 
     // Add extra files to the latest unlocked EthStorage frontend version
     function addFilesToLatestEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files) public payable onlyFactoryOrFactoryOwner {
-        TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
-        uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
-        uint256 fundsUsed = 0;
+        // TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
+        // uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
+        // uint256 fundsUsed = 0;
 
-        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
-        require(!frontend.locked, "Frontend version is locked");
-        require(frontend.storageMode == FileStorageMode.EthStorage, "Not EthStorage mode");
+        // FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
+        // require(!frontend.locked, "Frontend version is locked");
+        // require(frontend.storageMode == FileStorageMode.EthStorage, "Not EthStorage mode");
 
-        for(uint i = 0; i < files.length; i++) {
-            bytes32[] memory ethStorageKeys = new bytes32[](files[i].blobIndexes.length);
-            for(uint j = 0; j < files[i].blobIndexes.length; j++) {
-                ethStorageLastUsedKey++;
-                ethStorageKeys[j] = bytes32(ethStorageLastUsedKey);
+        // for(uint i = 0; i < files.length; i++) {
+        //     bytes32[] memory ethStorageKeys = new bytes32[](files[i].blobIndexes.length);
+        //     for(uint j = 0; j < files[i].blobIndexes.length; j++) {
+        //         ethStorageLastUsedKey++;
+        //         ethStorageKeys[j] = bytes32(ethStorageLastUsedKey);
 
-                uint payment = 0;
-                if(ethStorage.exist(ethStorageKeys[j]) == false) {
-                    payment = upfrontPayment;
-                }
+        //         uint payment = 0;
+        //         if(ethStorage.exist(ethStorageKeys[j]) == false) {
+        //             payment = upfrontPayment;
+        //         }
 
-                // Upload part of the file
-                // ethStorageKeys[j] is a key we choose, and it will be mixed with msg.sender
-                ethStorage.putBlob{value: payment}(ethStorageKeys[j], files[i].blobIndexes[j], files[i].blobDataSizes[j]);
-                fundsUsed += payment;
-            }
-            frontend.files.push(FileInfos({
-                filePath: files[i].filePath,
-                contentType: files[i].contentType,
-                contentKeys: ethStorageKeys
-            }));
-        }
+        //         // Upload part of the file
+        //         // ethStorageKeys[j] is a key we choose, and it will be mixed with msg.sender
+        //         ethStorage.putBlob{value: payment}(ethStorageKeys[j], files[i].blobIndexes[j], files[i].blobDataSizes[j]);
+        //         fundsUsed += payment;
+        //     }
+        //     frontend.files.push(FileInfos({
+        //         filePath: files[i].filePath,
+        //         contentType: files[i].contentType,
+        //         contentKeys: ethStorageKeys
+        //     }));
+        // }
 
-        // Send back remaining funds sent by the caller
-        if(msg.value - fundsUsed > 0) {
-            payable(msg.sender).transfer(msg.value - fundsUsed);
-        }
+        // // Send back remaining funds sent by the caller
+        // if(msg.value - fundsUsed > 0) {
+        //     payable(msg.sender).transfer(msg.value - fundsUsed);
+        // }
     }
 
     // Get the count of frontend versions
@@ -153,7 +196,7 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
 
     // Lock the latest frontend version
     function lockLatestFrontendVersion() public onlyFactoryOrFactoryOwner {
-        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Already locked");
         frontend.locked = true;
     }
@@ -162,16 +205,16 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
     // This is useful if we want to deploy a small fix to a frontend version
     // In the case of EthStorage, we don't need to repay the upfront payment
     function resetLatestFrontendVersion() public onlyFactoryOrFactoryOwner {
-        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Already locked");
 
-        // If EthStorage: move back the pointer of last used key, so that we can
-        // reuse them for free
-        if(frontend.storageMode == FileStorageMode.EthStorage) {
-            for(uint i = 0; i < frontend.files.length; i++) {
-                ethStorageLastUsedKey -= frontend.files[i].contentKeys.length;
-            }
-        }
+        // // If EthStorage: move back the pointer of last used key, so that we can
+        // // reuse them for free
+        // if(frontend.storageMode == FileStorageMode.EthStorage) {
+        //     for(uint i = 0; i < frontend.files.length; i++) {
+        //         ethStorageLastUsedKey -= frontend.files[i].contentKeys.length;
+        //     }
+        // }
         // Clear the file list
         while(frontend.files.length > 0) {
             frontend.files.pop();
@@ -190,7 +233,7 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
             ethStorage.size(_key));
     }
 
-    function getFrontendVersion(uint256 _index) public view returns (FrontendFilesSet memory) {
+    function getFrontendVersion(uint256 _index) public view returns (FrontendFilesSet2 memory) {
         require(_index < frontendVersions.length, "Index out of bounds");
         return frontendVersions[_index];
     }
@@ -200,7 +243,7 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         defaultFrontendIndex = _index;
     }
 
-    function getDefaultFrontend() public view returns (FrontendFilesSet memory) {
+    function getDefaultFrontend() public view returns (FrontendFilesSet2 memory) {
         return frontendVersions[defaultFrontendIndex];
     }
 

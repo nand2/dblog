@@ -9,6 +9,7 @@ import { TestEthStorageContractKZG } from "storage-contracts-v1/TestEthStorageCo
 import "./DBlog.sol";
 import "./interfaces/IDecentralizedApp.sol";
 import "./interfaces/FileInfos.sol";
+import "./interfaces/IStorageBackend.sol";
 import "./DBlogFrontendLibrary.sol";
 import "./DBlogFactory.sol";
 
@@ -45,7 +46,7 @@ contract DBlogFrontend is IDecentralizedApp {
         useNonDefaultFrontend = false;
     }
 
-    function blogFrontendVersion() public view returns (FrontendFilesSet memory) {
+    function blogFrontendVersion() public view returns (FrontendFilesSet2 memory) {
         DBlogFrontendLibrary frontendLibrary = blog.factory().blogFrontendLibrary();
         if(useNonDefaultFrontend) {
             return frontendLibrary.getFrontendVersion(overridenFrontendIndex);
@@ -61,7 +62,7 @@ contract DBlogFrontend is IDecentralizedApp {
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
         DBlogFrontendLibrary frontendLibrary = blog.factory().blogFrontendLibrary();
-        FrontendFilesSet memory frontendVersion = blogFrontendVersion();
+        FrontendFilesSet2 memory frontendVersion = blogFrontendVersion();
 
         // Compute the filePath of the requested resource
         string memory filePath = "";
@@ -86,23 +87,37 @@ contract DBlogFrontend is IDecentralizedApp {
         // Search for the requested resource in our static file list
         for(uint i = 0; i < frontendVersion.files.length; i++) {
             if(Strings.compare(filePath, frontendVersion.files[i].filePath)) {
-                if(frontendVersion.storageMode == FileStorageMode.SSTORE2) {
-                    File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontendVersion.files[i].contentKeys[0])))), (File));
-                    body = file.read();
-                }
-                else if(frontendVersion.storageMode == FileStorageMode.EthStorage) {
-                    bytes memory content;
-                    for(uint j = 0; j < frontendVersion.files[i].contentKeys.length; j++) {
-                        content = bytes.concat(content, frontendLibrary.getEthStorageFileContents(frontendVersion.files[i].contentKeys[j]));
+                // web3:// chunk feature : if the file is big, we will send the file
+                // in chunks
+                // Determine the requested chunk
+                uint chunkIndex = 0;
+                for(uint j = 0; j < params.length; j++) {
+                    if(Strings.compare(params[j].key, "chunk")) {
+                        chunkIndex = Strings.stringToUint(params[j].value);
+                        break;
                     }
-                    body = string(content);
                 }
+
+                IStorageBackend storageBackend = blog.factory().storageBackends(frontendVersion.storageBackendIndex);
+                (bytes memory data, uint nextChunkId) = storageBackend.read(address(frontendLibrary), frontendVersion.files[i].contentKey, chunkIndex);
+                body = string(data);
                 statusCode = 200;
-                headers = new KeyValue[](2);
+
+                uint headersCount = 2;
+                if(nextChunkId > 0) {
+                    headersCount = 3;
+                }
+                headers = new KeyValue[](headersCount);
                 headers[0].key = "Content-type";
                 headers[0].value = frontendVersion.files[i].contentType;
                 headers[1].key = "Content-Encoding";
                 headers[1].value = "gzip";
+                // If there is more chunk remaining, add a pointer to the next chunk
+                if(nextChunkId > 0) {
+                    headers[2].key = "web3-next-chunk";
+                    headers[2].value = string.concat(filePath, "?chunk=", Strings.toString(nextChunkId));
+                }
+
                 return (statusCode, body, headers);
             }
         }
@@ -124,6 +139,8 @@ contract DBlogFrontend is IDecentralizedApp {
             string memory uploadedFileName = resource[1];
             try blog.getUploadedFileByName(uploadedFileName) returns (FileInfosWithStorageBackend memory uploadedFile, uint fileIndex) {
 
+                // web3:// chunk feature : if the file is big, we will send the file
+                // in chunks
                 // Determine the requested chunk
                 uint chunkIndex = 0;
                 for(uint j = 0; j < params.length; j++) {
@@ -133,8 +150,6 @@ contract DBlogFrontend is IDecentralizedApp {
                     }
                 }
 
-                // web3:// chunk feature : if the file is big, we will send the file
-                // in chunks
                 (bytes memory data, uint nextChunkId) = blog.getUploadedFileContents(fileIndex, chunkIndex);
                 body = string(data);
                 statusCode = 200;

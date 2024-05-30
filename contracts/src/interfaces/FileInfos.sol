@@ -42,7 +42,8 @@ struct FileInfosWithStorageMode {
     FileInfos fileInfos;
 }
 
-// Temporary, to be renamed to FileInfos once legacy FileInfos is removed
+
+// Temporary name, to be renamed to FileInfos once legacy FileInfos is removed
 struct FileInfos2 {
     // The path of the file, without root slash. E.g. "images/logo.png"
     string filePath;
@@ -51,6 +52,22 @@ struct FileInfos2 {
 
     // Pointers to the file contents on a storage backend
     uint contentKey;
+}
+
+// A version of a frontend, containing some static files
+// Temporary name, to be renamed to FileInfos once legacy FileInfos is removed
+struct FrontendFilesSet2 {
+    // Storage backend for the frontend files
+    uint16 storageBackendIndex;
+
+    // The files of the frontend
+    FileInfos2[] files;
+
+    // Infos about this frontend version
+    string infos;
+
+    // When locked, the frontend version cannot be modified any longer
+    bool locked;
 }
 
 // When we want to store the storage backend of individual files

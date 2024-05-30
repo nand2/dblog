@@ -2,10 +2,19 @@
 pragma solidity ^0.8.13;
 
 import "./FileInfos.sol";
+import "./IStorageBackend.sol";
 // EthFs
 import {FileStore} from "ethfs/FileStore.sol";
 
 interface IFrontendLibrary {
+  function getStorageBackendIndexByName(string memory name) external view returns (uint16 index);
+  function getStorageBackend(uint16 index) external view returns (IStorageBackend storageBackend);
+
+  function createFile(string memory path, string memory contentType, uint16 storageBackendIndex, bytes memory data, uint dataLength) external returns (FileInfos2 memory);
+
+  function addFrontendVersion(uint16 storageBackendIndex, FileInfos2[] memory files, string memory _infos) external;
+  function addFilesToCurrentFrontendVersion(FileInfos2[] memory files) external;
+
   function getEthFsFileStore() external view returns (FileStore);
   function addSStore2FrontendVersion(FileInfos[] memory files, string memory _infos) external;
   function addFilesToCurrentSStore2FrontendVersion(FileInfos[] memory files) external;
@@ -32,7 +41,7 @@ interface IFrontendLibrary {
   function resetLatestFrontendVersion() external;
 
   function frontendVersionsCount() external view returns (uint256);
-  function getFrontendVersion(uint256 _index) external view returns (FrontendFilesSet memory);
+  function getFrontendVersion(uint256 _index) external view returns (FrontendFilesSet2 memory);
   function setDefaultFrontend(uint256 _index) external;
-  function getDefaultFrontend() external view returns (FrontendFilesSet memory);
+  function getDefaultFrontend() external view returns (FrontendFilesSet2 memory);
 }

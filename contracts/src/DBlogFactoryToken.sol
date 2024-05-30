@@ -6,6 +6,7 @@ import { DBlog } from "./DBlog.sol";
 import "./library/Strings.sol";
 import "./library/Base64.sol";
 import "./interfaces/FileInfos.sol";
+import "./interfaces/IStorageBackend.sol";
 
 contract DBlogFactoryToken {
     DBlogFactory public blogFactory;
@@ -38,8 +39,8 @@ contract DBlogFactoryToken {
                 Strings.toHexString(address(blog.frontend())));
 
             uint chainId = block.chainid;
-            FileStorageMode storageMode = blog.frontend().blogFrontendVersion().storageMode;
-            if(storageMode == FileStorageMode.EthStorage) {
+            IStorageBackend storageBackend = blogFactory.storageBackends(blog.frontend().blogFrontendVersion().storageBackendIndex);
+            if(Strings.compare(storageBackend.backendName(), "EthStorage")) {
                 if(block.chainid == 1) {
                     chainId = 333;
                 }

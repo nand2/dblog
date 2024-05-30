@@ -342,13 +342,13 @@ contract DBlogFactory is ERC721A {
             }
 
             // Blog factory
-            if(node == computeSubdomainNameHash("") && factoryFrontend.frontendVersion().storageMode == FileStorageMode.EthStorage) {
+            if(node == computeSubdomainNameHash("") && Strings.compare(storageBackends[factoryFrontend.frontendVersion().storageBackendIndex].backendName(), "EthStorage")) {
                 return string.concat(ethStorageChainShortName, ":", Strings.toHexString(address(factoryFrontend)));
             }
 
             // Blogs
             if(address(subdomainNameHashToBlog[node]) != address(0) &&
-            subdomainNameHashToBlog[node].frontend().blogFrontendVersion().storageMode == FileStorageMode.EthStorage) {
+            Strings.compare(storageBackends[subdomainNameHashToBlog[node].frontend().blogFrontendVersion().storageBackendIndex].backendName(), "EthStorage")) {
                 return string.concat(ethStorageChainShortName, ":", Strings.toHexString(address(subdomainNameHashToBlog[node].frontend())));
             }
         }
