@@ -22,3 +22,6 @@
 [submodule "contracts/lib/ERC721A"]
 	path = contracts/lib/ERC721A
 	url = https://github.com/chiru-labs/ERC721A
+[submodule "contracts/lib/solady"]
+	path = contracts/lib/solady
+	url = https://github.com/vectorized/solady
