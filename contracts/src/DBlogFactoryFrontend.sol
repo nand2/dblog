@@ -323,7 +323,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
                 // If there is more chunk remaining, add a pointer to the next chunk
                 if(nextChunkId > 0) {
                     headers[2].key = "web3-next-chunk";
-                    headers[2].value = string.concat(filePath, "?chunk=", Strings.toString(nextChunkId));
+                    headers[2].value = string.concat("/", filePath, "?chunk=", Strings.toString(nextChunkId));
                 }
 
                 return (statusCode, body, headers);
