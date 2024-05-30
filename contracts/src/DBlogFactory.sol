@@ -272,10 +272,12 @@ contract DBlogFactory is ERC721A {
         // Send all the remaining money to the Protocol guild
         if(address(this).balance > 0) {
             // Donations going to Ethereum protocol contributors via the Protocol guild
-            // https://twitter.com/StatefulWorks/status/1477006979704967169
-            // https://stateful.mirror.xyz/mEDvFXGCKdDhR-N320KRtsq60Y2OPk8rHcHBCFVryXY
-            // https://protocol-guild.readthedocs.io/en/latest/
-            address protocolGuildAddress = 0xF29Ff96aaEa6C9A1fBa851f74737f3c069d4f1a9;
+            // https://protocol-guild.readthedocs.io/en/latest/04-donate.html
+            // https://x.com/ProtocolGuild/status/1796213865530663194
+            address protocolGuildAddress = 0x25941dC771bB64514Fc8abBce970307Fb9d477e9;
+            if(block.chainid != 1) {
+                protocolGuildAddress = 0x32e3C7fD24e175701A35c224f2238d18439C7dBC;
+            }
             payable(protocolGuildAddress).transfer(address(this).balance);
         }
     }

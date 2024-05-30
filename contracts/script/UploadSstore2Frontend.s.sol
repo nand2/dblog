@@ -23,7 +23,6 @@ contract UploadSstore2Frontend is Script {
 
         // Get the SSTORE2 storage backend
         uint16 storageBackendIndex = frontendLibrary.getStorageBackendIndexByName("SSTORE2");
-        IStorageBackend storageBackend = frontendLibrary.getStorageBackend(storageBackendIndex);
 
         // Get the files to upload
         FileNameAndCompressedName[] memory files = abi.decode(vm.envBytes("FILE_ARGS"), (FileNameAndCompressedName[]));
