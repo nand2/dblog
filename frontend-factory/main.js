@@ -69,7 +69,7 @@ document.querySelector('#app').innerHTML = `
               ➔ Your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"} will appear as a NFT in your wallet. The owner of the NFT is the owner of the blog.
             </p>
             <p>
-              ➔ Your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"} is made of several standalone smart contracts. Your frontend contract is located on Ethereum at address <code id="new-blog-address"></code>
+              ➔ Your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"} is made of several standalone smart contracts. Your frontend contract is located on ${import.meta.env.VITE_NETWORK_NAME ?? "%VITE_NETWORK_NAME%"} at address <code id="new-blog-address"></code>
             </p>
             <p>
               ➔ You can use your own .eth domain for it, see instructions in your blog admin page
