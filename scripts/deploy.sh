@@ -173,13 +173,27 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "contracts" ]; then
 fi
 
 
+#
 # Do the frontend uploads
+#
+
+# Prepare vars to inject in the template
+PRODUCT_NAME="$(tr '[:lower:]' '[:upper:]' <<< ${DOMAIN:0:2})${DOMAIN:2}"
+APP_TITLE="${PRODUCT_NAME}.eth"
+NETWORK_NAME="Ethereum"
+if [ "$TARGET_CHAIN" == "base" ] || [ "$TARGET_CHAIN" == "base-sepolia" ]; then
+  NETWORK_NAME="Base"
+fi
 
 # Section frontend-factory: Upload the factory frontend
 if [ "$SECTION" == "all" ] || [ "$SECTION" == "frontend-factory" ]; then
 
   # Build factory
   echo "Building factory frontend..."
+  VITE_APP_TITLE=$APP_TITLE \
+  VITE_PRODUCT_NAME=$PRODUCT_NAME \
+  VITE_DOMAIN=$DOMAIN \
+  VITE_NETWORK_NAME=$NETWORK_NAME \
   npm run build-factory
 
   # Compressing output
@@ -191,7 +205,11 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "frontend-factory" ]; then
   # add it to a list to be given to the SSTORE2 or EthStorage contract
   SSTORE2_FILE_ARGS_SIG=""
   ETHSTORAGE_FILE_ARGS=""
-  for FULL_FILE in $(find frontend-factory/dist -type f | grep -v "blogFactoryAddress.json"); do
+  # Exclude blogFactoryAddress.json and the other logo .svg files
+  FULL_FILES_NON_SVG=$(find frontend-factory/dist -type f | grep -v "blogFactoryAddress.json" | grep -v ".svg")
+  FULL_FILES_SVG=$(find frontend-factory/dist -type f | grep "logo-${DOMAIN}.svg")
+  FULL_FILES="${FULL_FILES_NON_SVG} ${FULL_FILES_SVG}"
+  for FULL_FILE in $FULL_FILES; do
     # Remove the frontend-factory/dist/ prefix
     FILE=$(echo $FULL_FILE | sed "s|frontend-factory/dist/||")
     # If the file starts with "assets/", then remove it from file

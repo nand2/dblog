@@ -1,33 +1,20 @@
 import './style.css'
-import logo from './dblog.svg'
 import { setupBlogCreationPopup } from './blog-creation-popup.js'
 import { strip_tags } from './utils.js'
 
-// Calling ourselves (so via a relative web3:// address) to fetch the address
-// of the blog factory smart contract
-// With some extra toolchain work, it could be included directly in the uploaded frontend...
-let blogFactoryAddress = null
-let chainId = null
-await fetch(`/blogFactoryAddress.json`)
-  .then(response => response.json())
-  .then(data => {
-    console.log("Fetched blog factory address : ", data.address, data.chainId)
-    blogFactoryAddress = data.address
-    chainId = data.chainId
-  })
-  .catch(error => {
-    console.error(error)
-  })
+// Inject logo as favicon
+let favicon = document.querySelector('link[rel="icon"]');
+favicon.href = `/logo-${import.meta.env.VITE_DOMAIN}.svg`;
 
 
 document.querySelector('#app').innerHTML = `
   <div id="app-wrapper">
-    <img src="${logo}" class="logo vanilla" alt="DBlog logo" />
-    <h1>DBlog.eth</h1>
-    <button id="create-your-own">Create your DBlog</button>
+    <img src="/logo-${import.meta.env.VITE_DOMAIN}.svg" class="logo vanilla" />
+    <h1>${import.meta.env.VITE_APP_TITLE ?? "%VITE_APP_TITLE%"}</h1>
+    <button id="create-your-own">Create your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"}</button>
 
     <p class="read-the-docs">
-      Unstoppable decentralized <a href="web3://w3url.eth/">web3://</a> blogs
+      Unstoppable decentralized <a href="web3://w3url.eth/">web3://</a> blogs on ${import.meta.env.VITE_NETWORK_NAME ?? "%VITE_NETWORK_NAME%"}
     </p>
     
     <div id="blogs">
@@ -41,7 +28,7 @@ document.querySelector('#app').innerHTML = `
     <div id="create-popup-bg">
       <div id="create-popup">
         <div id="step-1">
-          <h2>Create your DBlog</h2>
+          <h2>Create your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"}</h2>
           <form>
             <div class="form-row">
               <label for="title">Title <span class="required">*</span></label>
@@ -55,7 +42,7 @@ document.querySelector('#app').innerHTML = `
               <label for="subdomain">Subdomain</label>
               <div id="subdomain-input-area">
                 <div id="subdomain-input">
-                  <input type="text" id="subdomain" name="subdomain"><span class="domain-suffix">.dblog.eth</span>
+                  <input type="text" id="subdomain" name="subdomain"><span class="domain-suffix">.${import.meta.env.VITE_DOMAIN ?? "%VITE_DOMAIN%"}.eth</span>
                 </div>
                 <div id="subdomain-check">
                   
@@ -73,16 +60,16 @@ document.querySelector('#app').innerHTML = `
           </form>
         </div>
         <div id="step-2">
-          <h2>🎉 Your DBlog is now ready!</h2>
+          <h2>🎉 Your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"} is now ready!</h2>
           <div id="created-blog-address">
             <a href="">web3://</a> 
           </div>
           <div id="created-blog-infos">
             <p>
-              ➔ Your DBlog will appear as a NFT in your wallet. The owner of the NFT is the owner of the blog.
+              ➔ Your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"} will appear as a NFT in your wallet. The owner of the NFT is the owner of the blog.
             </p>
             <p>
-              ➔ Your DBlog is made of several standalone smart contracts. Your frontend contract is located on Ethereum at address <code id="new-blog-address"></code>
+              ➔ Your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"} is made of several standalone smart contracts. Your frontend contract is located on Ethereum at address <code id="new-blog-address"></code>
             </p>
             <p>
               ➔ You can use your own .eth domain for it, see instructions in your blog admin page
@@ -96,6 +83,22 @@ document.querySelector('#app').innerHTML = `
     </div>
   </div>
 `
+
+// Calling ourselves (so via a relative web3:// address) to fetch the address
+// of the blog factory smart contract
+// With some extra toolchain work, it could be included directly in the uploaded frontend...
+let blogFactoryAddress = null
+let chainId = null
+await fetch(`/blogFactoryAddress.json`)
+  .then(response => response.json())
+  .then(data => {
+    console.log("Fetched blog factory address : ", data.address, data.chainId)
+    blogFactoryAddress = data.address
+    chainId = data.chainId
+  })
+  .catch(error => {
+    console.error(error)
+  })
 
 // Now make a call to the blog factory to fetch the parameters
 let topDomain = null
@@ -154,7 +157,7 @@ const fetchAndDisplayBlogs = async () => {
     blogsElement.innerHTML = `
       <div class="blog">
         <h3 class="title">No blog yet</h3>
-        <div class="description">Be the first to create a DBlog!</div>
+        <div class="description">Be the first to create a ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"}!</div>
       </div>
     `;
   }

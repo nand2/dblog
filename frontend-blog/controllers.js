@@ -886,8 +886,9 @@ export async function entryEditController(blogAddress, chainId) {
         }
         // Other networks: Otherwise store on state
         else {
-          // Convert the fileContent to chunks of 10 x 0x6000-1 bytes (size of a full SSTORE2 chunk)
-          let chunkSize = 10 * (0x6000 - 1);
+          // Convert the fileContent to chunks of 3 x 0x6000-1 bytes (size of a full SSTORE2 chunk)
+          // (3 chunks because of the max tx size of 128kb and max block size errors seen on base)
+          let chunkSize = 3 * (0x6000 - 1);
           let fileContentUint8Array = new Uint8Array(fileContent)
           let fileContentChunks = []
           for(let i = 0; i < fileContentUint8Array.length; i += chunkSize) {
