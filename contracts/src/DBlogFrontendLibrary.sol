@@ -48,14 +48,16 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         return blogFactory.storageBackends(index);
     }
 
-    function createFile(string memory path, string memory contentType, uint16 storageBackendIndex, bytes memory data, uint dataLength) public onlyFactoryOrFactoryOwner returns (FileInfos2 memory) {
+    function createFile(uint16 storageBackendIndex, bytes memory data, uint dataLength) public onlyFactoryOrFactoryOwner returns (uint contentKey) {
         IStorageBackend storageBackend = blogFactory.storageBackends(storageBackendIndex);
-        uint contentKey = storageBackend.create(data, dataLength);
-        return FileInfos2({
-            filePath: path,
-            contentType: contentType,
-            contentKey: contentKey
-        });
+        contentKey = storageBackend.create(data, dataLength);
+
+        return contentKey;
+    }
+
+    function appendToFile(uint16 storageBackendIndex, uint256 fileIndex, bytes memory data) public onlyFactoryOrFactoryOwner {
+        IStorageBackend storageBackend = blogFactory.storageBackends(storageBackendIndex);
+        storageBackend.append(fileIndex, data);
     }
 
     function addFrontendVersion(uint16 storageBackendIndex, FileInfos2[] memory files, string memory _infos) public onlyFactoryOrFactoryOwner {

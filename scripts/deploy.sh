@@ -3,10 +3,10 @@
 set -euo pipefail
 
 # Target chain: If empty, default to "local"
-# Can be: local, sepolia, holesky, mainnet
+# Can be: local, sepolia, holesky, mainnet, base-sepolia, base
 TARGET_CHAIN=${1:-local}
 # Check that target chain is in allowed values
-if [ "$TARGET_CHAIN" != "local" ] && [ "$TARGET_CHAIN" != "sepolia" ] && [ "$TARGET_CHAIN" != "holesky" ] && [ "$TARGET_CHAIN" != "mainnet" ]; then
+if [ "$TARGET_CHAIN" != "local" ] && [ "$TARGET_CHAIN" != "sepolia" ] && [ "$TARGET_CHAIN" != "holesky" ] && [ "$TARGET_CHAIN" != "mainnet" ] && [ "$TARGET_CHAIN" != "base-sepolia" ] && [ "$TARGET_CHAIN" != "base" ]; then
   echo "Invalid target chain: $TARGET_CHAIN"
   exit 1
 fi
@@ -22,7 +22,11 @@ fi
 DEFAULT_DOMAIN="dblog"
 # dblog lost on sepolia...
 if [ "$TARGET_CHAIN" == "sepolia" ]; then
-  DOMAIN="gblog"
+  DEFAULT_DOMAIN="gblog"
+fi
+# Base: bblog!
+if [ "$TARGET_CHAIN" == "base-sepolia" ] || [ "$TARGET_CHAIN" == "base" ]; then
+  DEFAULT_DOMAIN="bblog"
 fi
 DOMAIN=${3:-$DEFAULT_DOMAIN}
 
@@ -57,6 +61,24 @@ elif [ "$TARGET_CHAIN" == "holesky" ]; then
   PRIVKEY=$PRIVATE_KEY_HOLESKY
   RPC_URL=https://ethereum-holesky-rpc.publicnode.com
   CHAIN_ID=17000
+elif [ "$TARGET_CHAIN" == "base-sepolia" ]; then
+  PRIVKEY=$PRIVATE_KEY_BASE_SEPOLIA
+  RPC_URL=https://sepolia.base.org
+  CHAIN_ID=84532
+elif [ "$TARGET_CHAIN" == "base" ]; then
+  PRIVKEY=$PRIVATE_KEY_BASE
+  RPC_URL=https://mainnet.base.org
+  CHAIN_ID=8453
+else
+  echo "Not implemented yet"
+  exit 1
+fi
+
+# Preparing the etherscan API key
+# For etherscan, it is already set in the .env file
+# If basescan, copy BASESCAN_API_KEY into it
+if [ "$TARGET_CHAIN" == "base-sepolia" ] || [ "$TARGET_CHAIN" == "base" ]; then
+  export ETHERSCAN_API_KEY=$BASESCAN_API_KEY
 fi
 
 
@@ -91,6 +113,15 @@ elif [ "$TARGET_CHAIN" == "sepolia" ]; then
 elif [ "$TARGET_CHAIN" == "holesky" ]; then
   # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
   FORGE_SCRIPT_OPTIONS="--broadcast --verify"
+elif [ "$TARGET_CHAIN" == "base-sepolia" ]; then
+  # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
+  FORGE_SCRIPT_OPTIONS="--broadcast --verify"
+elif [ "$TARGET_CHAIN" == "base" ]; then
+  # 0xAafA7E1FBE681de12D41Ef9a5d5206A96963390e
+  FORGE_SCRIPT_OPTIONS="--broadcast --verify --slow"
+else
+  echo "Not implemented yet"
+  exit 1
 fi
 
 
@@ -99,7 +130,7 @@ fi
 if [ "$SECTION" == "all" ] || [ "$SECTION" == "contracts" ]; then
 
   # Testnet : get back the domain we sent to DBlogFactory
-  if [ "$TARGET_CHAIN" != "mainnet" ] && [ "$TARGET_CHAIN" != "local" ]; then
+  if [ "$TARGET_CHAIN" == "sepolia" ] || [ "$TARGET_CHAIN" == "holesky" ]; then
     echo ""
     echo "Fetching back domain ..."
 

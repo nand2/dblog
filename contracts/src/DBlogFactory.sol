@@ -98,7 +98,7 @@ contract DBlogFactory is ERC721A {
         FileStore ethfsFileStore;
         TestEthStorageContractKZG ethStorage;
     }
-    constructor(ConstructorParams memory _params) ERC721A("web3://dblog.eth", "DBLOG") {
+    constructor(ConstructorParams memory _params) ERC721A(string.concat("web3://", _params.domain, ".eth"), "DBLOG") {
         owner = msg.sender;
 
         topdomain = _params.topdomain;
@@ -145,8 +145,8 @@ contract DBlogFactory is ERC721A {
 
         // Subdomain requested?
         if(bytes(subdomain).length > 0) {
-            // Require fee of 0.01 ETH
-            require(msg.value == 0.01 ether, "Fee of 0.01 ETH required for subdomain");
+            // Require fee of getSubdomainFee() ETH
+            require(msg.value == getSubdomainFee(), "Fee required for subdomain");
 
             // Valid and available?
             (bool isValidAndAvailable, string memory reason) = isSubdomainValidAndAvailable(subdomain);
@@ -159,7 +159,10 @@ contract DBlogFactory is ERC721A {
             // ENS : Register the subdomain
             // For more gas efficiency, we could have implemented the ENSIP-10 wildcard resolution
             // but we would need to first update the web3:// lib ecosystem to use ENSIP-10 resolution
-            ensNameWrapper.setSubnodeRecord(computeSubdomainNameHash(""), subdomain, address(this), address(this), 0, 0, 0);
+            // Additionally, due to ENSv2, we need to review this a bit
+            if(block.chainid == 1 || block.chainid == 11155111 || block.chainid == 31337) {
+                ensNameWrapper.setSubnodeRecord(computeSubdomainNameHash(""), subdomain, address(this), address(this), 0, 0, 0);
+            }
 
             // EIP-137 ENS resolver event
             emit AddrChanged(subdomainNameHash, address(newBlogFrontend));
@@ -175,8 +178,8 @@ contract DBlogFactory is ERC721A {
     /**
      * For frontend: Get a batch of parameters in a single call
      */
-    function getParameters() public view returns (string memory _topdomain, string memory _domain, address _frontend, address _blogImplementation) {
-        return (topdomain, domain, address(factoryFrontend), address(blogImplementation));
+    function getParameters() public view returns (string memory _topdomain, string memory _domain, address _frontend, address _blogImplementation, uint subdomainFee) {
+        return (topdomain, domain, address(factoryFrontend), address(blogImplementation), getSubdomainFee());
     }
 
     /**
@@ -362,6 +365,18 @@ contract DBlogFactory is ERC721A {
     //
     // Handle subdomains
     //
+
+    /**
+     * Subdomain cost
+     */
+    function getSubdomainFee() public view returns (uint256 cost) {
+        cost = 0.0001 ether;
+        
+        // Mainnet cost of 0.01 ETH
+        if(block.chainid == 1 || block.chainid == 11155111 || block.chainid == 17000 || block.chainid == 31337) {
+            cost = 0.01 ether;
+        }
+    }
 
     /**
      * Is a subdomain valid and available? If false, the reason is given, to be used by frontends.

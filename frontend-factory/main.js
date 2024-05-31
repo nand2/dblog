@@ -61,7 +61,7 @@ document.querySelector('#app').innerHTML = `
                   
                 </div>
                 <div id="subdomain-input-help">
-                  Subdomain is optional and has a one-time fee of 0.01 eth.
+                  Subdomain is optional and has a one-time fee of <span id="subdomain-fee"></span> eth.
                 </div>
               </div>
             </div>
@@ -101,13 +101,15 @@ document.querySelector('#app').innerHTML = `
 let topDomain = null
 let domain = null
 let blogImplementationAddress = null
-await fetch(`web3://${blogFactoryAddress}:${chainId}/getParameters?returns=(string,string,address,address)`)
+let subdomainFee = null
+await fetch(`web3://${blogFactoryAddress}:${chainId}/getParameters?returns=(string,string,address,address,uint)`)
   .then(response => response.json())
   .then(data => {
 console.log("Fetched parameters : ", data)
     topDomain = data[0]
     domain = data[1]
     blogImplementationAddress = data[3]
+    subdomainFee = BigInt(data[4]);
   })
   .catch(error => {
     console.error(error)
@@ -189,7 +191,7 @@ fetchAndDisplayBlogs()
 
 
 
-setupBlogCreationPopup(document.querySelector('#create-popup-bg'), blogFactoryAddress, blogImplementationAddress, chainId, topDomain, domain, fetchAndDisplayBlogs)
+setupBlogCreationPopup(document.querySelector('#create-popup-bg'), blogFactoryAddress, blogImplementationAddress, chainId, topDomain, domain, subdomainFee, fetchAndDisplayBlogs)
 
 // Show the create blog popup
 document.querySelector('#create-your-own').addEventListener('click', () => {

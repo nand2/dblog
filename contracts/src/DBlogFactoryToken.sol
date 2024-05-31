@@ -179,7 +179,7 @@ contract DBlogFactoryToken {
             '{'
                 '"id": "', Strings.toString(tokenId), '", '
                 '"name": "', web3Address, '", '
-                '"description": "A blog using the web3:// protocol (ERC-4804, ERC-6860)", '
+                '"description": "A decentralized blog using the web3:// protocol", '
                 '"attributes": [{'
                     '"trait_type": "Has subdomain", '
                     '"value": ', (subdomainLength > 0 ? 'true' : 'false'), ''

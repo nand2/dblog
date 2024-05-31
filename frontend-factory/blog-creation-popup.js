@@ -2,7 +2,7 @@ import { encodeFunctionData } from 'viem'
 import { strip_tags, uint8ArrayToHexString } from './utils.js'
 import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
 
-export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplementationAddress, chainId, topDomain, domain, createdBlogCallback) {
+export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplementationAddress, chainId, topDomain, domain, subdomainFee, createdBlogCallback) {
   // Cancel button behavior
   element.querySelector('#cancel').addEventListener('click', () => {
     element.style.display = 'none'
@@ -16,6 +16,9 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
       createdBlogCallback()
     }
   })
+
+  // Set the subdomain fee
+  element.querySelector('#subdomain-fee').textContent = Number(subdomainFee / 1000000000000n) / 1000000;
 
   // Set the blog implementation address
   // element.querySelector('#blog-implementation-address').textContent = blogImplementationAddress
@@ -152,10 +155,10 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
     // addBlog(string title, string description, string subdomain)
     let calldata = "0x4639107c" + uint8ArrayToHexString(encodeParameters([{ name: 'title', type: 'string' }, { name: 'description', type: 'string' }, { name: 'subdomain', type: 'string' }], [title, description, subdomain]))
 
-    // Prepare the value to send: 0.01eth if subdomain
+    // Prepare the value to send: subdomainFee wei if subdomain
     let value = '0x0'
     if(subdomain.length > 0) {
-      value = '0x' + (0.01 * 10**18).toString(16)
+      value = '0x' + subdomainFee.toString(16)
     }
 
 console.log("About to send with args:", title, description, subdomain)

@@ -36,7 +36,7 @@ import {TestEthStorageContractKZG} from "storage-contracts-v1/TestEthStorageCont
 import {StorageContract} from "storage-contracts-v1/StorageContract.sol";
 
 contract DBlogFactoryScript is Script {
-    enum TargetChain{ LOCAL, SEPOLIA, HOLESKY, MAINNET }
+    enum TargetChain{ LOCAL, SEPOLIA, HOLESKY, MAINNET, BASE_SEPOLIA, BASE }
 
     function setUp() public {}
 
@@ -53,6 +53,10 @@ contract DBlogFactoryScript is Script {
                 targetChain = TargetChain.HOLESKY;
             } else if(keccak256(abi.encodePacked(vm.envString("TARGET_CHAIN"))) == keccak256(abi.encodePacked("mainnet"))) {
                 targetChain = TargetChain.MAINNET;
+            } else if(keccak256(abi.encodePacked(vm.envString("TARGET_CHAIN"))) == keccak256(abi.encodePacked("base-sepolia"))) {
+                targetChain = TargetChain.BASE_SEPOLIA;
+            } else if(keccak256(abi.encodePacked(vm.envString("TARGET_CHAIN"))) == keccak256(abi.encodePacked("base"))) {
+                targetChain = TargetChain.BASE;
             }
         }
         string memory domain = vm.envString("DOMAIN");
@@ -135,14 +139,14 @@ contract DBlogFactoryScript is Script {
         }
 
         // Set the ENS resolver of dblog.eth to the contract
-        {
+        if(targetChain == TargetChain.SEPOLIA || targetChain == TargetChain.HOLESKY || targetChain == TargetChain.MAINNET || targetChain == TargetChain.LOCAL) {
             bytes32 topdomainNamehash = keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("eth"))));
             bytes32 dblogDomainNamehash = keccak256(abi.encodePacked(topdomainNamehash, keccak256(abi.encodePacked(domain))));
             nameWrapper.setResolver(dblogDomainNamehash, address(factory));
         }
 
         // Transferring dblog.eth to the factory
-        {
+        if(targetChain == TargetChain.SEPOLIA || targetChain == TargetChain.HOLESKY || targetChain == TargetChain.MAINNET || targetChain == TargetChain.LOCAL) {
             bytes32 topdomainNamehash = keccak256(abi.encodePacked(bytes32(0x0), keccak256(abi.encodePacked("eth"))));
             bytes32 dblogDomainNamehash = keccak256(abi.encodePacked(topdomainNamehash, keccak256(abi.encodePacked(domain))));
 
@@ -155,7 +159,7 @@ contract DBlogFactoryScript is Script {
         }
 
         // Adding the main blog
-        factory.addBlog{value: 0.01 ether}("DBlog news", "Latest news about the dblog.eth platform", domain);
+        factory.addBlog{value: factory.getSubdomainFee()}("DBlog news", "Latest news about the dblog.eth platform", domain);
         string memory web3BlogFrontendAddress = string.concat("web3://", vm.toString(address(factory.blogs(0).frontend())));
         if(block.chainid > 1) {
             web3BlogFrontendAddress = string.concat(web3BlogFrontendAddress, ":", vm.toString(block.chainid));
@@ -322,6 +326,14 @@ contract DBlogFactoryScript is Script {
         }
         // Mainnet : Get existing value
         else if(targetChain == TargetChain.MAINNET) {
+            store = FileStore(0xFe1411d6864592549AdE050215482e4385dFa0FB);
+        }
+        // Base : Get existing value
+        else if(targetChain == TargetChain.BASE) {
+            store = FileStore(0xFe1411d6864592549AdE050215482e4385dFa0FB);
+        }
+        // Base Sepolia : Get existing value
+        else if(targetChain == TargetChain.BASE_SEPOLIA) {
             store = FileStore(0xFe1411d6864592549AdE050215482e4385dFa0FB);
         }
         
