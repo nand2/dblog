@@ -382,7 +382,7 @@ export async function adminController(blogAddress, chainId, frontendAddress, blo
     // Call the blog to fetch the editors, posts and uploaded files
     let editorAndPostsAndUploadedFiles = null
     try {
-      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint64,uint8,bytes20,uint8,bytes32)[],(uint8,(string,string,bytes32[]))[])`)
+      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint64,uint8,bytes20,uint16,uint)[],(uint16,(string,string,uint))[])`)
         .then(response => response.json())
         .then(data => {
           console.log("Fetched editors, posts, uploadedFiles : ", data)
@@ -570,7 +570,7 @@ export async function adminController(blogAddress, chainId, frontendAddress, blo
     // First determine if the frontend is ethStorage or Ethereum
     let storageMode = null
     try {
-      await fetch(`web3://${blogAddress}:${chainId}/frontendVersion?returns=((uint8,(string,string,bytes32[])[],string,bool),bool,uint256)`)
+      await fetch(`web3://${blogAddress}:${chainId}/frontendVersion?returns=((uint16,(string,string,uint)[],string,bool),bool,uint256)`)
         .then(response => response.json())
         .then(data => {
           console.log("Fetched frontend version : ", data)
