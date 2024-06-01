@@ -12,10 +12,12 @@ contract StorageBackendSSTORE2 is IStorageBackend {
     struct File {
         address[] chunks;
         uint size;
+        bool deleted;
     }
     mapping (address => File[]) files;
 
-    uint MAX_CHUNK_SIZE = 0x6000 - 1;
+    // Size of the data that can be stored in a single chunk with SSTORE2
+    uint public constant MAX_CHUNK_SIZE = 0x6000 - 1;
     
     function backendName() public pure returns (string memory) {
         return "SSTORE2";
@@ -36,7 +38,8 @@ contract StorageBackendSSTORE2 is IStorageBackend {
         
         File memory file = File({
             chunks: new address[](chunkCount),
-            size: fileSize
+            size: fileSize,
+            deleted: false
         });
 
         // If not a complete upload: Ensure all chunks are full
@@ -62,10 +65,11 @@ contract StorageBackendSSTORE2 is IStorageBackend {
         return files[msg.sender].length - 1;
     }
 
-    function append(uint index, bytes calldata data) public {
+    function append(uint index, bytes memory data) public {
         require(index < files[msg.sender].length, "File not found");
         File storage file = files[msg.sender][index];
         require(file.chunks[file.chunks.length - 1] == address(0), "File is already complete");
+        require(file.deleted == false, "File is deleted");
         
         // Find the first empty chunk pointer
         uint startingChunkIndex = 0;
@@ -84,6 +88,10 @@ contract StorageBackendSSTORE2 is IStorageBackend {
         if(startingChunkIndex + (chunksToAdd - 1) < file.chunks.length - 1) {
             require(data.length == MAX_CHUNK_SIZE * chunksToAdd, "Data length must be a multiple of the chunk size");
         }
+        // If we are finishing, the data length must be equal to the remaining size
+        else {
+            require(data.length == file.size - uploadedSize(msg.sender, index), "Data length must be equal to the remaining size");
+        }
 
         uint remainingBytes = data.length;
         for(uint i = startingChunkIndex; i < startingChunkIndex + chunksToAdd; i++) {
@@ -91,6 +99,14 @@ contract StorageBackendSSTORE2 is IStorageBackend {
             bytes memory chunk = bytes(LibString.slice(string(data), (i - startingChunkIndex) * MAX_CHUNK_SIZE, (i - startingChunkIndex) * MAX_CHUNK_SIZE + chunkSize));
             file.chunks[i] = SSTORE2.write(chunk);
         }
+    }
+
+    function remove(uint index) public {
+        require(index < files[msg.sender].length, "File not found");
+        File memory file = files[msg.sender][index];
+
+        require(file.deleted == false, "File is deleted");
+        files[msg.sender][index].deleted = true;
     }
 
     function isComplete(address owner, uint index) public view returns (bool) {
@@ -136,6 +152,7 @@ contract StorageBackendSSTORE2 is IStorageBackend {
     function read(address owner, uint index, uint startingChunkId) public view returns (bytes memory result, uint nextChunkId) {
         require(index < files[owner].length, "File not found");
         File memory file = files[owner][index];
+        require(file.deleted == false, "File is deleted");
         require(startingChunkId < file.chunks.length, "Chunk not found");
 
         // Read as much chunks as possible, but keep a wide margin (50%)

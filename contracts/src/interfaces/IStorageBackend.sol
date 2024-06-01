@@ -5,7 +5,8 @@ interface IStorageBackend {
     function backendName() external view returns (string memory);
 
     function create(bytes memory data, uint fileSize) external returns (uint);
-    function append(uint index, bytes calldata data) external;
+    function append(uint index, bytes memory data) external;
+    function remove(uint index) external;
     
     function isComplete(address owner, uint index) external view returns (bool);
     function uploadedSize(address owner, uint index) external view returns (uint);
