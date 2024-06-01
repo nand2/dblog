@@ -480,6 +480,10 @@ contract DBlogFactory is ERC721A {
         return index;
     }
 
+    function getStorageBackendByName(string memory name) public view returns (IStorageBackend) {
+        return storageBackends[getStorageBackendIndexByName(name)];
+    }
+
 
     //
     // ERC721

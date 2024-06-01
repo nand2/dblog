@@ -48,16 +48,29 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         return blogFactory.storageBackends(index);
     }
 
-    function createFile(uint16 storageBackendIndex, bytes memory data, uint dataLength) public onlyFactoryOrFactoryOwner returns (uint contentKey) {
+    function createFile(uint16 storageBackendIndex, bytes memory data, uint dataLength) public payable onlyFactoryOrFactoryOwner returns (uint contentKey) {
         IStorageBackend storageBackend = blogFactory.storageBackends(storageBackendIndex);
-        contentKey = storageBackend.create(data, dataLength);
+
+        uint fundsUsed;
+        (contentKey, fundsUsed) = storageBackend.create(data, dataLength);
+
+        // Send back remaining funds sent by the caller
+        if(msg.value - fundsUsed > 0) {
+            payable(msg.sender).transfer(msg.value - fundsUsed);
+        }
 
         return contentKey;
     }
 
-    function appendToFile(uint16 storageBackendIndex, uint256 fileIndex, bytes memory data) public onlyFactoryOrFactoryOwner {
+    function appendToFile(uint16 storageBackendIndex, uint256 fileIndex, bytes memory data) public payable onlyFactoryOrFactoryOwner {
         IStorageBackend storageBackend = blogFactory.storageBackends(storageBackendIndex);
-        storageBackend.append(fileIndex, data);
+
+        uint fundsUsed = storageBackend.append(fileIndex, data);
+
+        // Send back remaining funds sent by the caller
+        if(msg.value - fundsUsed > 0) {
+            payable(msg.sender).transfer(msg.value - fundsUsed);
+        }
     }
 
     function addFrontendVersion(uint16 storageBackendIndex, FileInfos2[] memory files, string memory _infos) public onlyFactoryOrFactoryOwner {

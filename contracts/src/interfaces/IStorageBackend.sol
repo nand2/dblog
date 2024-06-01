@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 interface IStorageBackend {
     function backendName() external view returns (string memory);
 
-    function create(bytes memory data, uint fileSize) external returns (uint);
-    function append(uint index, bytes memory data) external;
+    function create(bytes memory data, uint fileSize) external returns (uint index, uint fundsUsed);
+    function append(uint index, bytes memory data) external returns (uint fundsUsed);
     function remove(uint index) external;
     
     function isComplete(address owner, uint index) external view returns (bool);

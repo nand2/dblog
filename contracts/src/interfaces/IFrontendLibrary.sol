@@ -10,8 +10,8 @@ interface IFrontendLibrary {
   function getStorageBackendIndexByName(string memory name) external view returns (uint16 index);
   function getStorageBackend(uint16 index) external view returns (IStorageBackend storageBackend);
 
-  function createFile(uint16 storageBackendIndex, bytes memory data, uint dataLength) external returns (uint256);
-  function appendToFile(uint16 storageBackendIndex, uint256 fileIndex, bytes memory data) external;
+  function createFile(uint16 storageBackendIndex, bytes memory data, uint dataLength) external payable returns (uint256);
+  function appendToFile(uint16 storageBackendIndex, uint256 fileIndex, bytes memory data) external payable;
 
   function addFrontendVersion(uint16 storageBackendIndex, FileInfos2[] memory files, string memory _infos) external;
   function addFilesToCurrentFrontendVersion(FileInfos2[] memory files) external;

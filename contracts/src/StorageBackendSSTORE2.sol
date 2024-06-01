@@ -27,7 +27,7 @@ contract StorageBackendSSTORE2 is IStorageBackend {
      * @param data Initial data to store. Its length can be below the file size, but it must be a multiple of the chunk size if it is not a complete upload.
      * @param fileSize The total filesize of the file to store.
      */
-    function create(bytes memory data, uint fileSize) public returns (uint) {
+    function create(bytes memory data, uint fileSize) public returns (uint index, uint fundsUsed) {
         require(data.length <= fileSize, "Data length must be less than or equal to file size");
 
         // Determine the number of chunks. All chunks must be full except the last one.
@@ -62,10 +62,11 @@ contract StorageBackendSSTORE2 is IStorageBackend {
 
         files[msg.sender].push(file);
 
-        return files[msg.sender].length - 1;
+        fundsUsed = 0;
+        return (files[msg.sender].length - 1, fundsUsed);
     }
 
-    function append(uint index, bytes memory data) public {
+    function append(uint index, bytes memory data) public returns (uint fundsUsed) {
         require(index < files[msg.sender].length, "File not found");
         File storage file = files[msg.sender][index];
         require(file.chunks[file.chunks.length - 1] == address(0), "File is already complete");
@@ -99,6 +100,9 @@ contract StorageBackendSSTORE2 is IStorageBackend {
             bytes memory chunk = bytes(LibString.slice(string(data), (i - startingChunkIndex) * MAX_CHUNK_SIZE, (i - startingChunkIndex) * MAX_CHUNK_SIZE + chunkSize));
             file.chunks[i] = SSTORE2.write(chunk);
         }
+
+        fundsUsed = 0;
+        return fundsUsed;
     }
 
     function remove(uint index) public {
@@ -173,7 +177,9 @@ contract StorageBackendSSTORE2 is IStorageBackend {
     }
 
 
-
+    /**
+     * Non-IStorageBackend functions
+     */
 
 
     function getFileStruct(address owner, uint index) public view returns (File memory) {

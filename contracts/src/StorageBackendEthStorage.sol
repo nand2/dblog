@@ -24,7 +24,7 @@ contract StorageBackendEthStorage is IStorageBackend {
     // EthStorage content keys: we use a simple incrementing key
     uint256 public ethStorageLastUsedKey = 0;
     // When deleting files, we store the keys to reuse them (we don't need to pay EthStorage again)
-    bytes32[] public reusableEthStorageKeys;
+    mapping(address => bytes32[]) public reusableEthStorageKeys;
 
 
     constructor(TestEthStorageContractKZG _ethStorage) {
@@ -39,7 +39,7 @@ contract StorageBackendEthStorage is IStorageBackend {
      * @param data abi.encoded structure: array of uint256 containing the data size of the blobs
      * @param fileSize The total filesize of the file to store.
      */
-    function create(bytes memory data, uint fileSize) public returns (uint) {
+    function create(bytes memory data, uint fileSize) public returns (uint index, uint fundsUsed) {
         // Determine the number of chunks. All chunks must be full except the last one.
         uint chunkCount = fileSize / MAX_CHUNK_SIZE;
         if (fileSize % MAX_CHUNK_SIZE != 0) {
@@ -64,7 +64,6 @@ contract StorageBackendEthStorage is IStorageBackend {
                 require(totalSize == fileSize, "Total blob data size must be equal to the given file size");
             }
         }
-
         
         File memory file = File({
             chunkIds: new bytes32[](chunkCount),
@@ -72,13 +71,12 @@ contract StorageBackendEthStorage is IStorageBackend {
             deleted: false
         });
 
-        
         for(uint i = 0; i < blobDataSizes.length; i++) {
             uint payment = 0;
 
-            if(reusableEthStorageKeys.length > 0) {
-                file.chunkIds[i] = reusableEthStorageKeys[reusableEthStorageKeys.length - 1];
-                reusableEthStorageKeys.pop();
+            if(reusableEthStorageKeys[msg.sender].length > 0) {
+                file.chunkIds[i] = reusableEthStorageKeys[msg.sender][reusableEthStorageKeys[msg.sender].length - 1];
+                reusableEthStorageKeys[msg.sender].pop();
             }
             else {
                 ethStorageLastUsedKey++;
@@ -86,14 +84,15 @@ contract StorageBackendEthStorage is IStorageBackend {
                 payment = ethStorage.upfrontPayment();
             }
             ethStorage.putBlob{value: payment}(file.chunkIds[i], i, blobDataSizes[i]);
+            fundsUsed += payment;
         }
 
         files[msg.sender].push(file);
 
-        return files[msg.sender].length - 1;
+        return (files[msg.sender].length - 1, fundsUsed);
     }
 
-    function append(uint index, bytes memory data) public {
+    function append(uint index, bytes memory data) public returns (uint fundsUsed) {
         require(index < files[msg.sender].length, "File not found");
         File storage file = files[msg.sender][index];
         require(file.chunkIds[file.chunkIds.length - 1] == 0, "File is already complete");
@@ -128,9 +127,9 @@ contract StorageBackendEthStorage is IStorageBackend {
         for(uint i = startingChunkIdIndex; i < blobDataSizes.length; i++) {
             uint payment = 0;
 
-            if(reusableEthStorageKeys.length > 0) {
-                file.chunkIds[i] = reusableEthStorageKeys[reusableEthStorageKeys.length - 1];
-                reusableEthStorageKeys.pop();
+            if(reusableEthStorageKeys[msg.sender].length > 0) {
+                file.chunkIds[i] = reusableEthStorageKeys[msg.sender][reusableEthStorageKeys[msg.sender].length - 1];
+                reusableEthStorageKeys[msg.sender].pop();
             }
             else {
                 ethStorageLastUsedKey++;
@@ -138,7 +137,10 @@ contract StorageBackendEthStorage is IStorageBackend {
                 payment = ethStorage.upfrontPayment();
             }
             ethStorage.putBlob{value: payment}(file.chunkIds[i], i, blobDataSizes[i]);
+            fundsUsed += payment;
         }
+
+        return fundsUsed;
     }
 
     function remove(uint index) public {
@@ -150,7 +152,7 @@ contract StorageBackendEthStorage is IStorageBackend {
 
         // Store the keys to reuse them
         for(uint i = 0; i < file.chunkIds.length; i++) {
-            reusableEthStorageKeys.push(file.chunkIds[i]);
+            reusableEthStorageKeys[msg.sender].push(file.chunkIds[i]);
         }
     }
 
@@ -223,10 +225,16 @@ contract StorageBackendEthStorage is IStorageBackend {
 
 
 
-
+    /**
+     * Non-IStorageBackend functions
+     */
 
     function getFileStruct(address owner, uint index) public view returns (File memory) {
         require(index < files[owner].length, "File not found");
         return files[owner][index];
+    }
+
+    function blobStorageUpfrontCost() public view returns (uint) {
+        return ethStorage.upfrontPayment();
     }
 }
