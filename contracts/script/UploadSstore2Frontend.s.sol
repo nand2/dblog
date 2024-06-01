@@ -26,12 +26,22 @@ contract UploadSstore2Frontend is Script {
         // Get the SSTORE2 storage backend
         uint16 storageBackendIndex = frontendLibrary.getStorageBackendIndexByName("SSTORE2");
 
+        // If there is already a frontend version which is unlocked, we wipe it and replace it
+        if(frontendLibrary.frontendVersionsCount() > 0 && frontendLibrary.getFrontendVersion(frontendLibrary.frontendVersionsCount() - 1).locked == false) {
+            console.log("Resetting and replacing latest frontend version");
+            frontendLibrary.resetLatestFrontendVersion();
+        }
+        // Otherwise we add a new version
+        else {
+            console.log("Adding new frontend version");
+            frontendLibrary.addFrontendVersion(storageBackendIndex, "Initial version");
+        }
+
         // Get the files to upload
         FileNameAndCompressedName[] memory files = abi.decode(vm.envBytes("FILE_ARGS"), (FileNameAndCompressedName[]));
         string memory compressedFilesBasePath = vm.envString("COMPRESSED_FILES_BASE_PATH");
 
         // Upload them, store them into FileInfos format
-        FileInfos2[] memory fileInfos = new FileInfos2[](files.length);
         for (uint256 i = 0; i < files.length; i++) {
             console.log("Handling file", files[i].filename, files[i].compressedFileName);
             console.log("    ", files[i].mimeType, files[i].subFolder);
@@ -56,28 +66,19 @@ contract UploadSstore2Frontend is Script {
                 bytes memory chunk = bytes(LibString.slice(string(fileContents), start, end));
                 console.log("    - Uploading chunk", j, "of size", chunk.length);
                 if(j == 0) {
-                    fileInfos[i] = FileInfos2({
+                    IFrontendLibrary.FileUploadInfos[] memory fileUploadInfos = new IFrontendLibrary.FileUploadInfos[](1);
+                    fileUploadInfos[0] = IFrontendLibrary.FileUploadInfos({
                         filePath: string.concat(files[i].subFolder, files[i].filename),
+                        fileSize: fileContents.length,
                         contentType: files[i].mimeType,
-                        contentKey: frontendLibrary.createFile(storageBackendIndex, chunk, fileContents.length)
+                        data: chunk
                     });
+                    frontendLibrary.addFilesToCurrentFrontendVersion(fileUploadInfos);
                 }
                 else {
-                    frontendLibrary.appendToFile(storageBackendIndex, fileInfos[i].contentKey, chunk);
+                    frontendLibrary.appendToFileInCurrentFrontendVersion(i, chunk);
                 }
             }
-        }
-
-        // If there is already a frontend version which is unlocked, we wipe it and replace it
-        if(frontendLibrary.frontendVersionsCount() > 0 && frontendLibrary.getFrontendVersion(frontendLibrary.frontendVersionsCount() - 1).locked == false) {
-            console.log("Resetting and replacing latest frontend version");
-            frontendLibrary.resetLatestFrontendVersion();
-            frontendLibrary.addFilesToCurrentFrontendVersion(fileInfos);
-        }
-        // Otherwise we add a new version
-        else {
-            console.log("Adding new frontend version");
-            frontendLibrary.addFrontendVersion(storageBackendIndex, fileInfos, "Initial version");
         }
 
         vm.stopBroadcast();

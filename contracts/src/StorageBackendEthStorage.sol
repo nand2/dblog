@@ -46,8 +46,8 @@ contract StorageBackendEthStorage is IStorageBackend {
             chunkCount++;
         }
 
-        // Decode args: Get the blob data sizes
-        (uint[] memory blobDataSizes) = abi.decode(data, (uint[]));
+        // Decode args: Get the starting blob index, and the blob data sizes
+        (uint startingBlobIndex, uint[] memory blobDataSizes) = abi.decode(data, (uint, uint[]));
 
         // Check that the blob data sizes are correct
         require(blobDataSizes.length <= chunkCount, "Too many blob data sizes");
@@ -83,7 +83,7 @@ contract StorageBackendEthStorage is IStorageBackend {
                 file.chunkIds[i] = bytes32(ethStorageLastUsedKey);
                 payment = ethStorage.upfrontPayment();
             }
-            ethStorage.putBlob{value: payment}(file.chunkIds[i], i, blobDataSizes[i]);
+            ethStorage.putBlob{value: payment}(file.chunkIds[i], startingBlobIndex + i, blobDataSizes[i]);
             fundsUsed += payment;
         }
 
@@ -104,8 +104,8 @@ contract StorageBackendEthStorage is IStorageBackend {
             startingChunkIdIndex++;
         }
 
-        // Decode args: Get the blob data sizes
-        (uint[] memory blobDataSizes) = abi.decode(data, (uint[]));
+        // Decode args: Get the starting blob index, and the blob data sizes
+        (uint startingBlobIndex, uint[] memory blobDataSizes) = abi.decode(data, (uint, uint[]));
         
         // Too much blobs?
         require(startingChunkIdIndex + (blobDataSizes.length - 1) < file.chunkIds.length, "Too much blobs");
@@ -136,7 +136,7 @@ contract StorageBackendEthStorage is IStorageBackend {
                 file.chunkIds[i] = bytes32(ethStorageLastUsedKey);
                 payment = ethStorage.upfrontPayment();
             }
-            ethStorage.putBlob{value: payment}(file.chunkIds[i], i, blobDataSizes[i]);
+            ethStorage.putBlob{value: payment}(file.chunkIds[i], startingBlobIndex + i, blobDataSizes[i]);
             fundsUsed += payment;
         }
 

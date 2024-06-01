@@ -18,7 +18,6 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
     FrontendFilesSet2[] public frontendVersions;
     uint256 public defaultFrontendIndex;
 
-    uint256 public ethStorageLastUsedKey = 0;
 
 
     modifier onlyFactoryOrFactoryOwner() {
@@ -47,32 +46,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
         return blogFactory.storageBackends(index);
     }
 
-    function createFile(uint16 storageBackendIndex, bytes memory data, uint dataLength) public payable onlyFactoryOrFactoryOwner returns (uint contentKey) {
-        IStorageBackend storageBackend = blogFactory.storageBackends(storageBackendIndex);
-
-        uint fundsUsed;
-        (contentKey, fundsUsed) = storageBackend.create(data, dataLength);
-
-        // Send back remaining funds sent by the caller
-        if(msg.value - fundsUsed > 0) {
-            payable(msg.sender).transfer(msg.value - fundsUsed);
-        }
-
-        return contentKey;
-    }
-
-    function appendToFile(uint16 storageBackendIndex, uint256 fileIndex, bytes memory data) public payable onlyFactoryOrFactoryOwner {
-        IStorageBackend storageBackend = blogFactory.storageBackends(storageBackendIndex);
-
-        uint fundsUsed = storageBackend.append(fileIndex, data);
-
-        // Send back remaining funds sent by the caller
-        if(msg.value - fundsUsed > 0) {
-            payable(msg.sender).transfer(msg.value - fundsUsed);
-        }
-    }
-
-    function addFrontendVersion(uint16 storageBackendIndex, FileInfos2[] memory files, string memory _infos) public onlyFactoryOrFactoryOwner {
+    function addFrontendVersion(uint16 storageBackendIndex, string memory _infos) public onlyFactoryOrFactoryOwner {
         // Previous frontend version must be locked
         if(frontendVersions.length > 0) {
             require(frontendVersions[frontendVersions.length - 1].locked, "Previous frontend version must be locked");
@@ -81,128 +55,53 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
         frontendVersions.push();
         FrontendFilesSet2 storage newFrontend = frontendVersions[frontendVersions.length - 1];
         newFrontend.storageBackendIndex = storageBackendIndex;
-        for(uint i = 0; i < files.length; i++) {
-            newFrontend.files.push(files[i]);
-        }
         newFrontend.infos = _infos;
         defaultFrontendIndex = frontendVersions.length - 1;
     }
 
-    function addFilesToCurrentFrontendVersion(FileInfos2[] memory files) public onlyFactoryOrFactoryOwner {
+    function addFilesToCurrentFrontendVersion(FileUploadInfos[] memory fileUploadInfos) public payable onlyFactoryOrFactoryOwner {
         FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Frontend version is locked");
 
-        for(uint i = 0; i < files.length; i++) {
-            frontend.files.push(files[i]);
+        IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
+
+        uint totalFundsUsed = 0;
+        for(uint i = 0; i < fileUploadInfos.length; i++) {
+            (uint contentKey, uint fundsUsed) = storageBackend.create(fileUploadInfos[i].data, fileUploadInfos[i].fileSize);
+            totalFundsUsed += fundsUsed;
+
+            FileInfos2 memory fileInfos = FileInfos2({
+                contentKey: contentKey,
+                filePath: fileUploadInfos[i].filePath,
+                contentType: fileUploadInfos[i].contentType
+            });
+            frontend.files.push(fileInfos);
+        }
+
+        // Send back remaining funds sent by the caller
+        if(msg.value - totalFundsUsed > 0) {
+            payable(msg.sender).transfer(msg.value - totalFundsUsed);
         }
     }
 
-    function addSStore2FrontendVersion(FileInfos[] memory files, string memory _infos) public onlyFactoryOrFactoryOwner {
-        // // Previous frontend version must be locked
-        // if(frontendVersions.length > 0) {
-        //     require(frontendVersions[frontendVersions.length - 1].locked, "Previous frontend version must be locked");
-        // }
+    function appendToFileInCurrentFrontendVersion(uint256 fileIndex, bytes memory data) public payable onlyFactoryOrFactoryOwner {
+        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
+        require(!frontend.locked, "Frontend version is locked");
 
-        // // Weird insertion into frontendVersions due to :
-        // // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
-        // frontendVersions.push();
-        // FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
-        // newFrontend.storageMode = FileStorageMode.SSTORE2;
-        // for(uint i = 0; i < files.length; i++) {
-        //     newFrontend.files.push(files[i]);
-        // }
-        // newFrontend.infos = _infos;
-        // defaultFrontendIndex = frontendVersions.length - 1;
+        IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
+
+        uint fundsUsed = storageBackend.append(frontend.files[fileIndex].contentKey, data);
+
+        // Send back remaining funds sent by the caller
+        if(msg.value - fundsUsed > 0) {
+            payable(msg.sender).transfer(msg.value - fundsUsed);
+        }
     }
-
-    function addFilesToCurrentSStore2FrontendVersion(FileInfos[] memory files) public onlyFactoryOrFactoryOwner {
-        // FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
-        // require(!frontend.locked, "Frontend version is locked");
-        // require(frontend.storageMode == FileStorageMode.SSTORE2, "Not SSTORE2 mode");
-
-        // for(uint i = 0; i < files.length; i++) {
-        //     frontend.files.push(files[i]);
-        // }
-    }
-
 
     function getEthStorageUpfrontPayment() external view returns (uint256) {
         StorageBackendEthStorage storageBackendEthStorage = StorageBackendEthStorage(address(blogFactory.getStorageBackendByName("EthStorage")));
 
         return storageBackendEthStorage.blobStorageUpfrontCost();
-    }
-
-    function addEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files, string memory _infos) public payable onlyFactoryOrFactoryOwner {
-        // TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
-        // uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
-
-        // // Previous frontend version must be locked
-        // if(frontendVersions.length > 0) {
-        //     require(frontendVersions[frontendVersions.length - 1].locked, "Previous frontend version must be locked");
-        // }
-
-        // // Weird insertion into frontendVersions due to :
-        // // Error: Unimplemented feature (/solidity/libsolidity/codegen/ArrayUtils.cpp:227):Copying of type struct FileInfos memory[] memory to storage not yet supported.
-        // frontendVersions.push();
-        // FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
-        // newFrontend.storageMode = FileStorageMode.EthStorage;
-        // for(uint i = 0; i < files.length; i++) {
-        //     bytes32[] memory ethStorageKeys = new bytes32[](files[i].blobIndexes.length);
-        //     for(uint j = 0; j < files[i].blobIndexes.length; j++) {
-        //         ethStorageLastUsedKey++;
-        //         ethStorageKeys[j] = bytes32(ethStorageLastUsedKey);
-        //         // Upload part of the file
-        //         // ethStorageKeys[j] is a key we choose, and it will be mixed with msg.sender
-        //         ethStorage.putBlob{value: upfrontPayment}(ethStorageKeys[j], files[i].blobIndexes[j], files[i].blobDataSizes[j]);
-        //     }
-        //     newFrontend.files.push(FileInfos({
-        //         filePath: files[i].filePath,
-        //         contentType: files[i].contentType,
-        //         contentKeys: ethStorageKeys
-        //     }));
-        // }
-        // newFrontend.infos = _infos;
-        // defaultFrontendIndex = frontendVersions.length - 1;
-    }
-
-
-    // Add extra files to the latest unlocked EthStorage frontend version
-    function addFilesToLatestEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files) public payable onlyFactoryOrFactoryOwner {
-        // TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
-        // uint256 upfrontPayment = this.getEthStorageUpfrontPayment();
-        // uint256 fundsUsed = 0;
-
-        // FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
-        // require(!frontend.locked, "Frontend version is locked");
-        // require(frontend.storageMode == FileStorageMode.EthStorage, "Not EthStorage mode");
-
-        // for(uint i = 0; i < files.length; i++) {
-        //     bytes32[] memory ethStorageKeys = new bytes32[](files[i].blobIndexes.length);
-        //     for(uint j = 0; j < files[i].blobIndexes.length; j++) {
-        //         ethStorageLastUsedKey++;
-        //         ethStorageKeys[j] = bytes32(ethStorageLastUsedKey);
-
-        //         uint payment = 0;
-        //         if(ethStorage.exist(ethStorageKeys[j]) == false) {
-        //             payment = upfrontPayment;
-        //         }
-
-        //         // Upload part of the file
-        //         // ethStorageKeys[j] is a key we choose, and it will be mixed with msg.sender
-        //         ethStorage.putBlob{value: payment}(ethStorageKeys[j], files[i].blobIndexes[j], files[i].blobDataSizes[j]);
-        //         fundsUsed += payment;
-        //     }
-        //     frontend.files.push(FileInfos({
-        //         filePath: files[i].filePath,
-        //         contentType: files[i].contentType,
-        //         contentKeys: ethStorageKeys
-        //     }));
-        // }
-
-        // // Send back remaining funds sent by the caller
-        // if(msg.value - fundsUsed > 0) {
-        //     payable(msg.sender).transfer(msg.value - fundsUsed);
-        // }
     }
 
     // Get the count of frontend versions
@@ -224,15 +123,11 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
         FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Already locked");
 
-        // // If EthStorage: move back the pointer of last used key, so that we can
-        // // reuse them for free
-        // if(frontend.storageMode == FileStorageMode.EthStorage) {
-        //     for(uint i = 0; i < frontend.files.length; i++) {
-        //         ethStorageLastUsedKey -= frontend.files[i].contentKeys.length;
-        //     }
-        // }
+        IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
+
         // Clear the file list
         while(frontend.files.length > 0) {
+            storageBackend.remove(frontend.files[frontend.files.length - 1].contentKey);
             frontend.files.pop();
         }
     }
