@@ -2,15 +2,13 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
+// EthFs
+import {FileStore} from "ethfs/FileStore.sol";
 // ENS
 import {NameWrapper} from "ens-contracts/wrapper/NameWrapper.sol";
 import {ETHRegistrarController} from "ens-contracts/ethregistrar/ETHRegistrarController.sol";
 import {BaseRegistrarImplementation} from "ens-contracts/ethregistrar/BaseRegistrarImplementation.sol";
 import {IPriceOracle} from "ens-contracts/ethregistrar/IPriceOracle.sol";
-// EthFs
-import {FileStore, File} from "ethfs/FileStore.sol";
-// EthStorage
-import {TestEthStorageContractKZG} from "storage-contracts-v1/TestEthStorageContractKZG.sol";
 // ERC721A
 import {ERC721A} from "ERC721A/ERC721A.sol";
 
@@ -47,12 +45,9 @@ contract DBlogFactory is ERC721A {
 
     // Storage backends
     IStorageBackend[] public storageBackends;
-
-    // EthFs contract
+ 
+    // EthFs contract: For some static files
     FileStore public immutable ethFsFileStore;
-
-    // EthStorage contract
-    TestEthStorageContractKZG public ethStorage;
 
     string public topdomain;
     string public domain;
@@ -96,7 +91,6 @@ contract DBlogFactory is ERC721A {
         ETHRegistrarController ensEthRegistrarController;
         BaseRegistrarImplementation ensBaseRegistrar;
         FileStore ethfsFileStore;
-        TestEthStorageContractKZG ethStorage;
     }
     constructor(ConstructorParams memory _params) ERC721A(string.concat("web3://", _params.domain, ".eth"), "DBLOG") {
         owner = msg.sender;
@@ -120,8 +114,6 @@ contract DBlogFactory is ERC721A {
         ensBaseRegistrar = _params.ensBaseRegistrar;
 
         ethFsFileStore = _params.ethfsFileStore;
-
-        ethStorage = _params.ethStorage;
     }
 
     /**

@@ -4,10 +4,9 @@ pragma solidity ^0.8.13;
 import { File } from "ethfs/FileStore.sol";
 import { SSTORE2 } from "solady/utils/SSTORE2.sol";
 import { Strings } from "./library/Strings.sol";
-import { DecentralizedKV } from "storage-contracts-v1/DecentralizedKV.sol";
-import { TestEthStorageContractKZG } from "storage-contracts-v1/TestEthStorageContractKZG.sol";
 
 import "./DBlogFactory.sol";
+import "./StorageBackendEthStorage.sol";
 import "./interfaces/IDecentralizedApp.sol";
 import "./interfaces/FileInfos.sol";
 import "./interfaces/IFrontendLibrary.sol";
@@ -38,10 +37,6 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
         // We can only set the blog factory once
         require(address(blogFactory) == address(0), "Already set");
         blogFactory = _blogFactory;
-    }
-
-    function getEthFsFileStore() external view returns (FileStore) {
-        return blogFactory.ethFsFileStore();
     }
 
     function getStorageBackendIndexByName(string memory name) public view returns (uint16 index) {
@@ -132,7 +127,9 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
 
 
     function getEthStorageUpfrontPayment() external view returns (uint256) {
-        return blogFactory.ethStorage().upfrontPayment();
+        StorageBackendEthStorage storageBackendEthStorage = StorageBackendEthStorage(address(blogFactory.getStorageBackendByName("EthStorage")));
+
+        return storageBackendEthStorage.blobStorageUpfrontCost();
     }
 
     function addEthStorageFrontendVersion(EthStorageFileUploadInfos[] memory files, string memory _infos) public payable onlyFactoryOrFactoryOwner {
@@ -268,7 +265,6 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
     // web3:// protocol
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
-        TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
         FrontendFilesSet2 memory frontend = frontendVersion();
 
         // Compute the filePath of the requested resource

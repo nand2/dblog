@@ -16,7 +16,7 @@ interface IFrontendLibrary {
   function addFrontendVersion(uint16 storageBackendIndex, FileInfos2[] memory files, string memory _infos) external;
   function addFilesToCurrentFrontendVersion(FileInfos2[] memory files) external;
 
-  function getEthFsFileStore() external view returns (FileStore);
+
   function addSStore2FrontendVersion(FileInfos[] memory files, string memory _infos) external;
   function addFilesToCurrentSStore2FrontendVersion(FileInfos[] memory files) external;
 

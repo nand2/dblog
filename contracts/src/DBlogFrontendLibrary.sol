@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import { TestEthStorageContractKZG } from "storage-contracts-v1/TestEthStorageContractKZG.sol";
-import { DecentralizedKV } from "storage-contracts-v1/DecentralizedKV.sol";
-
 import "./interfaces/FileInfos.sol";
 import "./interfaces/IFrontendLibrary.sol";
 import "./DBlogFactory.sol";
+import "./StorageBackendEthStorage.sol";
 
 
 contract DBlogFrontendLibrary is IFrontendLibrary {
@@ -34,10 +32,6 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         // We can only set the blog factory once
         require(address(blogFactory) == address(0), "Already set");
         blogFactory = _blogFactory;
-    }
-
-    function getEthFsFileStore() external view override returns (FileStore) {
-        return blogFactory.ethFsFileStore();
     }
 
     function getStorageBackendIndexByName(string memory name) public view returns (uint16 index) {
@@ -128,7 +122,9 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
 
 
     function getEthStorageUpfrontPayment() external view returns (uint256) {
-        return blogFactory.ethStorage().upfrontPayment();
+        StorageBackendEthStorage storageBackendEthStorage = StorageBackendEthStorage(address(blogFactory.getStorageBackendByName("EthStorage")));
+
+        return storageBackendEthStorage.blobStorageUpfrontCost();
     }
 
 
@@ -234,18 +230,6 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         while(frontend.files.length > 0) {
             frontend.files.pop();
         }
-    }
-
-
-    // Peculiar EthStorage thing: When storing a blob with a key, it mixes the key with
-    // msg.sender. So the uploader should also be the fetcher
-    function getEthStorageFileContents(bytes32 _key) public view returns (bytes memory) {
-        TestEthStorageContractKZG ethStorage = blogFactory.ethStorage();
-        return ethStorage.get(
-            _key, 
-            DecentralizedKV.DecodeType.PaddingPer31Bytes, 
-            0, 
-            ethStorage.size(_key));
     }
 
     function getFrontendVersion(uint256 _index) public view returns (FrontendFilesSet2 memory) {

@@ -106,8 +106,7 @@ contract DBlogFactoryScript is Script {
                 ensNameWrapper: nameWrapper,
                 ensEthRegistrarController: ethRegistrarController,
                 ensBaseRegistrar: baseRegistrar,
-                ethfsFileStore: store,
-                ethStorage: ethStorage
+                ethfsFileStore: store
             }));
 
             console.log("DBlogFactory: ", address(factory));
