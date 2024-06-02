@@ -398,7 +398,7 @@ export async function adminController(blogAddress, chainId, frontendAddress, fac
     // Call the blog to fetch the editors, posts and uploaded files
     let editorAndPostsAndUploadedFiles = null
     try {
-      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint64,uint8,bytes20,uint16,uint)[],(uint16,(string,string,uint))[])`)
+      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint64,uint8,bytes20,uint16,uint)[],((uint16,(string,string,uint)),bool)[])`)
         .then(response => response.json())
         .then(data => {
           console.log("Fetched editors, posts, uploadedFiles : ", data)
@@ -433,14 +433,10 @@ export async function adminController(blogAddress, chainId, frontendAddress, fac
     uploadedFiles = editorAndPostsAndUploadedFiles[2].map((file, index) => {
       let item = {
         id: index,
-        storageMode: fromHex(file[0], 'number'),
-        name: file[1][0],
-        contentType: file[1][1],
-        complete: true,
-      }
-      // EthStorage: Maybe the user did not complete all upload calls
-      if(item.storageMode == 1 /** EthStorage */ && file[1][2].indexOf("0x0000000000000000000000000000000000000000000000000000000000000000") != -1) {
-        item.complete = false
+        storageBackendIndex: fromHex(file[0][0], 'number'),
+        name: file[0][1][0],
+        contentType: file[0][1][1],
+        complete: file[1],
       }
       return item
     })

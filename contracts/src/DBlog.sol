@@ -241,6 +241,7 @@ contract DBlog {
     function addUploadedFile(string memory fileName, string memory contentType, string memory storageBackendName, bytes memory data, uint dataLength) public payable onlyOwnerOrEditors {
         require(Strings.compare(fileName, "") == false, "File path must be set");
         require(Strings.compare(contentType, "") == false, "Content type must be set");
+        require(uploadedFilesNameToIndex[fileName].exists == false, "File already exists");
 
         uploadedFiles.push();
         FileInfosWithStorageBackend storage newFile = uploadedFiles[uploadedFiles.length - 1];
@@ -315,7 +316,11 @@ contract DBlog {
         factory.storageBackends(uploadedFile.storageBackendIndex).remove(uploadedFile.fileInfos.contentKey);
 
         uploadedFilesNameToIndex[uploadedFile.fileInfos.filePath].exists = false;
-        uploadedFile = uploadedFiles[uploadedFiles.length - 1];
+        
+        uploadedFile.storageBackendIndex = uploadedFiles[uploadedFiles.length - 1].storageBackendIndex;
+        uploadedFile.fileInfos = uploadedFiles[uploadedFiles.length - 1].fileInfos;
+
+        uploadedFilesNameToIndex[uploadedFile.fileInfos.filePath].index = uint248(index);
         uploadedFiles.pop();
     }
 
@@ -329,8 +334,19 @@ contract DBlog {
         return (title, description, owner());
     }
 
-    function getEditorsAndPostsAndUploadedFiles() public view returns (address[] memory, BlogPost[] memory, FileInfosWithStorageBackend[] memory) {
-        return (editors, posts, uploadedFiles);
+    struct FileInfosWithStorageBackendAndCompleteness {
+        FileInfosWithStorageBackend fileInfos;
+        bool complete;
+    }
+    function getEditorsAndPostsAndUploadedFiles() public view returns (address[] memory, BlogPost[] memory, FileInfosWithStorageBackendAndCompleteness[] memory) {
+
+        FileInfosWithStorageBackendAndCompleteness[] memory uploadedFilesWithCompleteness = new FileInfosWithStorageBackendAndCompleteness[](uploadedFiles.length);
+        for(uint i = 0; i < uploadedFiles.length; i++) {
+            uploadedFilesWithCompleteness[i].fileInfos = uploadedFiles[i];
+            uploadedFilesWithCompleteness[i].complete = factory.storageBackends(uploadedFiles[i].storageBackendIndex).isComplete(address(this), uploadedFiles[i].fileInfos.contentKey);
+        }
+
+        return (editors, posts, uploadedFilesWithCompleteness);
     }
 
 
