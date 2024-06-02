@@ -158,7 +158,7 @@ contract DBlogFactoryScript is Script {
         }
 
         // Adding the main blog
-        factory.addBlog{value: factory.getSubdomainFee()}("DBlog news", "Latest news about the dblog.eth platform", domain);
+        factory.addBlog{value: factory.getSubdomainFee()}(string.concat(vm.envString("PRODUCT_NAME"), " news"), string.concat("Latest news about the ", domain, ".eth platform"), domain);
         string memory web3BlogFrontendAddress = string.concat("web3://", vm.toString(address(factory.blogs(0).frontend())));
         if(block.chainid > 1) {
             web3BlogFrontendAddress = string.concat(web3BlogFrontendAddress, ":", vm.toString(block.chainid));

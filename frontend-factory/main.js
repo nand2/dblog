@@ -166,7 +166,8 @@ const fetchAndDisplayBlogs = async () => {
     blogElement.className = 'blog'
 
     let blogAddress = "web3://" + blog.frontendAddress + (chainId > 1 ? ":" + chainId : "") + "/"
-    if(blog.subdomain) {
+    // Temporarily, until ENSv2 is deployed, and the CCIP bridges are there : disable on L2s
+    if(blog.subdomain && chainId != 8453) {
       blogAddress = "web3://" + blog.subdomain + "." + domain + "." + topDomain + (chainId > 1 ? ":" + chainId : "") + "/"
     }
 

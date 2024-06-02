@@ -124,6 +124,13 @@ else
   exit 1
 fi
 
+# Prepare vars to inject in the templates, and some in the forge script
+PRODUCT_NAME="$(tr '[:lower:]' '[:upper:]' <<< ${DOMAIN:0:2})${DOMAIN:2}"
+APP_TITLE="${PRODUCT_NAME}.eth"
+NETWORK_NAME="Ethereum"
+if [ "$TARGET_CHAIN" == "base" ] || [ "$TARGET_CHAIN" == "base-sepolia" ]; then
+  NETWORK_NAME="Base"
+fi
 
 
 # Section contracts: Deploy the contracts
@@ -159,6 +166,7 @@ if [ "$SECTION" == "all" ] || [ "$SECTION" == "contracts" ]; then
   exec 5>&1
   OUTPUT="$(TARGET_CHAIN=$TARGET_CHAIN \
     DOMAIN=$DOMAIN \
+    PRODUCT_NAME=$PRODUCT_NAME \
     forge script DBlogFactoryScript --private-key ${PRIVKEY} --rpc-url ${RPC_URL}  $FORGE_SCRIPT_OPTIONS | tee >(cat - >&5))"
 
 
@@ -176,14 +184,6 @@ fi
 #
 # Do the frontend uploads
 #
-
-# Prepare vars to inject in the template
-PRODUCT_NAME="$(tr '[:lower:]' '[:upper:]' <<< ${DOMAIN:0:2})${DOMAIN:2}"
-APP_TITLE="${PRODUCT_NAME}.eth"
-NETWORK_NAME="Ethereum"
-if [ "$TARGET_CHAIN" == "base" ] || [ "$TARGET_CHAIN" == "base-sepolia" ]; then
-  NETWORK_NAME="Base"
-fi
 
 # Section frontend-factory: Upload the factory frontend
 if [ "$SECTION" == "all" ] || [ "$SECTION" == "frontend-factory" ]; then
