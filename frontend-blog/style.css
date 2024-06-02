@@ -461,6 +461,10 @@ a#admin-link {
   }
 }
 
+#page-entry-edit form #form-row-burner-address {
+  display: none;
+}
+
 #page-entry-edit form #burner-address-area {
   width: 100%;
 }

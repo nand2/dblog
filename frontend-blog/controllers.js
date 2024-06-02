@@ -642,6 +642,7 @@ export async function entryEditController(blogAddress, chainId) {
   const contentArea = page.querySelector('#content-area');
   const contentPreview = page.querySelector('#content-preview');
   const insertImageButton = page.querySelector('#button-insert-image')
+  const burnerAddressFormRow = page.querySelector('#form-row-burner-address')
   const burnerAddressPrivateKeyField = page.querySelector('#burner-address-private-key');
   const generateBurnerAddressButton = page.querySelector('#generate-burner-address');
   const submitButton = page.querySelector('button[type="submit"]');
@@ -1046,6 +1047,10 @@ console.log("txResult", txResult)
   if(burnerAddressPrivateKeyField.hasAttribute('data-event-listener-added') == false) {
     burnerAddressPrivateKeyField.addEventListener('input', handleBurnerPrivateKeyChange)
     burnerAddressPrivateKeyField.setAttribute('data-event-listener-added', 'true')
+  }
+  // Hide/Show the burner address form row depending of chain: We show only on mainnet && their testnets
+  if(chainId == 1 || chainId == 11155111 || chainId == 17000 || chainId == 31337) {
+    burnerAddressFormRow.style.display = 'flex'
   }
   // Private key field: Load the burner address from localStorage, if it was previously stored
   try {

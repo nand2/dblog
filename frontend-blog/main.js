@@ -143,7 +143,7 @@ document.querySelector('#app').innerHTML = `
             </div>
           </div>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="form-row-burner-address">
           <label for="burner-address-private-key">Burner wallet</label>
           <div id="burner-address-area">
             <div id="burner-address-field-area">
