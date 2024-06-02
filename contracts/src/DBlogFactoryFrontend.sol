@@ -196,22 +196,6 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
                     }
                 }
 
-                // if(frontend.storageMode == FileStorageMode.SSTORE2) {
-                //     File memory file = abi.decode(SSTORE2.read(address(uint160(uint256(frontend.files[i].contentKeys[0])))), (File));
-                //     body = file.read();
-                // }
-                // else if(frontend.storageMode == FileStorageMode.EthStorage) {
-                //     bytes memory content;
-                //     for(uint j = 0; j < frontend.files[i].contentKeys.length; j++) {
-                //         content = bytes.concat(content, ethStorage.get(
-                //             frontend.files[i].contentKeys[j], 
-                //             DecentralizedKV.DecodeType.PaddingPer31Bytes, 
-                //             0, 
-                //             ethStorage.size(frontend.files[i].contentKeys[j])));
-                //     }
-                //     body = string(content);
-                // }
-
                 IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
                 (bytes memory data, uint nextChunkId) = storageBackend.read(address(this), frontend.files[i].contentKey, chunkIndex);
                 body = string(data);

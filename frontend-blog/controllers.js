@@ -376,9 +376,25 @@ export async function blogEntryController(blogAddress, chainId) {
 /**
  * Admin page controller
  */
-export async function adminController(blogAddress, chainId, frontendAddress, blogOwner) { 
+export async function adminController(blogAddress, chainId, frontendAddress, factoryAddress, blogOwner) { 
 
   const loadAdminInterface = async () => {
+    // Fetch the storage backend id to names
+    let storageBackendNames = []
+    try {
+      await fetch(`web3://${factoryAddress}:${chainId}/getStorageBackendNames?returns=(string[])`)
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched storage backend names : ", data)
+          storageBackendNames = data[0]
+        })
+    }
+    catch(error) {
+      console.error(error)
+      alert('Fetching storage backend names failed : ' + error.message)
+      return
+    }
+
     // Call the blog to fetch the editors, posts and uploaded files
     let editorAndPostsAndUploadedFiles = null
     try {
@@ -568,13 +584,13 @@ export async function adminController(blogAddress, chainId, frontendAddress, blo
 
     // Instructions to use your own ENS domain
     // First determine if the frontend is ethStorage or Ethereum
-    let storageMode = null
+    let storageBackendIndex = null
     try {
       await fetch(`web3://${blogAddress}:${chainId}/frontendVersion?returns=((uint16,(string,string,uint)[],string,bool),bool,uint256)`)
         .then(response => response.json())
         .then(data => {
           console.log("Fetched frontend version : ", data)
-          storageMode = fromHex(data[0][0], 'number')
+          storageBackendIndex = fromHex(data[0][0], 'number')
         })
     }
     catch(error) {
@@ -587,13 +603,24 @@ export async function adminController(blogAddress, chainId, frontendAddress, blo
     const adminEnsEthOtherChain = document.getElementById('admin-ens-other-chain')
     adminEnsEthereumChain.style.display = 'none'
     adminEnsEthOtherChain.style.display = 'none'
-    if(storageMode == 0 /** Ethereum */) {
-      adminEnsEthereumChain.style.display = 'block'
-      // Insert the frontend address to use for custom ENS domain use
-      const adminEnsAddress = document.getElementById('admin-ens-address')
-      adminEnsAddress.innerHTML = frontendAddress
+    if(storageBackendNames[storageBackendIndex] == "SSTORE2") {
+      if(chainId == 1) {
+        adminEnsEthereumChain.style.display = 'block'
+        // Insert the frontend address to use for custom ENS domain use
+        const adminEnsAddress = document.getElementById('admin-ens-address')
+        adminEnsAddress.innerHTML = frontendAddress
+      }
+      else {
+        adminEnsEthOtherChain.style.display = 'block'
+        // Insert the TXT record to use for custom ENS domain use
+        const adminEnsCustomTxt = document.getElementById('admin-ens-custom-txt')
+        let chainShortNameMapping = {
+          8453: 'base',
+        }
+        adminEnsCustomTxt.innerHTML = `${chainShortNameMapping[chainId] ?? '[chainShortName]'}:${frontendAddress}`
+      }
     }
-    else if(storageMode == 1 /** EthStorage */) {
+    else if(storageBackendNames[storageBackendIndex] == "EthStorage") {
       adminEnsEthOtherChain.style.display = 'block'
       // Insert the TXT record to use for custom ENS domain use
       const adminEnsCustomTxt = document.getElementById('admin-ens-custom-txt')

@@ -7,14 +7,16 @@ import { strip_tags } from './utils.js'
 // of the blog smart contract
 let blogAddress = null
 let frontendAddress = null
+let factoryAddress = null
 let chainId = null
 try {
   await fetch(`/blogAddress.json`)
     .then(response => response.json())
     .then(data => {
-      console.log("Fetched blog address : ", data.address, data.frontendAddress, data.chainId)
+      console.log("Fetched blog address : ", data.address, data.frontendAddress, data.factoryAddress, data.chainId)
       blogAddress = data.address
       frontendAddress = data.frontendAddress
+      factoryAddress = data.factoryAddress
       chainId = data.chainId
     })
 }
@@ -197,4 +199,4 @@ catch(error) {
 }
 
 // Setup the routing
-setupRouting(frontendAddress, blogAddress, chainId, blogOwner)
+setupRouting(frontendAddress, blogAddress, factoryAddress, chainId, blogOwner)

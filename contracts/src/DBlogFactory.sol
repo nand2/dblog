@@ -228,40 +228,43 @@ contract DBlogFactory is ERC721A {
     //
 
     // Collected funds by the sale of subdomains have 2 roles : 
-    // - Fund the renewal of the dblog.eth domain of the next 100 years
+    // - (If L1) Fund the renewal of the dblog.eth domain of the next 100 years
     // - Any overflow money go to the Protocol Guild
     //
     // -> Anyone can trigger this
     // -> Deployer get nothing!
     function deployFunds() public {
-        uint256 domainExpiry = ensBaseRegistrar.nameExpires(uint(keccak256(bytes(domain))));
-        uint256 domainYearsFunded = 0;
-        if(domainExpiry > block.timestamp) {
-            domainYearsFunded = (domainExpiry - block.timestamp) / (365 * 24 * 3600);
-        }
-        uint256 totalYearsToRenew = 100 - domainYearsFunded;
-        // We will renew by chunks of 5 years, to save gas
-        totalYearsToRenew = (totalYearsToRenew / 5) * 5;
-
-        // Determine how long we can renew
-        uint256 yearsToRenew = totalYearsToRenew;
-        IPriceOracle.Price memory ensRenewalPrice;
-        for(;yearsToRenew > 0; yearsToRenew -= 5) {
-            ensRenewalPrice = ensEthRegistrarController.rentPrice(domain, yearsToRenew * 365 * 24 * 3600);
-            if(ensRenewalPrice.base < address(this).balance) {
-                break;
+        // Only on L1: Funds the renewal of the dblog.eth domain of the next 100 years
+        if(block.chainid == 1 || block.chainid == 31337 || block.chainid == 11155111 || block.chainid == 17000) {
+            uint256 domainExpiry = ensBaseRegistrar.nameExpires(uint(keccak256(bytes(domain))));
+            uint256 domainYearsFunded = 0;
+            if(domainExpiry > block.timestamp) {
+                domainYearsFunded = (domainExpiry - block.timestamp) / (365 * 24 * 3600);
             }
-        }
+            uint256 totalYearsToRenew = 100 - domainYearsFunded;
+            // We will renew by chunks of 5 years, to save gas
+            totalYearsToRenew = (totalYearsToRenew / 5) * 5;
 
-        // Renew the domain
-        if(yearsToRenew > 0) {
-            ensEthRegistrarController.renew{value: ensRenewalPrice.base}(domain, yearsToRenew * 365 * 24 * 3600);
-        }
+            // Determine how long we can renew
+            uint256 yearsToRenew = totalYearsToRenew;
+            IPriceOracle.Price memory ensRenewalPrice;
+            for(;yearsToRenew > 0; yearsToRenew -= 5) {
+                ensRenewalPrice = ensEthRegistrarController.rentPrice(domain, yearsToRenew * 365 * 24 * 3600);
+                if(ensRenewalPrice.base < address(this).balance) {
+                    break;
+                }
+            }
 
-        // If years were to be renewed, but we could not renew all : 
-        // We don't have enough money left, we stop
-        if(totalYearsToRenew > 0 && yearsToRenew != totalYearsToRenew) {
-            return;
+            // Renew the domain
+            if(yearsToRenew > 0) {
+                ensEthRegistrarController.renew{value: ensRenewalPrice.base}(domain, yearsToRenew * 365 * 24 * 3600);
+            }
+
+            // If years were to be renewed, but we could not renew all : 
+            // We don't have enough money left, we stop
+            if(totalYearsToRenew > 0 && yearsToRenew != totalYearsToRenew) {
+                return;
+            }
         }
 
         // Send all the remaining money to the Protocol guild
@@ -285,7 +288,7 @@ contract DBlogFactory is ERC721A {
 
     // Testnet only : Give back the domain so that we can reuse it for another test
     function testnetSendBackDomain() public onlyOwner {
-        require(block.chainid != 1, "Only testnet");
+        require(block.chainid == 31337 || block.chainid == 11155111 || block.chainid == 17000, "Only testnet");
         ensNameWrapper.safeTransferFrom(address(this), owner, uint(computeSubdomainNameHash("")), 1, "");
     }
 
@@ -474,6 +477,15 @@ contract DBlogFactory is ERC721A {
 
     function getStorageBackendByName(string memory name) public view returns (IStorageBackend) {
         return storageBackends[getStorageBackendIndexByName(name)];
+    }
+
+    function getStorageBackendNames() public view returns (string[] memory) {
+        string[] memory names = new string[](storageBackends.length);
+        for(uint i = 0; i < storageBackends.length; i++) {
+            names[i] = storageBackends[i].backendName();
+        }
+
+        return names;
     }
 
 

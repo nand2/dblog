@@ -126,7 +126,7 @@ contract DBlogFrontend is IDecentralizedApp {
         if(resource.length == 1 && Strings.compare(resource[0], "blogAddress.json")) {
             uint chainid = block.chainid;
             // Manual JSON serialization, safe with the vars we encode
-            body = string.concat("{\"address\":\"", Strings.toHexString(address(blog)), "\", \"frontendAddress\":\"", Strings.toHexString(address(this)), "\", \"chainId\":", Strings.toString(chainid), "}");
+            body = string.concat("{\"address\":\"", Strings.toHexString(address(blog)), "\", \"frontendAddress\":\"", Strings.toHexString(address(this)), "\", \"factoryAddress\":\"", Strings.toHexString(address(blog.factory())), "\", \"chainId\":", Strings.toString(chainid), "}");
             statusCode = 200;
             headers = new KeyValue[](1);
             headers[0].key = "Content-type";
