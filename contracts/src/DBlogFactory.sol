@@ -61,6 +61,7 @@ contract DBlogFactory is ERC721A {
 
     // For possible future extensions : a listing of extension contracts
     address[] public extensions;
+    mapping(string => address) public extensionNameToAddress;
 
 
     modifier onlyOwner() {
@@ -554,12 +555,20 @@ contract DBlogFactory is ERC721A {
         owner = _owner;
     }
 
-    function addExtension(address _extension) public onlyOwner {
+    function addExtension(address _extension, string memory _name) public onlyOwner {
+        require(extensionNameToAddress[_name] == address(0), "Extension name already used");
+        require(_extension != address(0), "Extension address cannot be 0");
+
         extensions.push(_extension);
+        extensionNameToAddress[_name] = _extension;
     }
 
     function getExtensions() public view returns (address[] memory) {
         return extensions;
+    }
+
+    function getExtensionByName(string memory _name) public view returns (address) {
+        return extensionNameToAddress[_name];
     }
 
 }
