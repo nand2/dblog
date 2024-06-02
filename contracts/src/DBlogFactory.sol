@@ -33,6 +33,10 @@ contract DBlogFactory is ERC721A {
     mapping(DBlog => uint) public blogToIndex;
     event BlogCreated(uint indexed blogId, address blog, address blogFrontend);
 
+    string public topdomain;
+    string public domain;
+    mapping(bytes32 => DBlog) public subdomainNameHashToBlog;
+
     NameWrapper public ensNameWrapper;
     ETHRegistrarController public ensEthRegistrarController;
     BaseRegistrarImplementation public ensBaseRegistrar;
@@ -48,10 +52,6 @@ contract DBlogFactory is ERC721A {
  
     // EthFs contract: For some static files
     FileStore public immutable ethFsFileStore;
-
-    string public topdomain;
-    string public domain;
-    mapping(bytes32 => DBlog) subdomainNameHashToBlog;
 
     // The owner of the whole Dblog factory will only be able to : 
     // - Update the factory (web3://dblog.eth) frontend
@@ -128,7 +128,7 @@ contract DBlogFactory is ERC721A {
         DBlog newBlog = DBlog(Clones.clone(address(blogImplementation)));
         DBlogFrontend newBlogFrontend = DBlogFrontend(Clones.clone(address(blogFrontendImplementation)));
 
-        newBlog.initialize(this, newBlogFrontend, subdomain, title, description);
+        newBlog.initialize(this, newBlogFrontend, title, description);
         blogs.push(newBlog);
         blogToIndex[newBlog] = blogs.length - 1;
 
@@ -140,32 +140,59 @@ contract DBlogFactory is ERC721A {
             // Require fee of getSubdomainFee() ETH
             require(msg.value == getSubdomainFee(), "Fee required for subdomain");
 
-            // Valid and available?
-            (bool isValidAndAvailable, string memory reason) = isSubdomainValidAndAvailable(subdomain);
-            require(isValidAndAvailable, reason);
-
-            // Adding the namehash -> blog mapping for our custom resolver
-            bytes32 subdomainNameHash = computeSubdomainNameHash(subdomain);
-            subdomainNameHashToBlog[subdomainNameHash] = newBlog;
-
-            // ENS : Register the subdomain
-            // For more gas efficiency, we could have implemented the ENSIP-10 wildcard resolution
-            // but we would need to first update the web3:// lib ecosystem to use ENSIP-10 resolution
-            // Additionally, due to ENSv2, we need to review this a bit
-            if(block.chainid == 1 || block.chainid == 11155111 || block.chainid == 31337) {
-                ensNameWrapper.setSubnodeRecord(computeSubdomainNameHash(""), subdomain, address(this), address(this), 0, 0, 0);
-            }
-
-            // EIP-137 ENS resolver event
-            emit AddrChanged(subdomainNameHash, address(newBlogFrontend));
-            // EIP-2304 ENS resolver event
-            emit AddressChanged(subdomainNameHash, COIN_TYPE_ETH, abi.encodePacked(address(newBlogFrontend)));
+            _blogRegisterSubdomain(newBlog, subdomain);
         }
 
         emit BlogCreated(blogs.length - 1, address(newBlog), address(newBlogFrontend));
 
         return address(newBlog);
     }
+
+    /**
+     * For an existing blog: register a subdomain, if not done yet
+     */
+    function blogRegisterSubdomain(uint blogIndex, string memory subdomain) public payable {
+        require(blogIndex < blogs.length, "Blog does not exist");
+
+        // Require fee of getSubdomainFee() ETH
+        require(msg.value == getSubdomainFee(), "Fee required for subdomain");
+
+        DBlog blog = blogs[blogIndex];
+        require(msg.sender == blog.owner(), "Not blog owner");
+
+        _blogRegisterSubdomain(blog, subdomain);
+    }
+
+    function _blogRegisterSubdomain(DBlog blog, string memory subdomain) internal {
+        require(bytes(subdomain).length > 0, "Subdomain required");
+        require(Strings.compare(blog.subdomain(), ""), "Subdomain already set");
+
+        // Valid and available?
+        (bool isValidAndAvailable, string memory reason) = isSubdomainValidAndAvailable(subdomain);
+        require(isValidAndAvailable, reason);
+
+        // Save the subdomain on the blog
+        blog.setSubdomain(subdomain);
+
+        // Adding the namehash -> blog mapping for our custom resolver
+        bytes32 subdomainNameHash = computeSubdomainNameHash(subdomain);
+        subdomainNameHashToBlog[subdomainNameHash] = blog;
+
+        // ENS : Register the subdomain
+        // For more gas efficiency, we could have implemented the ENSIP-10 wildcard resolution
+        // but we would need to first update the web3:// lib ecosystem to use ENSIP-10 resolution
+        // Additionally, due to ENSv2, we need to review this a bit
+        if(block.chainid == 1 || block.chainid == 11155111 || block.chainid == 31337) {
+            ensNameWrapper.setSubnodeRecord(computeSubdomainNameHash(""), subdomain, address(this), address(this), 0, 0, 0);
+        }
+
+        // EIP-137 ENS resolver event
+        emit AddrChanged(subdomainNameHash, address(blog.frontend()));
+        // EIP-2304 ENS resolver event
+        emit AddressChanged(subdomainNameHash, COIN_TYPE_ETH, abi.encodePacked(address(blog.frontend())));
+    }
+
+
 
     /**
      * For frontend: Get a batch of parameters in a single call

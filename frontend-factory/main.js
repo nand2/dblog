@@ -48,7 +48,7 @@ document.querySelector('#app').innerHTML = `
                   
                 </div>
                 <div id="subdomain-input-help">
-                  Subdomain is optional and has a one-time fee of <span id="subdomain-fee"></span> eth.
+                  Subdomain is optional and has a one-time fee of <span id="subdomain-fee"></span> eth. ${import.meta.env.VITE_DOMAIN != 'dblog' ? "<strong>Subdomains are NOT WORKING YET:</strong> Awaiting ENSv2 deployment." : ""}
                 </div>
               </div>
             </div>

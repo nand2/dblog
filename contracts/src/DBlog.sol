@@ -84,17 +84,13 @@ contract DBlog {
     }
 
     // Because we will clone this contract, we initialize it with this instead of the constructor
-    function initialize(DBlogFactory _factory, DBlogFrontend _frontend, string memory _subdomain, string memory _title, string memory _description) public {
+    function initialize(DBlogFactory _factory, DBlogFrontend _frontend, string memory _title, string memory _description) public {
         require(address(factory) == address(0), "Already initialized");
 
         factory = _factory;
 
         frontend = _frontend;
         frontend.initialize(this);
-
-        if(bytes(_subdomain).length > 0) {
-            subdomain = _subdomain;
-        }
 
         title = _title;
         if(bytes(_description).length > 0) {
@@ -114,6 +110,10 @@ contract DBlog {
     function setDescription(string memory _description) public onlyOwner {
         require(bytes(_description).length > 0, "Description must be not empty");
         description = _description;
+    }
+
+    function setSubdomain(string memory _subdomain) public onlyFactory {
+        subdomain = _subdomain;
     }
 
 
