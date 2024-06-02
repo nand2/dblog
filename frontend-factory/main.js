@@ -9,7 +9,7 @@ favicon.href = `/logo-${import.meta.env.VITE_DOMAIN}.svg`;
 
 document.querySelector('#app').innerHTML = `
   <div id="app-wrapper">
-    <img src="/logo-${import.meta.env.VITE_DOMAIN}.svg" class="logo vanilla" />
+    <img src="/logo-${import.meta.env.VITE_DOMAIN}.svg" class="logo ${import.meta.env.VITE_DOMAIN}" />
     <h1>${import.meta.env.VITE_APP_TITLE ?? "%VITE_APP_TITLE%"}</h1>
     <button id="create-your-own">Create your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"}</button>
 

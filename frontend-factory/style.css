@@ -92,8 +92,11 @@ body {
   will-change: filter;
   transition: filter 300ms;
 }
-.logo.vanilla:hover {
+.logo.dblog:hover {
   filter: drop-shadow(0 0 2em #61c23eaa);
+}
+.logo.bblog:hover {
+  filter: drop-shadow(0 0 2em #003ec2);
 }
 
 h1 {

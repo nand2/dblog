@@ -59,6 +59,20 @@ contract DBlogFactoryToken {
 
         DBlog blog = blogFactory.blogs(tokenId);
 
+        // Prepare the brand initial: Uppercase the first 2 letters
+        bytes memory brandInitialsBytes = new bytes(2);
+        brandInitialsBytes[0] = bytes1(uint8(bytes(blogFactory.domain())[0]) - 32);
+        brandInitialsBytes[1] = bytes1(uint8(bytes(blogFactory.domain())[1]) - 32);
+        string memory brandInitials = string(brandInitialsBytes);
+
+        // Prepare the colors
+        string memory color = "#61c23e";
+        string memory colorShadow = "#48912d";
+        if(Strings.compare(blogFactory.domain(), "bblog")) {
+            color = "#0052ff";
+            colorShadow = "#003ec2";
+        }
+
         // Prepare the address part
         string memory svgAddressPart = "";
         uint subdomainLength = bytes(blog.subdomain()).length;
@@ -104,10 +118,10 @@ contract DBlogFactoryToken {
                         'font-weight: bold;'
                         'font-style: normal;'
                         'fill : white;'
-                        'filter: drop-shadow(0px 0px 3px #48912d);'
+                        'filter: drop-shadow(0px 0px 3px ', colorShadow, ');'
                     '}'
                 '</style>'
-                '<rect width="256" height="256" fill="#61c23e" />'
+                '<rect width="256" height="256" fill="', color, '" />'
                 '<text x="20" y="45" font-size="30">'
                     'web3://'
                 '</text>',
@@ -121,8 +135,8 @@ contract DBlogFactoryToken {
                 //     '<tspan x="20" dy="1.2em" opacity="0.6">dblog.eth</tspan>'
                 // '</text>'
                 svgAddressPart,
-                '<text x="160" y="230" font-size="60">'
-                    'DB'
+                '<text x="160" y="230" font-size="60">',
+                    brandInitials,
                 '</text>'
             '</svg>'
         );
