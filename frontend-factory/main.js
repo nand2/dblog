@@ -29,6 +29,7 @@ document.querySelector('#app').innerHTML = `
       <div id="create-popup">
         <div id="step-1">
           <h2>Create your ${import.meta.env.VITE_PRODUCT_NAME ?? "%VITE_PRODUCT_NAME%"}</h2>
+          ${import.meta.env.VITE_DOMAIN != 'dblog' ? '<div style="background-color: #ff6464; border-radius: 6px; margin-bottom: 15px; padding: 8px;"><strong>BBlog.eth is in development</strong><br /> Create blogs only for testing purposes</div>': ""}
           <form>
             <div class="form-row">
               <label for="title">Title <span class="required">*</span></label>
