@@ -1,6 +1,8 @@
 import { encodeFunctionData } from 'viem'
 import { strip_tags, uint8ArrayToHexString } from './utils.js'
 import { encodeParameters } from '@zoltu/ethereum-abi-encoder'
+import { CoinbaseWalletSDK } from '@coinbase/wallet-sdk'
+
 
 export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplementationAddress, chainId, topDomain, domain, subdomainFee, createdBlogCallback) {
   // Cancel button behavior
@@ -103,16 +105,32 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
       submitButton.innerHTML = 'Create'
     }
 
-    // Check presence of EI-1193 provider
-    if (!window.ethereum) {
-      stopWithError('No Ethereum provider found')
-      return
+    // Fetch a provider
+    let provider = null;
+    // Base: We use the coinbase wallet sdk
+    if(domain == 'bblog') {
+      const sdk = new CoinbaseWalletSDK({
+        appName: import.meta.env.VITE_APP_TITLE ?? "%VITE_APP_TITLE%",
+        appChainIds: [1, 11155111, 17000, 8453, 84532, 31337],
+      });
+      provider = sdk.makeWeb3Provider({options: 'smartWalletOnly'});
     }
+    // Default: We use injected EIP-1193 provider
+    else {
+      // Check presence of EI-1193 provider
+      if (!window.ethereum) {
+        stopWithError('No Ethereum provider found')
+        return
+      }
+      provider = window.ethereum
+    }
+
+
 
     // Request EIP-1193 provider access authorization
     let walletList = null
     try {
-      walletList = await window.ethereum.request({
+      walletList = await provider.request({
         "method": "eth_requestAccounts",
         "params": []
       });
@@ -124,7 +142,7 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
 
     // Request chain change
     try {
-      await window.ethereum.request({
+      await provider.request({
         "method": "wallet_switchEthereumChain",
         "params": [
           {
@@ -164,7 +182,7 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
 console.log("About to send with args:", title, description, subdomain)
 console.log("Calldata", calldata)
 console.log("value", value)
-console.log("window.ethereum.selectedAddress", walletList[0])
+console.log("provider.selectedAddress", walletList[0])
 
     // Estimate gas
     let gasEstimate = null
@@ -217,7 +235,7 @@ console.log("txHash", txHash)
     let txResult = null
     while(txResult == null) {
       try {
-        txResult = await window.ethereum.request({
+        txResult = await provider.request({
           "method": "eth_getTransactionReceipt",
           "params": [
             txHash

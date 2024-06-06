@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev-factory": "vite frontend-factory",
+    "dev-factory": "VITE_DOMAIN=dblog VITE_PRODUCT_NAME=dblog VITE_APP_TITLE=DBlog.eth VITE_NETWORK_NAME=Ethereum vite frontend-factory",
     "dev-blog": "vite frontend-blog",
     "build-factory": "vite build frontend-factory",
     "build-blog": "vite build frontend-blog",
@@ -14,6 +14,7 @@
   "dependencies": {
     "@codemirror/lang-markdown": "^6.2.5",
     "@codemirror/theme-one-dark": "^6.1.2",
+    "@coinbase/wallet-sdk": "^4.0.3",
     "@fortawesome/fontawesome-svg-core": "^6.5.1",
     "@fortawesome/free-regular-svg-icons": "^6.5.1",
     "@fortawesome/free-solid-svg-icons": "^6.5.1",
