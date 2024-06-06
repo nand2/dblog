@@ -63,6 +63,10 @@ contract DBlogFactory is ERC721A {
     address[] public extensions;
     mapping(string => address) public extensionNameToAddress;
 
+    // For possible future blog extensions : a listing of blog extension contracts, to be cloned by the blogs
+    address[] public blogExtensions;
+    mapping(string => address) public blogExtensionNameToAddress;
+
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -563,12 +567,12 @@ contract DBlogFactory is ERC721A {
         extensionNameToAddress[_name] = _extension;
     }
 
-    function getExtensions() public view returns (address[] memory) {
-        return extensions;
-    }
+    function addBlogExtension(address _blogExtension, string memory _name) public onlyOwner {
+        require(blogExtensionNameToAddress[_name] == address(0), "Blog extension name already used");
+        require(_blogExtension != address(0), "Blog extension address cannot be 0");
 
-    function getExtensionByName(string memory _name) public view returns (address) {
-        return extensionNameToAddress[_name];
+        blogExtensions.push(_blogExtension);
+        blogExtensionNameToAddress[_name] = _blogExtension;
     }
 
 }

@@ -34,6 +34,10 @@ contract DBlog {
     }
     mapping(string => FileNameToIndex) uploadedFilesNameToIndex;
 
+    // Blog extensions, registered from the factory
+    address[] public extensions;
+    mapping(string => address) public extensionNameToAddress;
+
     // Flags for possible extensions?
     bytes32 public flags;
 
@@ -405,6 +409,16 @@ contract DBlog {
     //
     // Extension for the future
     // 
+
+    function addExtension(string memory name) public onlyOwner {
+        require(extensionNameToAddress[name] == address(0), "Extension already added");
+        require(factory.blogExtensionNameToAddress(name) != address(0), "Extension must be registered on the factory");
+
+        address clonedExtension = Clones.clone(factory.blogExtensionNameToAddress(name));
+
+        extensions.push(clonedExtension);
+        extensionNameToAddress[name] = clonedExtension;
+    }
 
     function setFlags(bytes32 _flags) public onlyOwner {
         flags = _flags;
