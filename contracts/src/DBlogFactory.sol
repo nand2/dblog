@@ -19,6 +19,7 @@ import "./DBlogFrontendLibrary.sol";
 import "./DBlogFactoryToken.sol";
 import "./library/Strings.sol";
 import "./interfaces/IStorageBackend.sol";
+import "./interfaces/IBlogExtension.sol";
 
 contract DBlogFactory is ERC721A {
     DBlogFactoryFrontend public immutable factoryFrontend;
@@ -60,12 +61,10 @@ contract DBlogFactory is ERC721A {
     address public owner;
 
     // For possible future extensions : a listing of extension contracts
-    address[] public extensions;
-    mapping(string => address) public extensionNameToAddress;
+    IFactoryExtension[] public extensions;
 
     // For possible future blog extensions : a listing of blog extension contracts, to be cloned by the blogs
-    address[] public blogExtensions;
-    mapping(string => address) public blogExtensionNameToAddress;
+    IBlogExtension[] public blogExtensions;
 
 
     modifier onlyOwner() {
@@ -559,20 +558,68 @@ contract DBlogFactory is ERC721A {
         owner = _owner;
     }
 
-    function addExtension(address _extension, string memory _name) public onlyOwner {
-        require(extensionNameToAddress[_name] == address(0), "Extension name already used");
-        require(_extension != address(0), "Extension address cannot be 0");
+    function addExtension(IFactoryExtension _extension) public onlyOwner {
+        require(address(_extension) != address(0), "Extension address cannot be 0");
+
+        for(uint i = 0; i < extensions.length; i++) {
+            require(address(extensions[i]) != address(_extension), "Extension already added");
+            require(Strings.compare(extensions[i].getName(), _extension.getName()) == false, "Extension name already used");
+        }
 
         extensions.push(_extension);
-        extensionNameToAddress[_name] = _extension;
     }
 
-    function addBlogExtension(address _blogExtension, string memory _name) public onlyOwner {
-        require(blogExtensionNameToAddress[_name] == address(0), "Blog extension name already used");
-        require(_blogExtension != address(0), "Blog extension address cannot be 0");
+    struct ExtensionInfo {
+        string name;
+        address extensionAddress;
+    }
+    function getExtensions() public view returns (ExtensionInfo[] memory) {
+        ExtensionInfo[] memory infos = new ExtensionInfo[](extensions.length);
+        for(uint i = 0; i < extensions.length; i++) {
+            infos[i] = ExtensionInfo({
+                name: extensions[i].getName(),
+                extensionAddress: address(extensions[i])
+            });
+        }
+
+        return infos;
+    }
+
+    function addBlogExtension(IBlogExtension _blogExtension) public onlyOwner {
+        require(address(_blogExtension) != address(0), "Blog extension address cannot be 0");
+
+        for(uint i = 0; i < blogExtensions.length; i++) {
+            require(address(blogExtensions[i]) != address(_blogExtension), "Blog extension already added");
+            require(Strings.compare(blogExtensions[i].getName(), _blogExtension.getName()) == false, "Blog extension name already used");
+        }
 
         blogExtensions.push(_blogExtension);
-        blogExtensionNameToAddress[_name] = _blogExtension;
+    }
+
+    struct blogExtensionInfo {
+        string name;
+        address extensionAddress;
+    }
+    function getBlogExtensions() public view returns (blogExtensionInfo[] memory) {
+        blogExtensionInfo[] memory infos = new blogExtensionInfo[](blogExtensions.length);
+        for(uint i = 0; i < blogExtensions.length; i++) {
+            infos[i] = blogExtensionInfo({
+                name: blogExtensions[i].getName(),
+                extensionAddress: address(blogExtensions[i])
+            });
+        }
+
+        return infos;
+    }
+
+    function getBlogExtensionByName(string memory name) public view returns (IBlogExtension) {
+        for(uint i = 0; i < blogExtensions.length; i++) {
+            if(Strings.compare(blogExtensions[i].getName(), name)) {
+                return blogExtensions[i];
+            }
+        }
+
+        revert("Blog extension not found");
     }
 
 }

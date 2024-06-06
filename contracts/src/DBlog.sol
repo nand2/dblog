@@ -8,6 +8,7 @@ import "./DBlogFactory.sol";
 import "./StorageBackendEthStorage.sol";
 import "./interfaces/FileInfos.sol";
 import "./interfaces/IStorageBackend.sol";
+import "./interfaces/IBlogExtension.sol";
 
 contract DBlog {
     // Link to our creator, handling all the blogs
@@ -35,8 +36,7 @@ contract DBlog {
     mapping(string => FileNameToIndex) uploadedFilesNameToIndex;
 
     // Blog extensions, registered from the factory
-    address[] public extensions;
-    mapping(string => address) public extensionNameToAddress;
+    IBlogExtension[] public extensions;
 
     // Flags for possible extensions?
     bytes32 public flags;
@@ -411,13 +411,31 @@ contract DBlog {
     // 
 
     function addExtension(string memory name) public onlyOwner {
-        require(extensionNameToAddress[name] == address(0), "Extension already added");
-        require(factory.blogExtensionNameToAddress(name) != address(0), "Extension must be registered on the factory");
+        IBlogExtension extensionImplementationToAdd = factory.getBlogExtensionByName(name);
+        require(address(extensionImplementationToAdd) != address(0), "Extension not found");
 
-        address clonedExtension = Clones.clone(factory.blogExtensionNameToAddress(name));
+        for(uint i = 0; i < extensions.length; i++) {
+            require(Strings.compare(extensions[i].getName(), extensionImplementationToAdd.getName()) == false, "Extension already added");
+        }
 
-        extensions.push(clonedExtension);
-        extensionNameToAddress[name] = clonedExtension;
+        IBlogExtension extensionToAdd = IBlogExtension(Clones.clone(address(extensionImplementationToAdd)));
+        extensionToAdd.initialize(this);
+
+        extensions.push(extensionToAdd);
+    }
+
+    struct ExtensionInfos {
+        string name;
+        address extensionAddress;
+    }
+    function getExtensions() public view returns (ExtensionInfos[] memory) {
+        ExtensionInfos[] memory extensionsInfos = new ExtensionInfos[](extensions.length);
+        for(uint i = 0; i < extensions.length; i++) {
+            extensionsInfos[i].name = extensions[i].getName();
+            extensionsInfos[i].extensionAddress = address(extensions[i]);
+        }
+
+        return extensionsInfos;
     }
 
     function setFlags(bytes32 _flags) public onlyOwner {
