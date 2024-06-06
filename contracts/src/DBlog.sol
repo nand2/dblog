@@ -401,7 +401,7 @@ contract DBlog {
     // Should be a good idea of a new extension of the resourceRequest mode
     //
 
-    function frontendVersion() public view returns (FrontendFilesSet2 memory, bool, uint256) {
+    function frontendVersion() public view returns (FrontendFilesSet memory, bool, uint256) {
         return (frontend.blogFrontendVersion(), frontend.useNonDefaultFrontend(), frontend.overridenFrontendIndex());
     }
 

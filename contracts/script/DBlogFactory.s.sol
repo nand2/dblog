@@ -6,7 +6,6 @@ import {DBlogFactory} from "../src/DBlogFactory.sol";
 import {DBlogFactoryToken} from "../src/DBlogFactoryToken.sol";
 import {DBlogFactoryFrontend} from "../src/DBlogFactoryFrontend.sol";
 import {DBlogFrontendLibrary} from "../src/DBlogFrontendLibrary.sol";
-import {FileInfos} from "../src/interfaces/FileInfos.sol";
 import {DBlogFrontend} from "../src/DBlogFrontend.sol";
 import {DBlog} from "../src/DBlog.sol";
 import {StorageBackendSSTORE2} from "../src/StorageBackendSSTORE2.sol";

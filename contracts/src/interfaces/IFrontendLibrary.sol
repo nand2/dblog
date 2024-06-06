@@ -28,7 +28,7 @@ interface IFrontendLibrary {
   function resetLatestFrontendVersion() external;
 
   function frontendVersionsCount() external view returns (uint256);
-  function getFrontendVersion(uint256 _index) external view returns (FrontendFilesSet2 memory);
+  function getFrontendVersion(uint256 _index) external view returns (FrontendFilesSet memory);
   function setDefaultFrontend(uint256 _index) external;
-  function getDefaultFrontend() external view returns (FrontendFilesSet2 memory);
+  function getDefaultFrontend() external view returns (FrontendFilesSet memory);
 }

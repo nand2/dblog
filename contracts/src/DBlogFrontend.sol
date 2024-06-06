@@ -46,7 +46,7 @@ contract DBlogFrontend is IDecentralizedApp {
         useNonDefaultFrontend = false;
     }
 
-    function blogFrontendVersion() public view returns (FrontendFilesSet2 memory) {
+    function blogFrontendVersion() public view returns (FrontendFilesSet memory) {
         DBlogFrontendLibrary frontendLibrary = blog.factory().blogFrontendLibrary();
         if(useNonDefaultFrontend) {
             return frontendLibrary.getFrontendVersion(overridenFrontendIndex);
@@ -62,7 +62,7 @@ contract DBlogFrontend is IDecentralizedApp {
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
         DBlogFrontendLibrary frontendLibrary = blog.factory().blogFrontendLibrary();
-        FrontendFilesSet2 memory frontendVersion = blogFrontendVersion();
+        FrontendFilesSet memory frontendVersion = blogFrontendVersion();
 
         // Compute the filePath of the requested resource
         string memory filePath = "";

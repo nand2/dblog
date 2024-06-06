@@ -15,7 +15,7 @@ import "./interfaces/IStorageBackend.sol";
 contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
     DBlogFactory public blogFactory;
 
-    FrontendFilesSet2[] public frontendVersions;
+    FrontendFilesSet[] public frontendVersions;
     uint256 public defaultFrontendIndex;
 
 
@@ -53,14 +53,14 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
         }
 
         frontendVersions.push();
-        FrontendFilesSet2 storage newFrontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
         newFrontend.storageBackendIndex = storageBackendIndex;
         newFrontend.infos = _infos;
         defaultFrontendIndex = frontendVersions.length - 1;
     }
 
     function addFilesToCurrentFrontendVersion(FileUploadInfos[] memory fileUploadInfos) public payable onlyFactoryOrFactoryOwner {
-        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Frontend version is locked");
 
         IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
@@ -70,7 +70,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
             (uint contentKey, uint fundsUsed) = storageBackend.create(fileUploadInfos[i].data, fileUploadInfos[i].fileSize);
             totalFundsUsed += fundsUsed;
 
-            FileInfos2 memory fileInfos = FileInfos2({
+            FileInfos memory fileInfos = FileInfos({
                 contentKey: contentKey,
                 filePath: fileUploadInfos[i].filePath,
                 contentType: fileUploadInfos[i].contentType
@@ -85,7 +85,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
     }
 
     function appendToFileInCurrentFrontendVersion(uint256 fileIndex, bytes memory data) public payable onlyFactoryOrFactoryOwner {
-        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Frontend version is locked");
 
         IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
@@ -111,7 +111,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
 
     // Lock the latest frontend version
     function lockLatestFrontendVersion() public onlyFactoryOrFactoryOwner {
-        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Already locked");
         frontend.locked = true;
     }
@@ -120,7 +120,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
     // This is useful if we want to deploy a small fix to a frontend version
     // In the case of EthStorage, we don't need to repay the upfront payment
     function resetLatestFrontendVersion() public onlyFactoryOrFactoryOwner {
-        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Already locked");
 
         IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
@@ -132,7 +132,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
         }
     }
 
-    function getFrontendVersion(uint256 _index) public view returns (FrontendFilesSet2 memory) {
+    function getFrontendVersion(uint256 _index) public view returns (FrontendFilesSet memory) {
         require(_index < frontendVersions.length, "Index out of bounds");
         return frontendVersions[_index];
     }
@@ -143,7 +143,7 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
         defaultFrontendIndex = _index;
     }
 
-    function getDefaultFrontend() public view returns (FrontendFilesSet2 memory) {
+    function getDefaultFrontend() public view returns (FrontendFilesSet memory) {
         return frontendVersions[defaultFrontendIndex];
     }
 
@@ -153,14 +153,14 @@ contract DBlogFactoryFrontend is IDecentralizedApp, IFrontendLibrary {
         return "5219";
     }
 
-    function frontendVersion() public view returns (FrontendFilesSet2 memory) {
+    function frontendVersion() public view returns (FrontendFilesSet memory) {
         return getDefaultFrontend();
     }
 
     // web3:// protocol
     // Implementation for the ERC-5219 mode
     function request(string[] memory resource, KeyValue[] memory params) external view returns (uint statusCode, string memory body, KeyValue[] memory headers) {
-        FrontendFilesSet2 memory frontend = frontendVersion();
+        FrontendFilesSet memory frontend = frontendVersion();
 
         // Compute the filePath of the requested resource
         string memory filePath = "";

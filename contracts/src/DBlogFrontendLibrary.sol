@@ -10,7 +10,7 @@ import "./StorageBackendEthStorage.sol";
 contract DBlogFrontendLibrary is IFrontendLibrary {
     DBlogFactory public blogFactory;
 
-    FrontendFilesSet2[] public frontendVersions;
+    FrontendFilesSet[] public frontendVersions;
     uint256 public defaultFrontendIndex;
 
 
@@ -47,14 +47,14 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         }
 
         frontendVersions.push();
-        FrontendFilesSet2 storage newFrontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage newFrontend = frontendVersions[frontendVersions.length - 1];
         newFrontend.storageBackendIndex = storageBackendIndex;
         newFrontend.infos = _infos;
         defaultFrontendIndex = frontendVersions.length - 1;
     }
 
     function addFilesToCurrentFrontendVersion(FileUploadInfos[] memory fileUploadInfos) public payable onlyFactoryOrFactoryOwner {
-        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Frontend version is locked");
 
         IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
@@ -64,7 +64,7 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
             (uint contentKey, uint fundsUsed) = storageBackend.create(fileUploadInfos[i].data, fileUploadInfos[i].fileSize);
             totalFundsUsed += fundsUsed;
 
-            FileInfos2 memory fileInfos = FileInfos2({
+            FileInfos memory fileInfos = FileInfos({
                 contentKey: contentKey,
                 filePath: fileUploadInfos[i].filePath,
                 contentType: fileUploadInfos[i].contentType
@@ -79,7 +79,7 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
     }
 
     function appendToFileInCurrentFrontendVersion(uint256 fileIndex, bytes memory data) public payable onlyFactoryOrFactoryOwner {
-        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Frontend version is locked");
 
         IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
@@ -105,7 +105,7 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
 
     // Lock the latest frontend version
     function lockLatestFrontendVersion() public onlyFactoryOrFactoryOwner {
-        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Already locked");
         frontend.locked = true;
     }
@@ -114,7 +114,7 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
     // This is useful if we want to deploy a small fix to a frontend version
     // In the case of EthStorage, we don't need to repay the upfront payment
     function resetLatestFrontendVersion() public onlyFactoryOrFactoryOwner {
-        FrontendFilesSet2 storage frontend = frontendVersions[frontendVersions.length - 1];
+        FrontendFilesSet storage frontend = frontendVersions[frontendVersions.length - 1];
         require(!frontend.locked, "Already locked");
 
         IStorageBackend storageBackend = blogFactory.storageBackends(frontend.storageBackendIndex);
@@ -126,7 +126,7 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         }
     }
 
-    function getFrontendVersion(uint256 _index) public view returns (FrontendFilesSet2 memory) {
+    function getFrontendVersion(uint256 _index) public view returns (FrontendFilesSet memory) {
         require(_index < frontendVersions.length, "Index out of bounds");
         return frontendVersions[_index];
     }
@@ -136,7 +136,7 @@ contract DBlogFrontendLibrary is IFrontendLibrary {
         defaultFrontendIndex = _index;
     }
 
-    function getDefaultFrontend() public view returns (FrontendFilesSet2 memory) {
+    function getDefaultFrontend() public view returns (FrontendFilesSet memory) {
         return frontendVersions[defaultFrontendIndex];
     }
 
