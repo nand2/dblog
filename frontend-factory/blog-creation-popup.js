@@ -187,7 +187,7 @@ console.log("provider.selectedAddress", walletList[0])
     // Estimate gas
     let gasEstimate = null
     try {
-      gasEstimate = await window.ethereum
+      gasEstimate = await provider
         .request({
           method: 'eth_estimateGas',
           params: [
@@ -211,7 +211,7 @@ console.log("gasEstimate", gasEstimate)
     // Use the EIP-1193 Ethereum Provider JavaScript API to call the createBlog method of the BlogFactory contract
     let txHash = null
     try {
-      txHash = await window.ethereum
+      txHash = await provider
         .request({
           method: 'eth_sendTransaction',
           params: [
@@ -251,8 +251,9 @@ console.log("txHash", txHash)
       
 console.log("txResult", txResult)
 
-    // Take the last log of the transaction, which is the BlogCreated one
-    const log = txResult.logs[txResult.logs.length - 1]
+    // Find the BlogCreated log : keccak256("BlogCreated(uint256,address,address)")
+    const blogCreatedTopic = "0xe2461beb49977af01dc59a039737b13a3d0f37baf6140b87520953d9df959298";
+    const log = txResult.logs.find(log => log.topics[0] == blogCreatedTopic)
     // Get the blog address from the log
     const newBlogAddress = "0x" + log.data.substring(26, 66)
     const newBlogFrontendAddress = "0x" + log.data.substring(90, 130)

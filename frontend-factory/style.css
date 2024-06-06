@@ -295,6 +295,7 @@ button#create-your-own {
 #create-popup #created-blog-address {
   font-size: 140%;
   margin-bottom: 1em;
+  word-break: break-word;
 }
 
 #create-popup #created-blog-infos {
