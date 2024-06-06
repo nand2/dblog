@@ -40,11 +40,13 @@ contract DBlog {
 
     event PostCreated(uint indexed postId);
     event PostEdited(uint indexed postId);
+    event PostDeleted(uint indexed postId);
     event FileUploaded(string filename, string contentType);
 
     struct BlogPost {
         string title;
         uint64 timestamp;
+        bool deleted;
 
         // For possible future evolutions: the data format of the stored content
         // 0: Plain text
@@ -59,7 +61,7 @@ contract DBlog {
         // Pointer to the file contents on the selected backend
         uint contentKey;
     }
-    BlogPost[] public posts;
+    BlogPost[] posts;
 
     modifier onlyFactory() {
         require(msg.sender == address(factory), "Not factory");
@@ -188,6 +190,7 @@ contract DBlog {
 
     function getPost(uint256 index) public view returns (BlogPost memory, string memory) {
         require(index < posts.length, "Index out of bounds");
+        require(posts[index].deleted == false, "Post deleted");
 
         // For EthStorage, we need to fetch it via the EthStorage chain
         uint nextChunkId;
@@ -203,6 +206,8 @@ contract DBlog {
 
     function editPost(uint256 index, string memory postTitle, string memory storageBackendName, bytes memory data, uint dataLength, uint8 contentFormatVersion, bytes20 extra) public payable onlyOwnerOrEditors {
         require(index < posts.length, "Index out of bounds");
+        require(posts[index].deleted == false, "Post deleted");
+
         // getStorageBackendIndexByName() will revert if not found
         posts[index].storageBackendIndex = factory.getStorageBackendIndexByName(storageBackendName);
 
@@ -225,12 +230,47 @@ contract DBlog {
         }
     }
 
-    function getPostCount() public view returns (uint256) {
-        return posts.length;
+    function deletePost(uint256 index) public onlyOwnerOrEditors {
+        require(index < posts.length, "Index out of bounds");
+        require(posts[index].deleted == false, "Post already deleted");
+
+        factory.storageBackends(posts[index].storageBackendIndex).remove(posts[index].contentKey);
+
+        posts[index].deleted = true;
+
+        emit PostDeleted(index);
     }
 
-    function getPosts() public view returns (BlogPost[] memory) {
-        return posts;
+    function getPostCount() public view returns (uint256) {
+        uint count = 0;
+        for(uint i = 0; i < posts.length; i++) {
+            if(posts[i].deleted == false) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Return the non-deleted blog posts.
+     */
+    struct BlogPostWithIndex {
+        uint256 index;
+        BlogPost post;
+    }
+    function getPosts() public view returns (BlogPostWithIndex[] memory publishedPosts) {
+        publishedPosts = new BlogPostWithIndex[](getPostCount());
+
+        uint publishedIndex = 0;
+        for(uint i = 0; i < posts.length; i++) {
+            if(posts[i].deleted == false) {
+                publishedPosts[publishedIndex].index = i;
+                publishedPosts[publishedIndex].post = posts[i];
+                publishedIndex++;
+            }
+        }
+
+        return publishedPosts;
     }
 
 
@@ -338,7 +378,7 @@ contract DBlog {
         FileInfosWithStorageBackend fileInfos;
         bool complete;
     }
-    function getEditorsAndPostsAndUploadedFiles() public view returns (address[] memory, BlogPost[] memory, FileInfosWithStorageBackendAndCompleteness[] memory) {
+    function getEditorsAndPostsAndUploadedFiles() public view returns (address[] memory, BlogPostWithIndex[] memory, FileInfosWithStorageBackendAndCompleteness[] memory) {
 
         FileInfosWithStorageBackendAndCompleteness[] memory uploadedFilesWithCompleteness = new FileInfosWithStorageBackendAndCompleteness[](uploadedFiles.length);
         for(uint i = 0; i < uploadedFiles.length; i++) {
@@ -346,7 +386,7 @@ contract DBlog {
             uploadedFilesWithCompleteness[i].complete = factory.storageBackends(uploadedFiles[i].storageBackendIndex).isComplete(address(this), uploadedFiles[i].fileInfos.contentKey);
         }
 
-        return (editors, posts, uploadedFilesWithCompleteness);
+        return (editors, getPosts(), uploadedFilesWithCompleteness);
     }
 
 

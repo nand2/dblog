@@ -28,6 +28,12 @@ const frontendABI = [
     type: 'function',
   },
   {
+    inputs: [{ name: 'index', type: 'uint256' }],
+    name: 'deletePost',
+    outputs: [],
+    type: 'function',
+  },
+  {
     inputs: [{ name: 'editor', type: 'address' }],
     name: 'addEditor',
     outputs: [],
@@ -235,17 +241,17 @@ console.log("txHash", txHash)
 async function getPost(blogAddress, chainId, postNumber) {
   let post = null
   try {
-    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=((string,uint64,uint8,bytes20,uint8,bytes32),string)`)
+    await fetch(`web3://${blogAddress}:${chainId}/getPost/${postNumber}?returns=((string,uint64,bool,uint8,bytes20,uint8,bytes32),string)`)
       .then(response => response.json())
       .then(data => {
         console.log("Fetched post : ", data)
         post = {
           title: data[0][0],
           date: data[0][1],
-          contentFormatVersion: data[0][2],
-          extra: data[0][3],
-          storageMode: data[0][4],
-          contentKey: data[0][5],
+          contentFormatVersion: data[0][3],
+          extra: data[0][4],
+          storageMode: data[0][5],
+          contentKey: data[0][6],
           content: data[1],
         }
       })
@@ -294,20 +300,20 @@ export async function homeController(blogAddress, chainId) {
   // Call the blog to fetch the posts
   let posts = []
   try {
-    await fetch(`web3://${blogAddress}:${chainId}/getPosts?returns=((string,uint64,uint8,bytes20,uint8,bytes32)[])`)
+    await fetch(`web3://${blogAddress}:${chainId}/getPosts?returns=((uint,(string,uint64,bool,uint8,bytes20,uint8,bytes32))[])`)
       .then(response => response.json())
       .then(data => {
         console.log("Fetched posts : ", data)
         // The blogs are returned as a an array of array, we convert that into an array of objects
-        posts = data[0].map((post, index) => {
+        posts = data[0].map((postWithIndex) => {
           return {
-            id: index,
-            title: post[0],
-            date: post[1],
-            contentFormatVersion: post[2],
-            extra: post[3],
-            storageMode: post[4],
-            contentKey: post[5],
+            id: parseInt(postWithIndex[0]),
+            title: postWithIndex[1][0],
+            date: postWithIndex[1][1],
+            contentFormatVersion: postWithIndex[1][3],
+            extra: postWithIndex[1][4],
+            storageMode: postWithIndex[1][5],
+            contentKey: postWithIndex[1][6],
           }
         })
       })
@@ -398,7 +404,7 @@ export async function adminController(blogAddress, chainId, frontendAddress, fac
     // Call the blog to fetch the editors, posts and uploaded files
     let editorAndPostsAndUploadedFiles = null
     try {
-      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(string,uint64,uint8,bytes20,uint16,uint)[],((uint16,(string,string,uint)),bool)[])`)
+      await fetch(`web3://${blogAddress}:${chainId}/getEditorsAndPostsAndUploadedFiles?returns=(address[],(uint,(string,uint64,uint8,bytes20,uint16,uint))[],((uint16,(string,string,uint)),bool)[])`)
         .then(response => response.json())
         .then(data => {
           console.log("Fetched editors, posts, uploadedFiles : ", data)
@@ -418,15 +424,15 @@ export async function adminController(blogAddress, chainId, frontendAddress, fac
     // Editors
     editors = editorAndPostsAndUploadedFiles[0]
     // Posts
-    posts = editorAndPostsAndUploadedFiles[1].map((post, index) => {
+    posts = editorAndPostsAndUploadedFiles[1].map((postWithIndex) => {
       return {
-        id: index,
-        title: post[0],
-        date: post[1],
-        contentFormatVersion: post[2],
-        extra: post[3],
-        storageMode: post[4],
-        contentKey: post[5],
+        id: parseInt(postWithIndex[0]),
+        title: postWithIndex[1][0],
+        date: postWithIndex[1][1],
+        contentFormatVersion: postWithIndex[1][3],
+        extra: postWithIndex[1][4],
+        storageMode: postWithIndex[1][5],
+        contentKey: postWithIndex[1][6],
       }
     })
     // Uploaded files
@@ -459,10 +465,32 @@ export async function adminController(blogAddress, chainId, frontendAddress, fac
       blogEntry.innerHTML = `
         <span class="date">${formattedDate}</span>
         <a href="/#/entry/${post.id}">${strip_tags(post.title)}</a> <a href="/#/entry/${post.id}/edit" class="edit-link">[edit]</a>
+        <button type="button" class="admin-delete-post" post-index="${post.id}">Delete</button>
       `;
       blogEntries.appendChild(blogEntry)
     })
 
+    // Add the event listener to delete posts
+    const deletePostButtons = document.querySelectorAll('.admin-delete-post')
+    deletePostButtons.forEach(button => {
+      button.addEventListener('click', async (event) => {
+        const postIndex = event.target.getAttribute('post-index')
+        if(confirm(`Are you sure you want to delete the post?`) == false) {
+          return;
+        }
+
+        try {
+          await sendTransaction(blogAddress, chainId, "deletePost", [postIndex]);
+        }
+        catch (error) {
+          console.error(error)
+          alert(error.message)
+          return
+        }
+
+        loadAdminInterface()
+      })
+    })
 
     // Insert the owner and editors
     const adminEditors = document.getElementById('admin-editors')

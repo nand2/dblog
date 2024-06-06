@@ -323,6 +323,11 @@ a#admin-link {
   font-weight: normal;
 }
 
+#page-admin button {
+  padding: 5px;
+  font-size: 80%;
+}
+
 #page-admin #admin-cols {
   display: flex;
   gap: 20px;
