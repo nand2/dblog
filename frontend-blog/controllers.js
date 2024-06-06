@@ -10,6 +10,7 @@ import { basicSetup as codeMirrorBasicSetup, EditorView } from "codemirror"
 import { markdown as codeMirrorMarkdown } from "@codemirror/lang-markdown"
 import { EditorState, Compartment as codeMirrorCompartment } from "@codemirror/state"
 import { oneDark as codeMirrorOneDarkTheme } from '@codemirror/theme-one-dark';
+import { CoinbaseWalletSDK } from '@coinbase/wallet-sdk'
 
 
 // Frontent contract ABI
@@ -94,17 +95,9 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
     }
   }
 
-  // Check presence of EIP-1193 provider
-  if (burnerWallet == null && !window.ethereum) {
-    throw new Error('No Ethereum provider found')
-    return
-  }
-
   // Prepare a Viem client
   let accountAddress = null
-  let createWalletClientOpts = {
-    transport: custom(window.ethereum)
-  }
+  let createWalletClientOpts = null
   if(burnerWallet) {
     accountAddress = burnerWallet
     // Ideally we should use custom(window.ethereum) to pipe through request to the main wallet
@@ -118,6 +111,30 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
       account: burnerWallet,
       chain: chainId == 31337 ? anvil : chainId == 11155111 ? sepolia : mainnet,
       transport: transport
+    }
+  }
+  else {
+    // Fetch a provider
+    let provider = null;
+    // Base: We use the coinbase wallet sdk
+    if(chainId == 8453 || chainId == 84532) {
+      const sdk = new CoinbaseWalletSDK({
+        appName: import.meta.env.VITE_APP_TITLE ?? "%VITE_APP_TITLE%",
+        appChainIds: [1, 11155111, 17000, 8453, 84532, 31337],
+      });
+      provider = sdk.makeWeb3Provider({options: 'smartWalletOnly'});
+    }
+    // Default: We use injected EIP-1193 provider
+    else {
+      // Check presence of EI-1193 provider
+      if (!window.ethereum) {
+        throw new Error('No Ethereum provider found')
+      }
+      provider = window.ethereum
+    }
+
+    createWalletClientOpts = {
+      transport: custom(provider)
     }
   }
   const viemClient = createWalletClient(createWalletClientOpts).extend(publicActions)
@@ -1223,8 +1240,14 @@ console.log("txResult", txResult)
       stopWithError('Transaction reverted')
       return
     }
-    // Take the BlogCreated/BlogEdited event
-    const log = txResult.logs[txResult.logs.length - 1]
+    // Take the PostCreated/PostEdited event
+    // keccak256("PostCreated(uint256)")
+    let topic = "0x7083e11102808886115763619dc7e7c3f40b0b6dfd04262b94ea7de82d917ece";
+    if(newPost == false) {
+      // keccak256("PostEdited(uint256)")
+      topic = "0x6b028d8032a54c1f25d3bdf66fbab62942ed25cec9e26dc705778b12d6146b8a";
+    }
+    const log = txResult.logs.find(log => log.topics[0] == topic);
     // Find the post number
     const savedPostNumber = parseInt(log.topics[1], 16)
     // Go to the post

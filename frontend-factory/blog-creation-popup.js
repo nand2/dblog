@@ -108,7 +108,7 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
     // Fetch a provider
     let provider = null;
     // Base: We use the coinbase wallet sdk
-    if(domain == 'bblog') {
+    if(chainId == 8453 || chainId == 84532) {
       const sdk = new CoinbaseWalletSDK({
         appName: import.meta.env.VITE_APP_TITLE ?? "%VITE_APP_TITLE%",
         appChainIds: [1, 11155111, 17000, 8453, 84532, 31337],
@@ -124,8 +124,6 @@ export function setupBlogCreationPopup(element, blogFactoryAddress, blogImplemen
       }
       provider = window.ethereum
     }
-
-
 
     // Request EIP-1193 provider access authorization
     let walletList = null
