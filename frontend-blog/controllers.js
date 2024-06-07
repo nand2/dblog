@@ -119,7 +119,7 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
     // Base: We use the coinbase wallet sdk
     if(chainId == 8453 || chainId == 84532) {
       const sdk = new CoinbaseWalletSDK({
-        appName: import.meta.env.VITE_APP_TITLE ?? "%VITE_APP_TITLE%",
+        appName: document.title, // Cheating a bit here
         appChainIds: [1, 11155111, 17000, 8453, 84532, 31337],
       });
       provider = sdk.makeWeb3Provider({options: 'smartWalletOnly'});
