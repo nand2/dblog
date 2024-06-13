@@ -66,6 +66,31 @@ const frontendABI = [
   },
 ];
 
+// Make a reusable eip-1193 provider
+let eip1193Provider = null;
+function getEip1193Provider(chainId) {
+  if(eip1193Provider == null) {
+    // Base: We use the coinbase wallet sdk
+    if(chainId == 8453 || chainId == 84532) {
+      const sdk = new CoinbaseWalletSDK({
+        appName: document.title, // Cheating a bit here
+        appChainIds: [1, 11155111, 17000, 8453, 84532, 31337],
+      });
+      eip1193Provider = sdk.makeWeb3Provider({options: 'smartWalletOnly'});
+    }
+    // Default: We use injected EIP-1193 provider
+    else {
+      // Check presence of EI-1193 provider
+      if (!window.ethereum) {
+        throw new Error('No Ethereum provider found')
+      }
+      eip1193Provider = window.ethereum
+    }
+  }
+
+  return eip1193Provider
+}
+
 async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
   // Put default options in opts
   opts = opts || {}
@@ -115,23 +140,7 @@ async function sendTransaction(blogAddress, chainId, methodName, args, opts) {
   }
   else {
     // Fetch a provider
-    let provider = null;
-    // Base: We use the coinbase wallet sdk
-    if(chainId == 8453 || chainId == 84532) {
-      const sdk = new CoinbaseWalletSDK({
-        appName: document.title, // Cheating a bit here
-        appChainIds: [1, 11155111, 17000, 8453, 84532, 31337],
-      });
-      provider = sdk.makeWeb3Provider({options: 'smartWalletOnly'});
-    }
-    // Default: We use injected EIP-1193 provider
-    else {
-      // Check presence of EI-1193 provider
-      if (!window.ethereum) {
-        throw new Error('No Ethereum provider found')
-      }
-      provider = window.ethereum
-    }
+    let provider = getEip1193Provider(chainId);
 
     createWalletClientOpts = {
       transport: custom(provider)
